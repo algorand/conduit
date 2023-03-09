@@ -22,11 +22,11 @@ import (
 
 	"github.com/algorand/conduit/conduit"
 	"github.com/algorand/conduit/conduit/data"
+	_ "github.com/algorand/conduit/conduit/metrics"
 	"github.com/algorand/conduit/conduit/plugins"
 	"github.com/algorand/conduit/conduit/plugins/exporters"
 	"github.com/algorand/conduit/conduit/plugins/importers"
 	"github.com/algorand/conduit/conduit/plugins/processors"
-	_ "github.com/algorand/indexer/util/metrics"
 )
 
 // TestPipelineConfigValidity tests the Valid() function for the Config

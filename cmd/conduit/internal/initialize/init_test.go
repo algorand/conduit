@@ -40,16 +40,19 @@ func TestInitDataDirectory(t *testing.T) {
 
 	// Defaults
 	dataDirectory := t.TempDir()
-	runConduitInit(dataDirectory, "", []string{}, "")
+	err := runConduitInit(dataDirectory, "", []string{}, "")
+	require.NoError(t, err)
 	verifyFile(fmt.Sprintf("%s/conduit.yml", dataDirectory), algodimporter.PluginName, filewriter.PluginName, nil)
 
 	// Explicit defaults
 	dataDirectory = t.TempDir()
-	runConduitInit(dataDirectory, algodimporter.PluginName, []string{noopProcessor.PluginName}, filewriter.PluginName)
+	err = runConduitInit(dataDirectory, algodimporter.PluginName, []string{noopProcessor.PluginName}, filewriter.PluginName)
+	require.NoError(t, err)
 	verifyFile(fmt.Sprintf("%s/conduit.yml", dataDirectory), algodimporter.PluginName, filewriter.PluginName, []string{noopProcessor.PluginName})
 
 	// Different
 	dataDirectory = t.TempDir()
-	runConduitInit(dataDirectory, fileimporter.PluginName, []string{noopProcessor.PluginName, filterprocessor.PluginName}, noopExporter.PluginName)
+	err = runConduitInit(dataDirectory, fileimporter.PluginName, []string{noopProcessor.PluginName, filterprocessor.PluginName}, noopExporter.PluginName)
+	require.NoError(t, err)
 	verifyFile(fmt.Sprintf("%s/conduit.yml", dataDirectory), fileimporter.PluginName, noopExporter.PluginName, []string{noopProcessor.PluginName, filterprocessor.PluginName})
 }
