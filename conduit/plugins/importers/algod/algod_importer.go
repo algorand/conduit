@@ -101,10 +101,8 @@ func (algodImp *algodImporter) Init(ctx context.Context, cfg plugins.PluginConfi
 	switch algodImp.cfg.Mode {
 	case archivalModeStr:
 		algodImp.mode = archivalMode
-		break
 	case followerModeStr:
 		algodImp.mode = followerMode
-		break
 	default:
 		return nil, fmt.Errorf("algod importer was set to a mode (%s) that wasn't supported", algodImp.cfg.Mode)
 	}

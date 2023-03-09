@@ -5,13 +5,20 @@ run:
 linters:
   disable-all: true
   enable:
+    - deadcode
     - errcheck
+    - gci
     - gofmt
+    - gosimple
     - govet
     - ineffassign
     - misspell
-    - gci
     - revive
+    - staticcheck
+    - structcheck
+    - typecheck
+    - unused
+    - varcheck
 
 linters-settings:
   gci:
@@ -26,21 +33,8 @@ linters-settings:
 
 severity:
   default-severity: error
-  rules:
-    - linters:
-        - errcheck
-        - gofmt
-        - govet
-        - ineffassign
-        - misspell
-        - gci
-        - revive
-      severity: error
 
 issues:
-  # use these new lint checks on code since #935
-  new-from-rev: 99ab66fdadcd77fef4048bb2aa86cae1f06c6e08
-
   # Disable default exclude rules listed in `golangci-lint run --help` (selectively re-enable some below)
   exclude-use-default: false
 

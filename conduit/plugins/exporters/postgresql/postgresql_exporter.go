@@ -141,10 +141,6 @@ func (exp *postgresqlExporter) Receive(exportData data.BlockData) error {
 	return nil
 }
 
-func (exp *postgresqlExporter) unmarhshalConfig(cfg string) error {
-	return yaml.Unmarshal([]byte(cfg), &exp.cfg)
-}
-
 func init() {
 	exporters.Register(PluginName, exporters.ExporterConstructorFunc(func() exporters.Exporter {
 		return &postgresqlExporter{}

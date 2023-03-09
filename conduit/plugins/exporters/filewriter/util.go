@@ -78,10 +78,10 @@ func DecodeJSONFromFile(filename string, v interface{}, strict bool) error {
 
 	if strings.HasSuffix(filename, ".gz") {
 		gz, err := gzip.NewReader(reader)
-		defer gz.Close()
 		if err != nil {
 			return fmt.Errorf("DecodeJSONFromFile(): failed to make gzip reader: %w", err)
 		}
+		defer gz.Close()
 		reader = gz
 	}
 	var handle *codec.JsonHandle

@@ -162,8 +162,6 @@ type pipelineImpl struct {
 	completeCallback []conduit.OnCompleteFunc
 
 	pipelineMetadata state
-
-	metricsCallback []conduit.ProvideMetricsFunc
 }
 
 // state contains the pipeline state.

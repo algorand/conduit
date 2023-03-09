@@ -63,7 +63,7 @@ func runConduitCmdWithConfig(args *conduit.Args) error {
 	logger.Info("Conduit configuration is valid")
 
 	if !pCfg.HideBanner {
-		fmt.Printf(banner)
+		fmt.Print(banner)
 	}
 
 	if pCfg.LogFile != "" {
