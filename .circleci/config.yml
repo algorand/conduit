@@ -22,11 +22,18 @@ jobs:
     steps:
       - go/install:
           version: "1.17.9"
+      - build_conduit
       - install_linter
       - run_tests
       - codecov/upload
 
 commands:
+  build_conduit:
+    description: build project
+    steps:
+      - checkout
+      - make
+
   install_linter:
     description: Install golangci-lint
     steps:
