@@ -11,7 +11,7 @@ parameters:
 
 workflows:
   version: 2
-  circleci_build_and_test:
+  build_and_test:
     jobs:
       - test
 
