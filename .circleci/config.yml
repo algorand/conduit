@@ -2,7 +2,6 @@ version: 2.1
 
 orbs:
   go: circleci/go@1.7.0
-  slack: circleci/slack@4.7.1
   codecov: codecov/codecov@3.1.1
 
 parameters:
@@ -15,8 +14,6 @@ workflows:
   circleci_build_and_test:
     jobs:
       - test:
-          name: test_with_go_<< matrix.go_version >>
-          matrix: &go-version-matrix
 
 jobs:
   test:
