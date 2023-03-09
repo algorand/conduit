@@ -11,6 +11,8 @@ import (
 
 	"github.com/algorand/conduit/conduit"
 	"github.com/algorand/conduit/conduit/pipeline"
+	"github.com/algorand/conduit/conduit/plugins/exporters/filewriter"
+	algodimporter "github.com/algorand/indexer/conduit/plugins/importers/algod"
 )
 
 // InitCommand is the init subcommand.
@@ -60,7 +62,7 @@ func runConduitInit(path string, importerFlag string, processorsFlag []string, e
 
 	var importer string
 	if importerFlag == "" {
-		importerFlag = "algod"
+		importerFlag = algodimporter.PluginName
 	}
 	for _, metadata := range pipeline.ImporterMetadata() {
 		if metadata.Name == importerFlag {
@@ -74,7 +76,7 @@ func runConduitInit(path string, importerFlag string, processorsFlag []string, e
 
 	var exporter string
 	if exporterFlag == "" {
-		exporterFlag = "file_writer"
+		exporterFlag = filewriter.PluginName
 	}
 	for _, metadata := range pipeline.ExporterMetadata() {
 		if metadata.Name == exporterFlag {

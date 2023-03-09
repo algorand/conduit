@@ -9,8 +9,8 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/algorand/indexer/conduit"
-	"github.com/algorand/indexer/conduit/pipeline"
+	"github.com/algorand/conduit/conduit"
+	"github.com/algorand/conduit/conduit/pipeline"
 )
 
 // Command is the list command to embed in a root cobra command.

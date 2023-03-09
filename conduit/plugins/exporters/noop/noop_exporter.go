@@ -8,10 +8,10 @@ import (
 	"github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v3"
 
-	"github.com/algorand/indexer/conduit"
-	"github.com/algorand/indexer/conduit/data"
-	"github.com/algorand/indexer/conduit/plugins"
-	"github.com/algorand/indexer/conduit/plugins/exporters"
+	"github.com/algorand/conduit/conduit"
+	"github.com/algorand/conduit/conduit/data"
+	"github.com/algorand/conduit/conduit/plugins"
+	"github.com/algorand/conduit/conduit/plugins/exporters"
 )
 
 // PluginName to use when configuring.

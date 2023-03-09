@@ -20,10 +20,10 @@ import (
 
 	sdk "github.com/algorand/go-algorand-sdk/v2/types"
 	"github.com/algorand/indexer/util"
-	"github.com/algorand/indexer/util/metrics"
 
 	"github.com/algorand/conduit/conduit"
 	"github.com/algorand/conduit/conduit/data"
+	"github.com/algorand/conduit/conduit/metrics"
 	"github.com/algorand/conduit/conduit/plugins"
 	"github.com/algorand/conduit/conduit/plugins/exporters"
 	"github.com/algorand/conduit/conduit/plugins/importers"

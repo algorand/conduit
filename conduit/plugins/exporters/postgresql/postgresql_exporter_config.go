@@ -3,7 +3,7 @@ package postgresql
 //go:generate go run ../../../../cmd/conduit-docs/main.go ../../../../conduit-docs/
 
 import (
-	"github.com/algorand/indexer/conduit/plugins/exporters/postgresql/util"
+	"github.com/algorand/conduit/conduit/plugins/exporters/postgresql/util"
 )
 
 //Name: conduit_exporters_postgresql

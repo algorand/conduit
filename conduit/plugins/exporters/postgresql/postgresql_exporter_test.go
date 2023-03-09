@@ -11,11 +11,11 @@ import (
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
 
-	"github.com/algorand/indexer/conduit/data"
-	"github.com/algorand/indexer/conduit/plugins"
-	"github.com/algorand/indexer/conduit/plugins/exporters"
-	"github.com/algorand/indexer/conduit/plugins/exporters/postgresql/util"
-	"github.com/algorand/indexer/conduit/plugins/tools/testutil"
+	"github.com/algorand/conduit/conduit/data"
+	"github.com/algorand/conduit/conduit/plugins"
+	"github.com/algorand/conduit/conduit/plugins/exporters"
+	"github.com/algorand/conduit/conduit/plugins/exporters/postgresql/util"
+	"github.com/algorand/conduit/conduit/plugins/tools/testutil"
 	_ "github.com/algorand/indexer/idb/dummy"
 )
 
