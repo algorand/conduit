@@ -13,7 +13,7 @@ workflows:
   version: 2
   circleci_build_and_test:
     jobs:
-      - test:
+      - test
 
 jobs:
   test:
