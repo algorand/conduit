@@ -1,12 +1,4 @@
 SRCPATH		:= $(shell pwd)
-OS_TYPE		?= $(shell $(SRCPATH)/scripts/ostype.sh)
-ARCH		?= $(shell $(SRCPATH)/scripts/archtype.sh)
-ifeq ($(OS_TYPE), darwin)
-ifeq ($(ARCH), arm64)
-export CPATH=/opt/homebrew/include
-export LIBRARY_PATH=/opt/homebrew/lib
-endif
-endif
 export GOPATH := $(shell go env GOPATH)
 GOPATH1 := $(firstword $(subst :, ,$(GOPATH)))
 
