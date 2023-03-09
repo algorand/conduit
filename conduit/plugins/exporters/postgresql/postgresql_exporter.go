@@ -10,13 +10,14 @@ import (
 	"github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v3"
 
-	"github.com/algorand/indexer/conduit"
-	"github.com/algorand/indexer/conduit/data"
-	"github.com/algorand/indexer/conduit/plugins"
-	"github.com/algorand/indexer/conduit/plugins/exporters"
-	"github.com/algorand/indexer/conduit/plugins/exporters/postgresql/util"
-	"github.com/algorand/indexer/idb"
+	"github.com/algorand/conduit/conduit"
+	"github.com/algorand/conduit/conduit/data"
+	"github.com/algorand/conduit/conduit/plugins"
+	"github.com/algorand/conduit/conduit/plugins/exporters"
+	"github.com/algorand/conduit/conduit/plugins/exporters/postgresql/util"
+
 	// Necessary to ensure the postgres implementation has been registered in the idb factory
+	"github.com/algorand/indexer/idb"
 	_ "github.com/algorand/indexer/idb/postgres"
 	"github.com/algorand/indexer/types"
 	iutil "github.com/algorand/indexer/util"

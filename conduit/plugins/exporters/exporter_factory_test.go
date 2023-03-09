@@ -7,7 +7,7 @@ import (
 	"github.com/sirupsen/logrus/hooks/test"
 	"github.com/stretchr/testify/assert"
 
-	"github.com/algorand/indexer/conduit"
+	"github.com/algorand/conduit/conduit"
 )
 
 var logger *logrus.Logger

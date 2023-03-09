@@ -13,10 +13,10 @@ import (
 	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v3"
 
-	"github.com/algorand/indexer/conduit/data"
-	"github.com/algorand/indexer/conduit/plugins"
-	"github.com/algorand/indexer/conduit/plugins/exporters"
-	"github.com/algorand/indexer/conduit/plugins/tools/testutil"
+	"github.com/algorand/conduit/conduit/data"
+	"github.com/algorand/conduit/conduit/plugins"
+	"github.com/algorand/conduit/conduit/plugins/exporters"
+	"github.com/algorand/conduit/conduit/plugins/tools/testutil"
 
 	sdk "github.com/algorand/go-algorand-sdk/v2/types"
 )
