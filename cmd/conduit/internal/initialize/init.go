@@ -9,10 +9,11 @@ import (
 
 	"github.com/spf13/cobra"
 
+	algodimporter "github.com/algorand/indexer/conduit/plugins/importers/algod"
+
 	"github.com/algorand/conduit/conduit"
 	"github.com/algorand/conduit/conduit/pipeline"
 	"github.com/algorand/conduit/conduit/plugins/exporters/filewriter"
-	algodimporter "github.com/algorand/indexer/conduit/plugins/importers/algod"
 )
 
 // InitCommand is the init subcommand.

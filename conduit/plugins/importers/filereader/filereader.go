@@ -12,13 +12,13 @@ import (
 	"github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v3"
 
+	sdk "github.com/algorand/go-algorand-sdk/v2/types"
+
 	"github.com/algorand/conduit/conduit"
 	"github.com/algorand/conduit/conduit/data"
 	"github.com/algorand/conduit/conduit/plugins"
 	"github.com/algorand/conduit/conduit/plugins/exporters/filewriter"
 	"github.com/algorand/conduit/conduit/plugins/importers"
-
-	sdk "github.com/algorand/go-algorand-sdk/v2/types"
 )
 
 // PluginName to use when configuring.

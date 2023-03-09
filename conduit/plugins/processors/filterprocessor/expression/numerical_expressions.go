@@ -2,40 +2,7 @@ package expression
 
 import (
 	"fmt"
-	"reflect"
-
-	sdk "github.com/algorand/go-algorand-sdk/v2/types"
 )
-
-type microAlgoExpression struct {
-	FilterValue sdk.MicroAlgos
-	Op          Type
-}
-
-func (m microAlgoExpression) Match(input interface{}) (bool, error) {
-
-	inputValue, ok := input.(sdk.MicroAlgos)
-	if !ok {
-		return false, fmt.Errorf("supplied type (%s) was not microalgos", reflect.TypeOf(input).String())
-	}
-
-	switch m.Op {
-	case LessThan:
-		return inputValue < m.FilterValue, nil
-	case LessThanEqual:
-		return inputValue <= m.FilterValue, nil
-	case EqualTo:
-		return inputValue == m.FilterValue, nil
-	case NotEqualTo:
-		return inputValue != m.FilterValue, nil
-	case GreaterThan:
-		return inputValue > m.FilterValue, nil
-	case GreaterThanEqual:
-		return inputValue >= m.FilterValue, nil
-	default:
-		return false, fmt.Errorf("unknown op: %s", m.Op)
-	}
-}
 
 type int64NumericalExpression struct {
 	FilterValue int64

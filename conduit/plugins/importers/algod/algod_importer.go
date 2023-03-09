@@ -12,17 +12,17 @@ import (
 	"github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v3"
 
-	"github.com/algorand/conduit/conduit"
-	"github.com/algorand/conduit/conduit/data"
-	"github.com/algorand/conduit/conduit/plugins"
-	"github.com/algorand/conduit/conduit/plugins/importers"
-
 	"github.com/algorand/go-algorand-sdk/v2/client/v2/algod"
 	"github.com/algorand/go-algorand-sdk/v2/client/v2/common"
 	"github.com/algorand/go-algorand-sdk/v2/client/v2/common/models"
 	"github.com/algorand/go-algorand-sdk/v2/encoding/json"
 	"github.com/algorand/go-algorand-sdk/v2/encoding/msgpack"
 	sdk "github.com/algorand/go-algorand-sdk/v2/types"
+
+	"github.com/algorand/conduit/conduit"
+	"github.com/algorand/conduit/conduit/data"
+	"github.com/algorand/conduit/conduit/plugins"
+	"github.com/algorand/conduit/conduit/plugins/importers"
 )
 
 const (
@@ -101,10 +101,8 @@ func (algodImp *algodImporter) Init(ctx context.Context, cfg plugins.PluginConfi
 	switch algodImp.cfg.Mode {
 	case archivalModeStr:
 		algodImp.mode = archivalMode
-		break
 	case followerModeStr:
 		algodImp.mode = followerMode
-		break
 	default:
 		return nil, fmt.Errorf("algod importer was set to a mode (%s) that wasn't supported", algodImp.cfg.Mode)
 	}

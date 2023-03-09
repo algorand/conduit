@@ -5,11 +5,11 @@ import (
 
 	"github.com/sirupsen/logrus"
 
+	sdk "github.com/algorand/go-algorand-sdk/v2/types"
+
 	"github.com/algorand/conduit/conduit"
 	"github.com/algorand/conduit/conduit/data"
 	"github.com/algorand/conduit/conduit/plugins"
-
-	sdk "github.com/algorand/go-algorand-sdk/v2/types"
 )
 
 // Importer defines the interface for importer plugins

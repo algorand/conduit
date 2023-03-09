@@ -8,14 +8,14 @@ import (
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v3"
 
+	sdk "github.com/algorand/go-algorand-sdk/v2/types"
+
 	"github.com/algorand/conduit/conduit"
 	"github.com/algorand/conduit/conduit/data"
 	"github.com/algorand/conduit/conduit/plugins"
 	"github.com/algorand/conduit/conduit/plugins/processors"
 	"github.com/algorand/conduit/conduit/plugins/processors/filterprocessor/expression"
 	"github.com/algorand/conduit/conduit/plugins/processors/filterprocessor/fields"
-
-	sdk "github.com/algorand/go-algorand-sdk/v2/types"
 )
 
 // PluginName to use when configuring.

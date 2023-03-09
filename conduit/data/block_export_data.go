@@ -1,9 +1,8 @@
 package data
 
 import (
-	"github.com/algorand/indexer/types"
-
 	sdk "github.com/algorand/go-algorand-sdk/v2/types"
+	"github.com/algorand/indexer/types"
 )
 
 // RoundProvider is the interface which all data types sent to Exporters should implement

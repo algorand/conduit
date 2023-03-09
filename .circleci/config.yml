@@ -1,0 +1,51 @@
+version: 2.1
+
+orbs:
+  go: circleci/go@1.7.0
+  codecov: codecov/codecov@3.1.1
+
+parameters:
+  ubuntu_image:
+    type: string
+    default: "ubuntu-2004:202107-02"
+
+workflows:
+  version: 2
+  build_and_test:
+    jobs:
+      - test
+
+jobs:
+  test:
+    machine:
+      image: << pipeline.parameters.ubuntu_image >>
+    steps:
+      - go/install:
+          version: "1.17.9"
+      - build_conduit
+      - install_linter
+      - run_tests
+      - codecov/upload
+
+commands:
+  build_conduit:
+    description: build project
+    steps:
+      - checkout
+      - run: make
+
+  install_linter:
+    description: Install golangci-lint
+    steps:
+      - run:
+          name: Install golangci-lint
+          command: go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.47.3
+
+  run_tests:
+    steps:
+      - run: test -z `go fmt ./...`
+      - run: make lint
+      - run: make check
+      - run:
+          command: make test
+          no_output_timeout: 15m

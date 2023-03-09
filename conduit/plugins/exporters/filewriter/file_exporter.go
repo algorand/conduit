@@ -105,12 +105,6 @@ func (exp *fileExporter) Receive(exportData data.BlockData) error {
 	return nil
 }
 
-func unmarshalConfig(cfg string) (Config, error) {
-	var config Config
-	err := yaml.Unmarshal([]byte(cfg), &config)
-	return config, err
-}
-
 func init() {
 	exporters.Register(PluginName, exporters.ExporterConstructorFunc(func() exporters.Exporter {
 		return &fileExporter{}
