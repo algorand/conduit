@@ -32,7 +32,7 @@ commands:
     description: build project
     steps:
       - checkout
-      - make
+      - run: make
 
   install_linter:
     description: Install golangci-lint
