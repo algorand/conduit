@@ -9,9 +9,8 @@ import (
 	"os"
 	"strings"
 
-	"github.com/algorand/go-codec/codec"
-
 	"github.com/algorand/go-algorand-sdk/v2/encoding/json"
+	"github.com/algorand/go-codec/codec"
 )
 
 var prettyHandle *codec.JsonHandle

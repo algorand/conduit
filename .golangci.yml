@@ -19,7 +19,7 @@ linters-settings:
       - standard
       - default
       - prefix(github.com/algorand)
-      - prefix(github.com/algorand/go-algorand)
+      - prefix(github.com/algorand/conduit)
 
     section-separators:
       - newLine

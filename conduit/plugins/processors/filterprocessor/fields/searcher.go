@@ -5,9 +5,9 @@ package fields
 import (
 	"fmt"
 
-	"github.com/algorand/conduit/conduit/plugins/processors/filterprocessor/expression"
-
 	sdk "github.com/algorand/go-algorand-sdk/v2/types"
+
+	"github.com/algorand/conduit/conduit/plugins/processors/filterprocessor/expression"
 )
 
 // Searcher searches the struct with an expression
