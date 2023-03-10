@@ -2,6 +2,8 @@ name: filter_processor
 config:
   # Filters is a list of boolean expressions that can search the payset transactions.
   # See README for more info.
+  search-inner: true
+  omit-group-transactions: true
   filters:
     - any:
         - tag: txn.rcv

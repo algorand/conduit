@@ -127,37 +127,11 @@ func (a *FilterProcessor) Process(input data.BlockData) (data.BlockData, error) 
 	var err error
 	payset := input.Payset
 	for _, searcher := range a.FieldFilters {
-		payset, err = searcher.SearchAndFilter(payset)
+		payset, err = searcher.SearchAndFilter(payset, a.cfg.OmitGroupTransactions)
 		if err != nil {
 			return data.BlockData{}, err
 		}
 	}
-	if !a.cfg.OmitGroupTransactions {
-		gtxns := groupTxns(&input.Payset)
-		matchedTxns := payset
-		payset = make([]sdk.SignedTxnInBlock, 0)
-		included := make(map[sdk.Digest]bool)
-		for _, match := range matchedTxns {
-			if match.Txn.Group != (sdk.Digest{}) {
-				if _, ok := included[match.Txn.Group]; !ok {
-					// txn has a groupID, get all the txns in the same group
-					payset = append(payset, gtxns[match.Txn.Group]...)
-					included[match.Txn.Group] = true
-				}
-			} else {
-				payset = append(payset, match)
-			}
-		}
-	}
 	input.Payset = payset
 	return input, err
-}
-
-func groupTxns(payset *[]sdk.SignedTxnInBlock) map[sdk.Digest][]sdk.SignedTxnInBlock {
-	gtxns := make(map[sdk.Digest][]sdk.SignedTxnInBlock)
-	// group txns by groupID
-	for _, p := range *payset {
-		gtxns[p.Txn.Header.Group] = append(gtxns[p.Txn.Header.Group], p)
-	}
-	return gtxns
 }

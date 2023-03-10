@@ -53,15 +53,27 @@ func (f Filter) matches(txn *sdk.SignedTxnWithAD) (bool, error) {
 }
 
 // SearchAndFilter searches through the block data and applies the operation to the results
-func (f Filter) SearchAndFilter(payset []sdk.SignedTxnInBlock) ([]sdk.SignedTxnInBlock, error) {
+func (f Filter) SearchAndFilter(payset []sdk.SignedTxnInBlock, omitGroup bool) ([]sdk.SignedTxnInBlock, error) {
 	var result []sdk.SignedTxnInBlock
-	for _, txn := range payset {
-		match, err := f.matches(&txn.SignedTxnWithAD)
+	firstGroupIdx := 0
+	for i := 0; i < len(payset); i++ {
+		if payset[firstGroupIdx].Txn.Group != payset[i].Txn.Group {
+			firstGroupIdx = i
+		}
+		match, err := f.matches(&payset[i].SignedTxnWithAD)
 		if err != nil {
 			return nil, err
 		}
 		if match {
-			result = append(result, txn)
+			if payset[i].Txn.Group != (sdk.Digest{}) && !omitGroup {
+				j := firstGroupIdx
+				for ; j < len(payset) && payset[j].Txn.Group == payset[firstGroupIdx].Txn.Group; j++ {
+					result = append(result, payset[j])
+				}
+				i = j - 1
+			} else {
+				result = append(result, payset[i])
+			}
 		}
 	}
 

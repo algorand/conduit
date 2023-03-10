@@ -1097,57 +1097,6 @@ func createPaysetGroupedTxns() []sdk.SignedTxnInBlock {
 				},
 			},
 		},
-		// a simple txn in group 2
-		{
-			SignedTxnWithAD: sdk.SignedTxnWithAD{
-				SignedTxn: sdk.SignedTxn{
-					AuthAddr: sampleAddr1,
-					Txn: sdk.Transaction{
-						PaymentTxnFields: sdk.PaymentTxnFields{
-							Receiver: sampleAddr1,
-							Amount:   99,
-						},
-						Header: sdk.Header{
-							Sender: sampleAddr2,
-							Group:  sdk.Digest{2},
-						},
-					},
-				},
-			},
-		},
-		// a txn with inner txn
-		{
-			SignedTxnWithAD: sdk.SignedTxnWithAD{
-				SignedTxn: sdk.SignedTxn{
-					AuthAddr: sampleAddr1,
-					Txn: sdk.Transaction{
-						PaymentTxnFields: sdk.PaymentTxnFields{
-							Receiver: sampleAddr1,
-							Amount:   1,
-						},
-						Header: sdk.Header{
-							Sender: sampleAddr1,
-							Note:   []byte("I don't have a group id."),
-						},
-					},
-				},
-				ApplyData: sdk.ApplyData{
-					EvalDelta: sdk.EvalDelta{
-						InnerTxns: []sdk.SignedTxnWithAD{
-							{
-								SignedTxn: sdk.SignedTxn{
-									Txn: sdk.Transaction{
-										Header: sdk.Header{
-											Sender: sampleAddr1,
-										},
-									},
-								},
-							},
-						},
-					},
-				},
-			},
-		},
 		// 2nd txn in group 1
 		{
 			SignedTxnWithAD: sdk.SignedTxnWithAD{
@@ -1165,6 +1114,24 @@ func createPaysetGroupedTxns() []sdk.SignedTxnInBlock {
 								UnitName:  "assetA",
 								AssetName: "assetA",
 							},
+						},
+					},
+				},
+			},
+		},
+		// a simple txn in group 2
+		{
+			SignedTxnWithAD: sdk.SignedTxnWithAD{
+				SignedTxn: sdk.SignedTxn{
+					AuthAddr: sampleAddr1,
+					Txn: sdk.Transaction{
+						PaymentTxnFields: sdk.PaymentTxnFields{
+							Receiver: sampleAddr1,
+							Amount:   99,
+						},
+						Header: sdk.Header{
+							Sender: sampleAddr2,
+							Group:  sdk.Digest{2},
 						},
 					},
 				},
@@ -1220,6 +1187,39 @@ func createPaysetGroupedTxns() []sdk.SignedTxnInBlock {
 				},
 			},
 		},
+		// a txn with inner txn
+		{
+			SignedTxnWithAD: sdk.SignedTxnWithAD{
+				SignedTxn: sdk.SignedTxn{
+					AuthAddr: sampleAddr1,
+					Txn: sdk.Transaction{
+						PaymentTxnFields: sdk.PaymentTxnFields{
+							Receiver: sampleAddr1,
+							Amount:   1,
+						},
+						Header: sdk.Header{
+							Sender: sampleAddr1,
+							Note:   []byte("I don't have a group id."),
+						},
+					},
+				},
+				ApplyData: sdk.ApplyData{
+					EvalDelta: sdk.EvalDelta{
+						InnerTxns: []sdk.SignedTxnWithAD{
+							{
+								SignedTxn: sdk.SignedTxn{
+									Txn: sdk.Transaction{
+										Header: sdk.Header{
+											Sender: sampleAddr1,
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
 		// a simple txn
 		{
 			SignedTxnWithAD: sdk.SignedTxnWithAD{
@@ -1265,7 +1265,7 @@ filters:
 		require.Equal(t, 3, len(output.Payset))
 		// txns in group 1
 		assert.Equal(t, bd.Payset[0], output.Payset[0])
-		assert.Equal(t, bd.Payset[3], output.Payset[1])
+		assert.Equal(t, bd.Payset[1], output.Payset[1])
 		// a payment txn
 		assert.Equal(t, bd.Payset[5], output.Payset[2])
 	}
@@ -1288,10 +1288,10 @@ filters:
 		require.Equal(t, 4, len(output.Payset))
 		// group 1 txns
 		assert.Equal(t, bd.Payset[0], output.Payset[0])
-		assert.Equal(t, bd.Payset[3], output.Payset[1])
+		assert.Equal(t, bd.Payset[1], output.Payset[1])
 		// group 2 txns
-		assert.Equal(t, bd.Payset[1], output.Payset[2])
-		assert.Equal(t, bd.Payset[4], output.Payset[3])
+		assert.Equal(t, bd.Payset[2], output.Payset[2])
+		assert.Equal(t, bd.Payset[3], output.Payset[3])
 	}
 
 	{
@@ -1312,7 +1312,7 @@ filters:
 		require.Equal(t, 2, len(output.Payset))
 		// group 1 txns
 		assert.Equal(t, bd.Payset[0], output.Payset[0])
-		assert.Equal(t, bd.Payset[3], output.Payset[1])
+		assert.Equal(t, bd.Payset[1], output.Payset[1])
 	}
 
 	{
@@ -1332,8 +1332,8 @@ filters:
 		require.NoError(t, err)
 		require.Equal(t, 2, len(output.Payset))
 		// group 2 txns
-		assert.Equal(t, bd.Payset[1], output.Payset[0])
-		assert.Equal(t, bd.Payset[4], output.Payset[1])
+		assert.Equal(t, bd.Payset[2], output.Payset[0])
+		assert.Equal(t, bd.Payset[3], output.Payset[1])
 	}
 }
 
@@ -1385,8 +1385,9 @@ filters:
 		require.Equal(t, 4, len(output.Payset))
 		assert.Equal(t, bd.Payset[0], output.Payset[0])
 		assert.Equal(t, bd.Payset[1], output.Payset[1])
-		assert.Equal(t, bd.Payset[3], output.Payset[2])
-		assert.Equal(t, bd.Payset[4], output.Payset[3])
+		assert.Equal(t, bd.Payset[2], output.Payset[2])
+		assert.Equal(t, bd.Payset[3], output.Payset[3])
+
 	}
 
 	{
@@ -1426,6 +1427,6 @@ filters:
 		output, err := fp.Process(bd)
 		require.NoError(t, err)
 		require.Equal(t, 1, len(output.Payset))
-		assert.Equal(t, bd.Payset[4], output.Payset[0])
+		assert.Equal(t, bd.Payset[3], output.Payset[0])
 	}
 }
