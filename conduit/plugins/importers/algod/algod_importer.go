@@ -207,9 +207,9 @@ func (algodImp *algodImporter) GetBlock(rnd uint64) (data.BlockData, error) {
 				delta, err = algodImp.getDelta(rnd)
 				if err != nil {
 					if status.LastRound < rnd {
-						err = fmt.Errorf("ledger state delta not found: node round (%d) is behind required round (%d), configure follower node to synchronize with the required round", status.LastRound, rnd)
+						err = fmt.Errorf("ledger state delta not found: node round (%d) is behind required round (%d), ensure follower node has its sync round set to the required round", status.LastRound, rnd)
 					} else {
-						err = fmt.Errorf("ledger state delta not found: node round (%d), required round (%d): verify follower node configuration, re-deploying to the required round may be necessary", status.LastRound, rnd)
+						err = fmt.Errorf("ledger state delta not found: node round (%d), required round (%d): verify follower node configuration and ensure follower node has its sync round set to the required round, re-deploying the follower node may be necessary", status.LastRound, rnd)
 					}
 					algodImp.logger.Error(err.Error())
 					return data.BlockData{}, err
