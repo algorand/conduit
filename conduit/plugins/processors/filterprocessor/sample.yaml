@@ -1,7 +1,10 @@
 name: filter_processor
 config:
+  # Search inner configures whether the expression will search for matches in inner transactions.
+  search-inner: true
+  # Omit group transactions turns off group transaction matches, so only a single transaction from the group may be matched.
+  omit-group-transactions: true
   # Filters is a list of boolean expressions that can search the payset transactions.
-  # See README for more info.
   filters:
     - any:
         - tag: txn.rcv

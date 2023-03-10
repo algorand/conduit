@@ -106,6 +106,7 @@ func (a *FilterProcessor) Init(ctx context.Context, _ data.InitProvider, cfg plu
 			ff := fields.Filter{
 				Op:        fields.Operation(key),
 				Searchers: searcherList,
+				OmitGroup: a.cfg.OmitGroupTransactions,
 			}
 
 			a.FieldFilters = append(a.FieldFilters, ff)
