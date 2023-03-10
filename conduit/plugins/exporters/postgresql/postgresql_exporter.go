@@ -3,6 +3,7 @@ package postgresql
 import (
 	"context"
 	_ "embed" // used to embed config
+	"errors"
 	"fmt"
 	"sync"
 	"sync/atomic"
@@ -25,6 +26,8 @@ import (
 
 // PluginName to use when configuring.
 const PluginName = "postgresql"
+
+var errMissingDelta = errors.New("ledger state delta is missing from block, ensure algod importer is using 'follower' mode")
 
 type postgresqlExporter struct {
 	round  uint64
@@ -120,7 +123,7 @@ func (exp *postgresqlExporter) Receive(exportData data.BlockData) error {
 		if exportData.Round() == 0 {
 			exportData.Delta = &sdk.LedgerStateDelta{}
 		} else {
-			return fmt.Errorf("receive got an invalid block: %#v", exportData)
+			return errMissingDelta
 		}
 	}
 	// Do we need to test for consensus protocol here?
