@@ -2,7 +2,6 @@ package postgresql
 
 import (
 	"context"
-	"fmt"
 	"testing"
 
 	"github.com/sirupsen/logrus"
@@ -80,8 +79,8 @@ func TestReceiveInvalidBlock(t *testing.T) {
 		Certificate: &map[string]interface{}{},
 		Delta:       nil,
 	}
-	expectedErr := fmt.Sprintf("receive got an invalid block: %#v", invalidBlock)
-	assert.EqualError(t, pgsqlExp.Receive(invalidBlock), expectedErr)
+	err := pgsqlExp.Receive(invalidBlock)
+	assert.ErrorIs(t, err, errMissingDelta)
 }
 
 func TestReceiveAddBlockSuccess(t *testing.T) {
