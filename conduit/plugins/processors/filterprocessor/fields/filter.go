@@ -66,11 +66,14 @@ func (f Filter) SearchAndFilter(payset []sdk.SignedTxnInBlock) ([]sdk.SignedTxnI
 			return nil, err
 		}
 		if match {
+			// if txn.Group is set and omit group is false
 			if payset[i].Txn.Group != (sdk.Digest{}) && !f.OmitGroup {
 				j := firstGroupIdx
+				// append all txns with same group ID
 				for ; j < len(payset) && payset[j].Txn.Group == payset[firstGroupIdx].Txn.Group; j++ {
 					result = append(result, payset[j])
 				}
+				// skip txns that are already added, set i to the index of the last added txn
 				i = j - 1
 			} else {
 				result = append(result, payset[i])
