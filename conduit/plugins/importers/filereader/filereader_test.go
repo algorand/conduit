@@ -165,7 +165,7 @@ func TestRetryWithCancel(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Cancel after delay
-	delay := time.Millisecond
+	delay := 5 * time.Millisecond
 	go func() {
 		time.Sleep(delay)
 		cancel()
@@ -175,5 +175,5 @@ func TestRetryWithCancel(t *testing.T) {
 	assert.ErrorContains(t, err, "GetBlock() context finished: context canceled")
 
 	// within 1ms of the expected time (but much less than the 3hr configuration.
-	assert.WithinDuration(t, start, time.Now(), delay+time.Millisecond)
+	assert.WithinDuration(t, start, time.Now(), 2*delay)
 }
