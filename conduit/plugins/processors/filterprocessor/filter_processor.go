@@ -106,6 +106,7 @@ func (a *FilterProcessor) Init(ctx context.Context, _ data.InitProvider, cfg plu
 			ff := fields.Filter{
 				Op:        fields.Operation(key),
 				Searchers: searcherList,
+				OmitGroup: a.cfg.OmitGroupTransactions,
 			}
 
 			a.FieldFilters = append(a.FieldFilters, ff)
@@ -127,7 +128,7 @@ func (a *FilterProcessor) Process(input data.BlockData) (data.BlockData, error) 
 	var err error
 	payset := input.Payset
 	for _, searcher := range a.FieldFilters {
-		payset, err = searcher.SearchAndFilter(payset, a.cfg.OmitGroupTransactions)
+		payset, err = searcher.SearchAndFilter(payset)
 		if err != nil {
 			return data.BlockData{}, err
 		}

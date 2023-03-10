@@ -26,6 +26,7 @@ func ValidFieldOperation(input string) bool {
 type Filter struct {
 	Op        Operation
 	Searchers []*Searcher
+	OmitGroup bool
 }
 
 func (f Filter) matches(txn *sdk.SignedTxnWithAD) (bool, error) {
@@ -53,7 +54,7 @@ func (f Filter) matches(txn *sdk.SignedTxnWithAD) (bool, error) {
 }
 
 // SearchAndFilter searches through the block data and applies the operation to the results
-func (f Filter) SearchAndFilter(payset []sdk.SignedTxnInBlock, omitGroup bool) ([]sdk.SignedTxnInBlock, error) {
+func (f Filter) SearchAndFilter(payset []sdk.SignedTxnInBlock) ([]sdk.SignedTxnInBlock, error) {
 	var result []sdk.SignedTxnInBlock
 	firstGroupIdx := 0
 	for i := 0; i < len(payset); i++ {
@@ -65,7 +66,7 @@ func (f Filter) SearchAndFilter(payset []sdk.SignedTxnInBlock, omitGroup bool) (
 			return nil, err
 		}
 		if match {
-			if payset[i].Txn.Group != (sdk.Digest{}) && !omitGroup {
+			if payset[i].Txn.Group != (sdk.Digest{}) && !f.OmitGroup {
 				j := firstGroupIdx
 				for ; j < len(payset) && payset[j].Txn.Group == payset[firstGroupIdx].Txn.Group; j++ {
 					result = append(result, payset[j])
