@@ -176,6 +176,7 @@ func (algodImp *algodImporter) GetBlock(rnd uint64) (data.BlockData, error) {
 			if algodImp.ctx.Err() != nil {
 				return blk, fmt.Errorf("GetBlock ctx error: %w", err)
 			}
+			err = fmt.Errorf("error getting status for round: %w", err)
 			algodImp.logger.Errorf("error getting status for round %d (attempt %d)", rnd, r)
 			continue
 		}

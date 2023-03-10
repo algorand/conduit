@@ -299,7 +299,7 @@ func TestGetBlockErrors(t *testing.T) {
 			name:                "Cannot get status",
 			rnd:                 123,
 			blockAfterResponder: MakeStatusResponder("/wait-for-block-after", http.StatusNotFound, ""),
-			err:                 fmt.Sprintf("failed to get status"),
+			err:                 fmt.Sprintf("error getting status for round"),
 			logs:                []string{"error getting status for round 123", "failed to get block for round 123 "},
 		},
 		{
