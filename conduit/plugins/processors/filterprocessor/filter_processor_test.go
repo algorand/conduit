@@ -1187,6 +1187,21 @@ func createPaysetGroupedTxns() []sdk.SignedTxnInBlock {
 				},
 			},
 		},
+		// 3rd txn in group 2
+		{
+			SignedTxnWithAD: sdk.SignedTxnWithAD{
+				SignedTxn: sdk.SignedTxn{
+					AuthAddr: sampleAddr1,
+					Txn: sdk.Transaction{
+						Header: sdk.Header{
+							Sender:    sampleAddr2,
+							Group:     sdk.Digest{2},
+							GenesisID: "group2",
+						},
+					},
+				},
+			},
+		},
 		// a txn with inner txn
 		{
 			SignedTxnWithAD: sdk.SignedTxnWithAD{
@@ -1267,7 +1282,7 @@ filters:
 		assert.Equal(t, bd.Payset[0], output.Payset[0])
 		assert.Equal(t, bd.Payset[1], output.Payset[1])
 		// a payment txn
-		assert.Equal(t, bd.Payset[5], output.Payset[2])
+		assert.Equal(t, bd.Payset[6], output.Payset[2])
 	}
 
 	{
@@ -1285,13 +1300,14 @@ filters:
 		output, err := fp.Process(bd)
 		require.NoError(t, err)
 		// both txn groups should be returned
-		require.Equal(t, 4, len(output.Payset))
+		require.Equal(t, 5, len(output.Payset))
 		// group 1 txns
 		assert.Equal(t, bd.Payset[0], output.Payset[0])
 		assert.Equal(t, bd.Payset[1], output.Payset[1])
 		// group 2 txns
 		assert.Equal(t, bd.Payset[2], output.Payset[2])
 		assert.Equal(t, bd.Payset[3], output.Payset[3])
+		assert.Equal(t, bd.Payset[4], output.Payset[4])
 	}
 
 	{
@@ -1330,10 +1346,33 @@ filters:
 		require.NoError(t, err)
 		output, err := fp.Process(bd)
 		require.NoError(t, err)
-		require.Equal(t, 2, len(output.Payset))
+		require.Equal(t, 3, len(output.Payset))
 		// group 2 txns
 		assert.Equal(t, bd.Payset[2], output.Payset[0])
 		assert.Equal(t, bd.Payset[3], output.Payset[1])
+		assert.Equal(t, bd.Payset[4], output.Payset[2])
+	}
+
+	{
+		// match last txn in the group, return grouped txns
+		cfg := `---
+search-inner: true
+filters:
+  - any:
+    - tag: txn.gen
+      expression-type: equal
+      expression: "group2"
+`
+		fp := FilterProcessor{}
+		err := fp.Init(context.Background(), &conduit.PipelineInitProvider{}, plugins.MakePluginConfig(cfg), logrus.New())
+		require.NoError(t, err)
+		output, err := fp.Process(bd)
+		require.NoError(t, err)
+		require.Equal(t, 3, len(output.Payset))
+		// group 2 txns
+		assert.Equal(t, bd.Payset[2], output.Payset[0])
+		assert.Equal(t, bd.Payset[3], output.Payset[1])
+		assert.Equal(t, bd.Payset[4], output.Payset[2])
 	}
 }
 
@@ -1364,7 +1403,7 @@ filters:
 		// txn with groupID 1
 		assert.Equal(t, bd.Payset[0], output.Payset[0])
 		// a payment txn
-		assert.Equal(t, bd.Payset[5], output.Payset[1])
+		assert.Equal(t, bd.Payset[6], output.Payset[1])
 	}
 
 	{
@@ -1382,11 +1421,12 @@ filters:
 		require.NoError(t, err)
 		output, err := fp.Process(bd)
 		require.NoError(t, err)
-		require.Equal(t, 4, len(output.Payset))
+		require.Equal(t, 5, len(output.Payset))
 		assert.Equal(t, bd.Payset[0], output.Payset[0])
 		assert.Equal(t, bd.Payset[1], output.Payset[1])
 		assert.Equal(t, bd.Payset[2], output.Payset[2])
 		assert.Equal(t, bd.Payset[3], output.Payset[3])
+		assert.Equal(t, bd.Payset[4], output.Payset[4])
 
 	}
 
@@ -1428,5 +1468,25 @@ filters:
 		require.NoError(t, err)
 		require.Equal(t, 1, len(output.Payset))
 		assert.Equal(t, bd.Payset[3], output.Payset[0])
+	}
+
+	{
+		// match last txn in the group, exclude group txns
+		cfg := `---
+search-inner: true
+omit-group-transactions: true
+filters:
+  - any:
+    - tag: txn.gen
+      expression-type: equal
+      expression: "group2"
+`
+		fp := FilterProcessor{}
+		err := fp.Init(context.Background(), &conduit.PipelineInitProvider{}, plugins.MakePluginConfig(cfg), logrus.New())
+		require.NoError(t, err)
+		output, err := fp.Process(bd)
+		require.NoError(t, err)
+		require.Equal(t, 1, len(output.Payset))
+		assert.Equal(t, bd.Payset[4], output.Payset[0])
 	}
 }

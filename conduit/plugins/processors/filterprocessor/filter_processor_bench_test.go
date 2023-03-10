@@ -35,7 +35,6 @@ func blockData(addr sdk.Address, numInner int) (block data.BlockData, searchTag 
 			{
 				SignedTxnWithAD: sdk.SignedTxnWithAD{
 					SignedTxn: sdk.SignedTxn{
-						AuthAddr: addr,
 						Txn: sdk.Transaction{
 							Header: sdk.Header{
 								Group: sdk.Digest{1},
@@ -70,14 +69,15 @@ func BenchmarkProcess(b *testing.B) {
 
 	var table = []struct {
 		input         int
+		outputlen     int
 		omitGroupTxns bool
 	}{
-		{input: 0, omitGroupTxns: true},
-		{input: 10, omitGroupTxns: true},
-		{input: 100, omitGroupTxns: true},
-		{input: 0, omitGroupTxns: false},
-		{input: 10, omitGroupTxns: false},
-		{input: 100, omitGroupTxns: false},
+		{input: 0, outputlen: 1, omitGroupTxns: true},
+		{input: 10, outputlen: 1, omitGroupTxns: true},
+		{input: 100, outputlen: 1, omitGroupTxns: true},
+		{input: 0, outputlen: 2, omitGroupTxns: false},
+		{input: 10, outputlen: 2, omitGroupTxns: false},
+		{input: 100, outputlen: 2, omitGroupTxns: false},
 	}
 	for _, v := range table {
 		b.Run(fmt.Sprintf("inner_txn_count_%d_omitGrouptxns_%t", v.input, v.omitGroupTxns), func(b *testing.B) {
@@ -98,7 +98,7 @@ filters:
 			{
 				out, err := fp.Process(bd)
 				require.NoError(b, err)
-				require.Len(b, out.Payset, 2)
+				require.Len(b, out.Payset, v.outputlen)
 			}
 
 			// Ignore the setup cost above.
