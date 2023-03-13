@@ -39,15 +39,13 @@ pipeline--and that's just what we've done!
 ```mermaid
 graph LR;
     algod["Algod"]
-    be["block_evaluator Processor"]
     pe["postgresql Exporter"]
     algodimp["algod Importer"]
     restapi["Rest API"]
 
     algod-->algodimp
     subgraph "Conduit Pipeline"
-        algodimp-->be;
-        be-->pe
+        algodimp-->pe;
     end
     pe-->restapi;
 ```
@@ -109,15 +107,13 @@ graph LR;
     ro2["ReadOnly Indexer"]
     ro3["ReadOnly Indexer"]
     psql["Postgresql"]
-    be["block_evaluator Processor"]
     pe["postgresql Exporter"]
     algodimp["algod Importer"]
 
     pe-->psql;
     algod-->algodimp;
     subgraph "Conduit Pipeline"
-        algodimp-->be;
-        be-->pe;
+        algodimp-->pe;
     end
     lb---ro1;
     ro1---psql;

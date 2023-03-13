@@ -34,7 +34,6 @@ importers:
   file_reader - Importer for fetching blocks from files in a directory created by the 'file_writer' plugin.
 
 processors:
-  block_evaluator  - Local Ledger Block Processor
   filter_processor - FilterProcessor Filter Processor
   noop             - noop processor
 

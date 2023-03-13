@@ -21,7 +21,9 @@ See the [Getting Started](./docs/GettingStarted.md) page.
 
 ## Building from source
 
-Development is done using the [Go Programming Language](https://golang.org/), the version is specified in the project's [go.mod](go.mod) file.
+Development is done using the [Go Programming Language](https://golang.org/), the version is specified in the project's [go.mod](go.mod) file. This document assumes that you have a functioning
+environment setup. If you need assistance setting up an environment please visit
+the [official Go documentation website](https://golang.org/doc/).
 
 Run `make` to build Conduit, the binary is located at `cmd/conduit/conduit`.
 
@@ -41,8 +43,6 @@ Every pipeline must define exactly 1 Importer, exactly 1 Exporter, and can optio
 
 Contributions are welcome! Please refer to our [CONTRIBUTING](https://github.com/algorand/go-algorand/blob/master/CONTRIBUTING.md) document for general contribution guidelines, and individual plugin documentation for contributing to new and existing Conduit plugins.
 
-<!-- USAGE_START_MARKER -->
-
 # Common Setups
 
 The most common usage of Conduit is to get validated blocks from a local `algod` Algorand node, and adding them to a database (such as [PostgreSQL](https://www.postgresql.org/)).
@@ -50,8 +50,6 @@ Users can separately (outside of Conduit) serve that data via an API to make ava
 
 Conduit works by fetching blocks one at a time via the configured Importer, sending the block data through the configured Processors, and terminating block handling via an Exporter (traditionally a database).
 For a step-by-step walkthrough of a basic Conduit setup, see [Writing Blocks To Files](./docs/tutorials/WritingBlocksToFile.md).
-
-<!-- USAGE_END_MARKER_LINE -->
 
 # Migrating from Indexer
 

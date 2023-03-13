@@ -8,7 +8,6 @@ Each plugin is identified by a `name`, and provided the `config` during initiali
 * [file_reader](file_reader.md)
 
 ## Processors
-* [block_evaluator](block_evaluator.md)
 * [filter_processor](filter_processor.md)
 * [noop_processor](noop_processor.md)
 
