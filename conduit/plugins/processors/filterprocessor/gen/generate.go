@@ -5,6 +5,7 @@ import (
 	"io"
 	"os"
 	"reflect"
+	"sort"
 	"strings"
 	"text/template"
 
@@ -216,6 +217,26 @@ func recursiveTagFields(theStruct interface{}, ignoreTags map[string]bool, outpu
 	return errors
 }
 
+func writeFieldsToFile(filepath string, fields map[string]internal.StructField) {
+	fout, err := os.Create(filepath)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "cannot open %s for writing: %v\n", filepath, err)
+		os.Exit(1)
+	}
+	defer fout.Close()
+	// sort the tags
+	tags := make([]string, 0, len(fields))
+	for k := range fields {
+		tags = append(tags, k)
+	}
+	sort.Strings(tags)
+	fout.WriteString(fmt.Sprintf("|%s|%s|\n", "filter tag", "transaction field"))
+	fout.WriteString("| -------- | ------- |\n")
+	for _, tag := range tags {
+		fout.WriteString(fmt.Sprintf("|%s|%s|\n", tag, fields[tag].FieldPath))
+	}
+}
+
 const templateStr = `// Code generated via go generate. DO NOT EDIT.
 
 package {{ .PackageName }}
@@ -241,14 +262,19 @@ func LookupFieldByTag(tag string, input *sdk.SignedTxnWithAD) (interface{}, erro
 `
 
 // usage:
-// go run generate.go packagename outputfile
+// go run generate.go packagename outputfile tagsfile
 func main() {
 	var packageName string
 	var outputFilepath string
+	var tagsFilepath string
 
 	if len(os.Args) == 3 {
 		packageName = os.Args[1]
 		outputFilepath = os.Args[2]
+	} else if len(os.Args) == 4 {
+		packageName = os.Args[1]
+		outputFilepath = os.Args[2]
+		tagsFilepath = os.Args[3]
 	}
 
 	if packageName == "" {
@@ -306,4 +332,10 @@ func main() {
 		fmt.Fprintf(os.Stderr, "Template execute failure: %s", err)
 		os.Exit(1)
 	}
+
+	// write filter tags to a file
+	if tagsFilepath != "" {
+		writeFieldsToFile(tagsFilepath, fields)
+	}
+
 }
