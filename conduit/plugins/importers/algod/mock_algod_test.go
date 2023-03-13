@@ -64,15 +64,7 @@ func BlockResponder(reqPath string, w http.ResponseWriter) bool {
 
 // MakeGenesisResponder returns a responder that will provide a specific genesis response.
 func MakeGenesisResponder(genesis types.Genesis) func(reqPath string, w http.ResponseWriter) bool {
-	return func(reqPath string, w http.ResponseWriter) bool {
-		if strings.Contains(reqPath, "/genesis") {
-			w.WriteHeader(http.StatusOK)
-			blockbytes := json.Encode(&genesis)
-			_, _ = w.Write(blockbytes)
-			return true
-		}
-		return false
-	}
+	return MakeJsonResponder("/genesis", genesis)
 }
 
 // GenesisResponder handles /v2/genesis requests and returns an empty Genesis object
@@ -81,25 +73,47 @@ var GenesisResponder = MakeGenesisResponder(types.Genesis{
 	DevMode: true,
 })
 
-// BlockAfterResponder handles /v2/wait-for-block-after requests and returns an empty NodeStatus object
-func BlockAfterResponder(reqPath string, w http.ResponseWriter) bool {
-	if strings.Contains(reqPath, "/wait-for-block-after") {
-		w.WriteHeader(http.StatusOK)
-		nStatus := models.NodeStatus{}
-		_, _ = w.Write(json.Encode(nStatus))
-		return true
-	}
-	return false
+func MakeBlockAfterResponder(status models.NodeStatus) func(string, http.ResponseWriter) bool {
+	return MakeJsonResponder("/wait-for-block-after", status)
 }
 
-// LedgerStateDeltaResponder handles /v2/deltas requests and returns an empty ledger state delta object
-func LedgerStateDeltaResponder(reqPath string, w http.ResponseWriter) bool {
-	if strings.Contains(reqPath, "v2/deltas/") {
-		w.WriteHeader(http.StatusOK)
-		delta := types.LedgerStateDelta{}
-		_, _ = w.Write(msgpack.Encode(delta))
-		return true
-	}
-	return false
+var BlockAfterResponder = MakeBlockAfterResponder(models.NodeStatus{})
 
+func MakeLedgerStateDeltaResponder(delta types.LedgerStateDelta) func(string, http.ResponseWriter) bool {
+	return MakeMsgpResponder("/v2/deltas/", delta)
+}
+
+var LedgerStateDeltaResponder = MakeLedgerStateDeltaResponder(types.LedgerStateDelta{})
+
+func MakeJsonResponder(url string, object interface{}) func(string, http.ResponseWriter) bool {
+	return func(reqPath string, w http.ResponseWriter) bool {
+		if strings.Contains(reqPath, url) {
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write(json.Encode(object))
+			return true
+		}
+		return false
+	}
+}
+
+func MakeMsgpResponder(url string, object interface{}) func(string, http.ResponseWriter) bool {
+	return func(reqPath string, w http.ResponseWriter) bool {
+		if strings.Contains(reqPath, url) {
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write(msgpack.Encode(object))
+			return true
+		}
+		return false
+	}
+}
+
+func MakeStatusResponder(url string, status int, object interface{}) func(string, http.ResponseWriter) bool {
+	return func(reqPath string, w http.ResponseWriter) bool {
+		if strings.Contains(reqPath, url) {
+			w.WriteHeader(status)
+			_, _ = w.Write(msgpack.Encode(object))
+			return true
+		}
+		return false
+	}
 }

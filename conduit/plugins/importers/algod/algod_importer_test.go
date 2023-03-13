@@ -3,12 +3,17 @@ package algodimporter
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"net/http/httptest"
 	"os"
+	"strings"
 	"testing"
 
+	"github.com/algorand/go-algorand-sdk/v2/client/v2/common/models"
 	"github.com/sirupsen/logrus"
+	"github.com/sirupsen/logrus/hooks/test"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v3"
 
 	sdk "github.com/algorand/go-algorand-sdk/v2/types"
@@ -27,6 +32,11 @@ func init() {
 	logger.SetOutput(os.Stdout)
 	logger.SetLevel(logrus.InfoLevel)
 	ctx, cancel = context.WithCancel(context.Background())
+}
+
+// New initializes an algod importer
+func New() *algodImporter {
+	return &algodImporter{}
 }
 
 func TestImporterMetadata(t *testing.T) {
@@ -273,4 +283,102 @@ netaddr: %s
 func TestAlgodImporter_ProvideMetrics(t *testing.T) {
 	testImporter := &algodImporter{}
 	assert.Len(t, testImporter.ProvideMetrics("blah"), 1)
+}
+
+func TestGetBlockErrors(t *testing.T) {
+	testcases := []struct {
+		name                string
+		rnd                 uint64
+		blockAfterResponder func(string, http.ResponseWriter) bool
+		blockResponder      func(string, http.ResponseWriter) bool
+		deltaResponder      func(string, http.ResponseWriter) bool
+		logs                []string
+		err                 string
+	}{
+		{
+			name:                "Cannot get status",
+			rnd:                 123,
+			blockAfterResponder: MakeStatusResponder("/wait-for-block-after", http.StatusNotFound, ""),
+			err:                 fmt.Sprintf("error getting status for round"),
+			logs:                []string{"error getting status for round 123", "failed to get block for round 123 "},
+		},
+		{
+			name:                "Cannot get block",
+			rnd:                 123,
+			blockAfterResponder: BlockAfterResponder,
+			blockResponder:      MakeStatusResponder("/v2/blocks/", http.StatusNotFound, ""),
+			err:                 fmt.Sprintf("failed to get block"),
+			logs:                []string{"error getting block for round 123", "failed to get block for round 123 "},
+		},
+		{
+			name:                "Cannot get delta (node behind)",
+			rnd:                 200,
+			blockAfterResponder: MakeBlockAfterResponder(models.NodeStatus{LastRound: 50}),
+			blockResponder:      BlockResponder,
+			deltaResponder:      MakeStatusResponder("/v2/deltas/", http.StatusNotFound, ""),
+			err:                 fmt.Sprintf("ledger state delta not found: node round (50) is behind required round (200)"),
+			logs:                []string{"ledger state delta not found: node round (50) is behind required round (200)"},
+		},
+		{
+			name:                "Cannot get delta (caught up)",
+			rnd:                 200,
+			blockAfterResponder: MakeBlockAfterResponder(models.NodeStatus{LastRound: 200}),
+			blockResponder:      BlockResponder,
+			deltaResponder:      MakeStatusResponder("/v2/deltas/", http.StatusNotFound, ""),
+			err:                 fmt.Sprintf("ledger state delta not found: node round (200), required round (200)"),
+			logs:                []string{"ledger state delta not found: node round (200), required round (200)"},
+		},
+	}
+
+	for _, tc := range testcases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			testLogger, hook := test.NewNullLogger()
+
+			// Setup mock algod
+			handler := NewAlgodHandler(
+				GenesisResponder,
+				tc.blockAfterResponder,
+				tc.blockResponder,
+				tc.deltaResponder)
+			mockServer := httptest.NewServer(handler)
+
+			// Configure importer to use follow mode and mock server.
+			cfg := Config{
+				Mode:    followerModeStr,
+				NetAddr: mockServer.URL,
+			}
+			cfgStr, err := yaml.Marshal(cfg)
+			require.NoError(t, err)
+			pcfg := plugins.MakePluginConfig(string(cfgStr))
+			ctx, cancel = context.WithCancel(context.Background())
+			testImporter := &algodImporter{}
+			_, err = testImporter.Init(ctx, pcfg, testLogger)
+			require.NoError(t, err)
+
+			// Run the test
+			_, err = testImporter.GetBlock(tc.rnd)
+			noError := assert.ErrorContains(t, err, tc.err)
+
+			// Make sure each of the expected log messages are present
+			for _, log := range tc.logs {
+				found := false
+				for _, entry := range hook.AllEntries() {
+					found = found || strings.Contains(entry.Message, log)
+				}
+				noError = noError && assert.True(t, found, "Expected log was not found: '%s'", log)
+			}
+
+			// Print logs if there was an error.
+			if !noError {
+				fmt.Println("An error was detected, printing logs")
+				fmt.Println("------------------------------------")
+				for _, entry := range hook.AllEntries() {
+					fmt.Printf(" %s\n", entry.Message)
+				}
+				fmt.Println("------------------------------------")
+			}
+		})
+	}
 }

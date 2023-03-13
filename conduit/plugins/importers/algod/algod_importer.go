@@ -61,11 +61,6 @@ var algodImporterMetadata = conduit.Metadata{
 	SampleConfig: sampleConfig,
 }
 
-// New initializes an algod importer
-func New() importers.Importer {
-	return &algodImporter{}
-}
-
 func (algodImp *algodImporter) OnComplete(input data.BlockData) error {
 	if algodImp.mode != followerMode {
 		return nil
@@ -171,17 +166,18 @@ func (algodImp *algodImporter) getDelta(rnd uint64) (sdk.LedgerStateDelta, error
 func (algodImp *algodImporter) GetBlock(rnd uint64) (data.BlockData, error) {
 	var blockbytes []byte
 	var err error
+	var status models.NodeStatus
 	var blk data.BlockData
 
 	for r := 0; r < retries; r++ {
-		_, err = algodImp.aclient.StatusAfterBlock(rnd - 1).Do(algodImp.ctx)
+		status, err = algodImp.aclient.StatusAfterBlock(rnd - 1).Do(algodImp.ctx)
 		if err != nil {
 			// If context has expired.
 			if algodImp.ctx.Err() != nil {
 				return blk, fmt.Errorf("GetBlock ctx error: %w", err)
 			}
-			algodImp.logger.Errorf(
-				"r=%d error getting status %d", retries, rnd)
+			err = fmt.Errorf("error getting status for round: %w", err)
+			algodImp.logger.Errorf("error getting status for round %d (attempt %d)", rnd, r)
 			continue
 		}
 		start := time.Now()
@@ -189,8 +185,7 @@ func (algodImp *algodImporter) GetBlock(rnd uint64) (data.BlockData, error) {
 		dt := time.Since(start)
 		getAlgodRawBlockTimeSeconds.Observe(dt.Seconds())
 		if err != nil {
-			algodImp.logger.Errorf(
-				"r=%d error getting block %d", r, rnd)
+			algodImp.logger.Errorf("error getting block for round %d (attempt %d)", rnd, r)
 			continue
 		}
 		tmpBlk := new(models.BlockResponse)
@@ -208,11 +203,16 @@ func (algodImp *algodImporter) GetBlock(rnd uint64) (data.BlockData, error) {
 			// else converted over
 			// Round 0 has no delta associated with it
 			if rnd != 0 {
-				delta, err := algodImp.getDelta(rnd)
+				var delta sdk.LedgerStateDelta
+				delta, err = algodImp.getDelta(rnd)
 				if err != nil {
-					algodImp.logger.Errorf(
-						"r=%d error getting delta %d", r, rnd)
-					continue
+					if status.LastRound < rnd {
+						err = fmt.Errorf("ledger state delta not found: node round (%d) is behind required round (%d), ensure follower node has its sync round set to the required round", status.LastRound, rnd)
+					} else {
+						err = fmt.Errorf("ledger state delta not found: node round (%d), required round (%d): verify follower node configuration and ensure follower node has its sync round set to the required round, re-deploying the follower node may be necessary", status.LastRound, rnd)
+					}
+					algodImp.logger.Error(err.Error())
+					return data.BlockData{}, err
 				}
 				blk.Delta = &delta
 			}
@@ -220,8 +220,10 @@ func (algodImp *algodImporter) GetBlock(rnd uint64) (data.BlockData, error) {
 
 		return blk, err
 	}
-	algodImp.logger.Error("GetBlock finished retries without fetching a block. Check that the indexer is set to start at a round that the current algod node can handle")
-	return blk, fmt.Errorf("finished retries without fetching a block. Check that the indexer is set to start at a round that the current algod node can handle")
+
+	err = fmt.Errorf("failed to get block for round %d after %d attempts, check node configuration: %s", rnd, retries, err)
+	algodImp.logger.Errorf(err.Error())
+	return blk, err
 }
 
 func (algodImp *algodImporter) ProvideMetrics(subsystem string) []prometheus.Collector {
