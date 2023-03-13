@@ -217,11 +217,10 @@ func recursiveTagFields(theStruct interface{}, ignoreTags map[string]bool, outpu
 	return errors
 }
 
-func writeFieldsToFile(filepath string, fields map[string]internal.StructField) {
+func writeFieldsToFile(filepath string, fields map[string]internal.StructField) error {
 	fout, err := os.Create(filepath)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "cannot open %s for writing: %v\n", filepath, err)
-		os.Exit(1)
+		return err
 	}
 	defer fout.Close()
 	// sort the tags
@@ -230,11 +229,21 @@ func writeFieldsToFile(filepath string, fields map[string]internal.StructField) 
 		tags = append(tags, k)
 	}
 	sort.Strings(tags)
-	fout.WriteString(fmt.Sprintf("|%s|%s|\n", "filter tag", "transaction field"))
-	fout.WriteString("| -------- | ------- |\n")
-	for _, tag := range tags {
-		fout.WriteString(fmt.Sprintf("|%s|%s|\n", tag, fields[tag].FieldPath))
+	_, err = fout.WriteString(fmt.Sprintf("|%s|%s|\n", "filter tag", "transaction field"))
+	if err != nil {
+		return err
 	}
+	_, err = fout.WriteString("| -------- | ------- |\n")
+	if err != nil {
+		return err
+	}
+	for _, tag := range tags {
+		_, err = fout.WriteString(fmt.Sprintf("|%s|%s|\n", tag, fields[tag].FieldPath))
+		if err != nil {
+			return err
+		}
+	}
+	return err
 }
 
 const templateStr = `// Code generated via go generate. DO NOT EDIT.
@@ -335,7 +344,9 @@ func main() {
 
 	// write filter tags to a file
 	if tagsFilepath != "" {
-		writeFieldsToFile(tagsFilepath, fields)
+		err = writeFieldsToFile(tagsFilepath, fields)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "error while creating file %s, err: %v\n", tagsFilepath, err)
+		}
 	}
-
 }
