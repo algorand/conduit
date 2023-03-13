@@ -1,6 +1,6 @@
 package fields
 
-//go:generate go run ../gen/generate.go fields ./generated_signed_txn_map.go
+//go:generate go run ../gen/generate.go fields ./generated_signed_txn_map.go ../../../../../conduit-docs/conduit_processors_filter_tags.md
 
 import (
 	"fmt"
