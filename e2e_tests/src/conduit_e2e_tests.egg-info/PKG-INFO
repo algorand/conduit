@@ -1,0 +1,5 @@
+Metadata-Version: 2.1
+Name: conduit-e2e-tests
+Version: 0.0.1
+Summary: End to end tests for Algorand Conduit
+Requires-Python: >=3.8

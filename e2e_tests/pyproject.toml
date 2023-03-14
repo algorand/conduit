@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "conduit_e2e_tests"
+description = "End to end tests for Algorand Conduit"
+version = "0.0.1"
+requires-python = ">=3.8"
+dependencies = [
+    "boto3==1.24.71",
+    "msgpack==1.0.4",
+    "py-algorand-sdk==1.17.0",
+    "pytest==6.2.5",
+    "PyYAML==6.0",
+    "setuptools ==65.3.0",
+]
+
+
+[project.scripts]
+e2econduit = "e2e_conduit.e2econduit:main"
+get-test-data = "e2e_common.get_test_data:main"

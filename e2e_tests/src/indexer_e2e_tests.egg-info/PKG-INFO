@@ -1,0 +1,5 @@
+Metadata-Version: 2.1
+Name: indexer-e2e-tests
+Version: 0.0.1
+Summary: End to end tests for Algorand Indexer/Conduit
+Requires-Python: >=3.8

@@ -20,6 +20,10 @@ all: conduit
 conduit:
 	go generate ./... && cd cmd/conduit && go build -ldflags="${GOLDFLAGS}"
 
+# note: when running e2e tests manually be sure to set the e2e filename: 'export CI_E2E_FILENAME=rel-nightly'
+e2e-conduit: conduit
+	export PATH=$(GOPATH1)/bin:$(PATH); pip3 install e2e_tests/ && e2econduit --s3-source-net ${CI_E2E_FILENAME} --conduit-bin cmd/conduit/conduit
+
 # check that all packages (except tests) compile
 check:
 	go build ./...
@@ -34,4 +38,4 @@ lint:
 fmt:
 	go fmt ./...
 
-.PHONY: all conduit check test lint fmt
+.PHONY: all conduit check test lint fmt e2e-conduit

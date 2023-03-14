@@ -1,0 +1,6 @@
+boto3==1.24.71
+msgpack==1.0.4
+py-algorand-sdk==1.17.0
+pytest==6.2.5
+PyYAML==6.0
+setuptools==65.3.0
