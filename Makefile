@@ -3,11 +3,9 @@ export GOPATH := $(shell go env GOPATH)
 GOPATH1 := $(firstword $(subst :, ,$(GOPATH)))
 
 # TODO: ensure any additions here are mirrored in misc/release.py
-GOLDFLAGS += -X github.com/algorand/indexer/version.Hash=$(shell git log -n 1 --pretty="%H")
-GOLDFLAGS += -X github.com/algorand/indexer/version.Dirty=$(if $(filter $(strip $(shell git status --porcelain|wc -c)), "0"),,true)
-GOLDFLAGS += -X github.com/algorand/indexer/version.CompileTime=$(shell date -u +%Y-%m-%dT%H:%M:%S%z)
-GOLDFLAGS += -X github.com/algorand/indexer/version.GitDecorateBase64=$(shell git log -n 1 --pretty="%D"|base64|tr -d ' \n')
-#GOLDFLAGS += -X github.com/algorand/indexer/version.ReleaseVersion=$(shell cat .version)
+GOLDFLAGS += -X github.com/algorand/conduit/version.Hash=$(shell git log -n 1 --pretty="%H")
+GOLDFLAGS += -X github.com/algorand/conduit/version.CompileTime=$(shell date -u +%Y-%m-%dT%H:%M:%S%z)
+GOLDFLAGS += -X github.com/algorand/indexer/version.ReleaseVersion="makefile"
 
 COVERPKG := $(shell go list ./...  | grep -v '/cmd/' | egrep -v '(testing|test|mocks)$$' |  paste -s -d, - )
 
