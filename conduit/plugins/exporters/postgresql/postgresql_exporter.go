@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"sync"
 	"sync/atomic"
-	"time"
 
 	"github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v3"
@@ -120,7 +119,6 @@ func (exp *postgresqlExporter) Close() error {
 }
 
 func (exp *postgresqlExporter) Receive(exportData data.BlockData) error {
-	start := time.Now()
 	if exportData.Delta == nil {
 		if exportData.Round() == 0 {
 			exportData.Delta = &sdk.LedgerStateDelta{}
@@ -136,7 +134,6 @@ func (exp *postgresqlExporter) Receive(exportData data.BlockData) error {
 		return err
 	}
 
-	exp.logger.Infof("round r=%d (%d txn) imported in %s", exportData.Round(), len(exportData.Payset), time.Since(start))
 	atomic.StoreUint64(&exp.round, exportData.Round()+1)
 	return nil
 }
