@@ -2,10 +2,10 @@ SRCPATH		:= $(shell pwd)
 export GOPATH := $(shell go env GOPATH)
 GOPATH1 := $(firstword $(subst :, ,$(GOPATH)))
 
-# TODO: ensure any additions here are mirrored in misc/release.py
 GOLDFLAGS += -X github.com/algorand/conduit/version.Hash=$(shell git log -n 1 --pretty="%H")
+GOLDFLAGS += -X github.com/algorand/conduit/version.ShortHash=$(shell git log -n 1 --pretty="%h")
 GOLDFLAGS += -X github.com/algorand/conduit/version.CompileTime=$(shell date -u +%Y-%m-%dT%H:%M:%S%z)
-GOLDFLAGS += -X github.com/algorand/indexer/version.ReleaseVersion="makefile"
+GOLDFLAGS += -X "github.com/algorand/conduit/version.ReleaseVersion=Dev Build"
 
 COVERPKG := $(shell go list ./...  | grep -v '/cmd/' | egrep -v '(testing|test|mocks)$$' |  paste -s -d, - )
 
@@ -16,7 +16,7 @@ export GO_IMAGE = golang:$(shell go version | cut -d ' ' -f 3 | tail -c +3 )
 all: conduit
 
 conduit:
-	go generate ./... && cd cmd/conduit && go build -ldflags="${GOLDFLAGS}"
+	go generate ./... && cd cmd/conduit && go build -ldflags='${GOLDFLAGS}'
 
 # check that all packages (except tests) compile
 check:
