@@ -199,8 +199,6 @@ func (algodImp *algodImporter) GetBlock(rnd uint64) (data.BlockData, error) {
 		blk.Certificate = tmpBlk.Cert
 
 		if algodImp.mode == followerMode {
-			// We aren't going to do anything with the new delta until we get everything
-			// else converted over
 			// Round 0 has no delta associated with it
 			if rnd != 0 {
 				var delta sdk.LedgerStateDelta

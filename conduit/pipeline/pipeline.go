@@ -433,6 +433,9 @@ func (p *pipelineImpl) Start() {
 						goto pipelineRun
 					}
 					metrics.ImporterTimeSeconds.Observe(time.Since(importStart).Seconds())
+
+					// TODO: Verify that the block was build with a known protocol version.
+
 					// Start time currently measures operations after block fetching is complete.
 					// This is for backwards compatibility w/ Indexer's metrics
 					// run through processors
@@ -457,6 +460,7 @@ func (p *pipelineImpl) Start() {
 						retry++
 						goto pipelineRun
 					}
+					p.logger.Infof("round r=%d (%d txn) exported in %s", p.pipelineMetadata.NextRound, len(blkData.Payset), time.Since(start))
 
 					// Increment Round, update metadata
 					p.pipelineMetadata.NextRound++
