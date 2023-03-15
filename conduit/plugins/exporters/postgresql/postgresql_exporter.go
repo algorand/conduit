@@ -126,13 +126,6 @@ func (exp *postgresqlExporter) Receive(exportData data.BlockData) error {
 			return errMissingDelta
 		}
 	}
-	// Do we need to test for consensus protocol here?
-	/*
-		_, ok := config.Consensus[block.CurrentProtocol]
-			if !ok {
-				return fmt.Errorf("protocol %s not found", block.CurrentProtocol)
-		}
-	*/
 	vb := types.ValidatedBlock{
 		Block: sdk.Block{BlockHeader: exportData.BlockHeader, Payset: exportData.Payset},
 		Delta: *exportData.Delta,

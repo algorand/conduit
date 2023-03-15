@@ -5,7 +5,7 @@ go 1.17
 require (
 	github.com/algorand/go-algorand-sdk/v2 v2.0.0-20230228201805-5b8c99b1412c
 	github.com/algorand/go-codec/codec v1.1.8
-	github.com/algorand/indexer v0.0.0-20230306212826-146c4d38c5b4
+	github.com/algorand/indexer v0.0.0-20230315150109-cf0074cfd4ed
 	github.com/jackc/pgx/v4 v4.13.0
 	github.com/prometheus/client_golang v1.11.1
 	github.com/sirupsen/logrus v1.8.1
