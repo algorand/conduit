@@ -5,7 +5,7 @@ import (
 )
 
 // These are targets for compiling in build information.
-// See the top level Makefile and cmd/algorand-indexer/main.go
+// They are set by the Makefile and .goreleaser.yml
 
 var (
 	// Hash git commit hash.
