@@ -2,7 +2,7 @@
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="https://i.imgur.com/4CQm3Mq.png">
     <source media="(prefers-color-scheme: light)" srcset="https://i.imgur.com/KNTG3p2.png">
-    <img alt="Shows an illustrated sun in light mode and a moon with stars in dark mode." src="https://i.imgur.com/KNTG3p2.png" width="200">
+    <img alt="Shows a black Algorand logo light mode and white in dark mode." src="https://i.imgur.com/KNTG3p2.png" width="200">
   </picture>
 
 [![CircleCI](https://img.shields.io/circleci/build/github/algorand/indexer/develop?label=develop)](https://circleci.com/gh/algorand/indexer/tree/develop)
