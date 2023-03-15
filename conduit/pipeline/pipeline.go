@@ -460,6 +460,7 @@ func (p *pipelineImpl) Start() {
 						retry++
 						goto pipelineRun
 					}
+					p.logger.Infof("round r=%d (%d txn) exported in %s", p.pipelineMetadata.NextRound, len(blkData.Payset), time.Since(start))
 
 					// Increment Round, update metadata
 					p.pipelineMetadata.NextRound++
