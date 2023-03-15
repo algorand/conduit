@@ -1,3 +1,0 @@
-[console_scripts]
-e2econduit = e2e_conduit.e2econduit:main
-get-test-data = e2e_common.get_test_data:main
