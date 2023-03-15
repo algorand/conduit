@@ -24,6 +24,7 @@ jobs:
     steps:
       - go/install:
           version: "1.17.9"
+      - install_dependencies
       - build_conduit
       - install_linter
       - run_tests
