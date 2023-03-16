@@ -37,23 +37,22 @@ func TestPipelineConfigValidity(t *testing.T) {
 		errContains string
 	}{
 		{"valid", Config{
-			ConduitArgs:      &conduit.Args{ConduitDataDir: ""},
-			PipelineLogLevel: "info",
-			Importer:         NameConfigPair{"test", map[string]interface{}{"a": "a"}},
-			Processors:       nil,
-			Exporter:         NameConfigPair{"test", map[string]interface{}{"a": "a"}},
+			ConduitArgs: &conduit.Args{ConduitDataDir: ""},
+			LogLevel:    "info",
+			Importer:    NameConfigPair{"test", map[string]interface{}{"a": "a"}},
+			Processors:  nil,
+			Exporter:    NameConfigPair{"test", map[string]interface{}{"a": "a"}},
 		}, ""},
 
 		{"valid 2", Config{
-			ConduitArgs:      &conduit.Args{ConduitDataDir: ""},
-			PipelineLogLevel: "info",
-			Importer:         NameConfigPair{"test", map[string]interface{}{"a": "a"}},
-			Processors:       []NameConfigPair{{"test", map[string]interface{}{"a": "a"}}},
-			Exporter:         NameConfigPair{"test", map[string]interface{}{"a": "a"}},
+			ConduitArgs: &conduit.Args{ConduitDataDir: ""},
+			LogLevel:    "info",
+			Importer:    NameConfigPair{"test", map[string]interface{}{"a": "a"}},
+			Processors:  []NameConfigPair{{"test", map[string]interface{}{"a": "a"}}},
+			Exporter:    NameConfigPair{"test", map[string]interface{}{"a": "a"}},
 		}, ""},
 
 		{"empty config", Config{ConduitArgs: nil}, "Args.Valid(): conduit args were nil"},
-		{"invalid log level", Config{ConduitArgs: &conduit.Args{ConduitDataDir: ""}, PipelineLogLevel: "asdf"}, "Args.Valid(): pipeline log level (asdf) was invalid:"},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
@@ -170,7 +169,7 @@ exporter:
 
 	pCfg, err := MakePipelineConfig(cfg)
 	assert.Nil(t, err)
-	assert.Equal(t, pCfg.PipelineLogLevel, "info")
+	assert.Equal(t, pCfg.LogLevel, "info")
 	assert.Equal(t, pCfg.Valid(), nil)
 	assert.Equal(t, pCfg.Importer.Name, "algod")
 	assert.Equal(t, pCfg.Importer.Config["token"], "e36c01fc77e490f23e61899c0c22c6390d0fff1443af2c95d056dc5ce4e61302")
