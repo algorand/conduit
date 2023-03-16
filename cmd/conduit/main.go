@@ -4,11 +4,12 @@ import (
 	"context"
 	_ "embed"
 	"fmt"
+	"os"
+	"strings"
+
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/spf13/cobra/doc"
-	"os"
-	"strings"
 
 	"github.com/algorand/indexer/version"
 
