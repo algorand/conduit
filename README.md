@@ -61,7 +61,7 @@ For a more detailed look at the differences between Conduit and Indexer, see [ou
 
 # Known Issues
 
-## Restarting Follower Nodes
+## Restarting Follower Nodes Multiple Times in a Row
 
 When a follower node is restarted, the sync round is advanced to the node's ledger round. This causes a chain reaction where the node's ledger round is then advanced by `MaxAcctLookback` rounds. When this happens, the node should temporarily have access to 2 * `MaxAcctLookback` ledger state delta responses because some had been previously persisted to disk. However, if the follower node is restarted a second time before conduit has consumed the temporary ledger state delta objects, the node will become desynchronized from Conduit.
 
