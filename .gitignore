@@ -2,6 +2,7 @@
 cmd/conduit/conduit
 tmp/
 conduit-docs/
+dist
 
 # Binaries for programs and plugins
 *.exe
