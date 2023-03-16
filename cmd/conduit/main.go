@@ -5,6 +5,7 @@ import (
 	_ "embed"
 	"fmt"
 	"os"
+	"strings"
 
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -29,6 +30,10 @@ var (
 	banner string
 )
 
+const (
+	conduitEnvVar = "CONDUIT_DATA_DIR"
+)
+
 // init() function for main package
 func init() {
 	conduitCmd.AddCommand(initialize.InitCommand)
@@ -40,7 +45,11 @@ func runConduitCmdWithConfig(args *conduit.Args) error {
 	defer pipeline.HandlePanic(logger)
 
 	if args.ConduitDataDir == "" {
-		args.ConduitDataDir = os.Getenv("CONDUIT_DATA_DIR")
+		args.ConduitDataDir = os.Getenv(conduitEnvVar)
+	}
+
+	if args.ConduitDataDir == "" {
+		return fmt.Errorf("the data directory is required and must be provided with a command line option or the '%s' environment variable", conduitEnvVar)
 	}
 
 	pCfg, err := pipeline.MakePipelineConfig(args)
@@ -49,14 +58,18 @@ func runConduitCmdWithConfig(args *conduit.Args) error {
 	}
 
 	// Initialize logger
-	level, err := log.ParseLevel(pCfg.PipelineLogLevel)
+	level, err := log.ParseLevel(pCfg.LogLevel)
 	if err != nil {
-		return fmt.Errorf("runConduitCmdWithConfig(): invalid log level: %s", err)
+		var levels []string
+		for _, l := range log.AllLevels {
+			levels = append(levels, l.String())
+		}
+		return fmt.Errorf("invalid configuration: '%s' is not a valid log level, valid levels: %s", pCfg.LogLevel, strings.Join(levels, ", "))
 	}
 
 	logger, err = loggers.MakeThreadSafeLogger(level, pCfg.LogFile)
 	if err != nil {
-		return fmt.Errorf("runConduitCmdWithConfig(): failed to create logger: %w", err)
+		return fmt.Errorf("failed to create logger: %w", err)
 	}
 
 	logger.Infof("Using data directory: %s", args.ConduitDataDir)
@@ -77,8 +90,7 @@ func runConduitCmdWithConfig(args *conduit.Args) error {
 	if err != nil {
 		err = fmt.Errorf("pipeline creation error: %w", err)
 
-		// Make sure the error is written to stdout once.
-		fmt.Println(err)
+		// Suppress log, it is about to be printed to stderr.
 		if pCfg.LogFile != "" {
 			logger.Error(err)
 		}
@@ -87,6 +99,10 @@ func runConduitCmdWithConfig(args *conduit.Args) error {
 
 	err = pipeline.Init()
 	if err != nil {
+		// Suppress log, it is about to be printed to stderr.
+		if pCfg.LogFile != "" {
+			logger.Error(err)
+		}
 		return fmt.Errorf("pipeline init error: %w", err)
 	}
 	pipeline.Start()
@@ -101,11 +117,24 @@ func makeConduitCmd() *cobra.Command {
 	var vFlag bool
 	cmd := &cobra.Command{
 		Use:   "conduit",
-		Short: "run the conduit framework",
-		Long:  "run the conduit framework",
-		Args:  cobra.NoArgs,
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return runConduitCmdWithConfig(cfg)
+		Short: "Run the Conduit framework.",
+		Long: `Conduit is a framework for ingesting blocks from the Algorand blockchain
+into external applications. It is designed as a modular plugin system that
+allows users to configure their own data pipelines.
+
+You must provide a data directory containing a file named conduit.yml. The
+file configures pipeline and all enabled plugins.
+
+See other subcommands for further built in utilities and information.
+
+Detailed documentation is online: https://github.com/algorand/conduit`,
+		Args: cobra.NoArgs,
+		Run: func(cmd *cobra.Command, args []string) {
+			err := runConduitCmdWithConfig(cfg)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "\nExiting with error:\n%s.\n", err)
+				os.Exit(1)
+			}
 		},
 		PersistentPreRun: func(cmd *cobra.Command, args []string) {
 			if vFlag {
@@ -114,13 +143,12 @@ func makeConduitCmd() *cobra.Command {
 				os.Exit(0)
 			}
 		},
-		SilenceUsage: true,
-		// Silence errors because our logger will catch and print any errors
-		SilenceErrors: true,
 	}
-	cmd.Flags().StringVarP(&cfg.ConduitDataDir, "data-dir", "d", "", "set the data directory for the conduit binary")
-	cmd.Flags().Uint64VarP(&cfg.NextRoundOverride, "next-round-override", "r", 0, "set the starting round. Overrides next-round in metadata.json")
-	cmd.Flags().BoolVarP(&vFlag, "version", "v", false, "print the conduit version")
+	cmd.Flags().StringVarP(&cfg.ConduitDataDir, "data-dir", "d", "", "Set the Conduit data directory. If not set the CONDUIT_DATA_DIR environment variable is used.")
+	cmd.Flags().Uint64VarP(&cfg.NextRoundOverride, "next-round-override", "r", 0, "Set the starting round. Overrides next-round in metadata.json. Some exporters do not support overriding the starting round.")
+	cmd.Flags().BoolVarP(&vFlag, "version", "v", false, "Print the Conduit version.")
+	// No need for shell completions.
+	cmd.CompletionOptions.DisableDefaultCmd = true
 
 	return cmd
 }

@@ -52,8 +52,8 @@ type Config struct {
 	PIDFilePath string `yaml:"pid-filepath"`
 	HideBanner  bool   `yaml:"hide-banner"`
 
-	LogFile          string `yaml:"log-file"`
-	PipelineLogLevel string `yaml:"log-level"`
+	LogFile  string `yaml:"log-file"`
+	LogLevel string `yaml:"log-level"`
 	// Store a local copy to access parent variables
 	Importer   NameConfigPair   `yaml:"importer"`
 	Processors []NameConfigPair `yaml:"processors"`
@@ -69,11 +69,6 @@ type Config struct {
 func (cfg *Config) Valid() error {
 	if cfg.ConduitArgs == nil {
 		return fmt.Errorf("Args.Valid(): conduit args were nil")
-	}
-	if cfg.PipelineLogLevel != "" {
-		if _, err := log.ParseLevel(cfg.PipelineLogLevel); err != nil {
-			return fmt.Errorf("Args.Valid(): pipeline log level (%s) was invalid: %w", cfg.PipelineLogLevel, err)
-		}
 	}
 
 	// If it is a negative time, it is an error
@@ -122,8 +117,8 @@ func MakePipelineConfig(args *conduit.Args) (*Config, error) {
 	pCfg.ConduitArgs = args
 
 	// Default log level.
-	if pCfg.PipelineLogLevel == "" {
-		pCfg.PipelineLogLevel = conduit.DefaultLogLevel.String()
+	if pCfg.LogLevel == "" {
+		pCfg.LogLevel = conduit.DefaultLogLevel.String()
 	}
 
 	if err := pCfg.Valid(); err != nil {

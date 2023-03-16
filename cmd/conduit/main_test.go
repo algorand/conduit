@@ -14,6 +14,18 @@ import (
 	"github.com/algorand/conduit/conduit/pipeline"
 )
 
+// Fills in a temp data dir and creates files
+// TODO: Refactor the code so that testing can be done without creating files and directories.
+func setupDataDir(t *testing.T, cfg pipeline.Config) *conduit.Args {
+	conduitArgs := &conduit.Args{ConduitDataDir: t.TempDir()}
+	data, err := yaml.Marshal(&cfg)
+	require.NoError(t, err)
+	configFile := path.Join(conduitArgs.ConduitDataDir, conduit.DefaultConfigName)
+	os.WriteFile(configFile, data, 0755)
+	require.FileExists(t, configFile)
+	return conduitArgs
+}
+
 func TestBanner(t *testing.T) {
 	test := func(t *testing.T, hideBanner bool) {
 		// Capture stdout.
@@ -34,14 +46,10 @@ func TestBanner(t *testing.T) {
 			Processors:  nil,
 			Exporter:    pipeline.NameConfigPair{Name: "test", Config: map[string]interface{}{"a": "a"}},
 		}
-		data, err := yaml.Marshal(&cfg)
-		require.NoError(t, err)
-		configFile := path.Join(cfg.ConduitArgs.ConduitDataDir, conduit.DefaultConfigName)
-		os.WriteFile(configFile, data, 0755)
-		require.FileExists(t, configFile)
+		args := setupDataDir(t, cfg)
 
-		err = runConduitCmdWithConfig(cfg.ConduitArgs)
-		data, err = os.ReadFile(stdoutFilePath)
+		err = runConduitCmdWithConfig(args)
+		data, err := os.ReadFile(stdoutFilePath)
 		require.NoError(t, err)
 
 		if hideBanner {
@@ -60,6 +68,21 @@ func TestBanner(t *testing.T) {
 	})
 }
 
+func TestEmptyDataDir(t *testing.T) {
+	args := conduit.Args{}
+	err := runConduitCmdWithConfig(&args)
+	require.ErrorContains(t, err, conduitEnvVar)
+}
+
+func TestInvalidLogLevel(t *testing.T) {
+	cfg := pipeline.Config{
+		LogLevel: "invalid",
+	}
+	args := setupDataDir(t, cfg)
+	err := runConduitCmdWithConfig(args)
+	require.ErrorContains(t, err, "not a valid log level")
+}
+
 func TestLogFile(t *testing.T) {
 	// returns stdout
 	test := func(t *testing.T, logfile string) ([]byte, error) {
@@ -75,19 +98,15 @@ func TestLogFile(t *testing.T) {
 		os.Stdout = f
 
 		cfg := pipeline.Config{
-			LogFile:     logfile,
-			ConduitArgs: &conduit.Args{ConduitDataDir: t.TempDir()},
-			Importer:    pipeline.NameConfigPair{Name: "test", Config: map[string]interface{}{"a": "a"}},
-			Processors:  nil,
-			Exporter:    pipeline.NameConfigPair{Name: "test", Config: map[string]interface{}{"a": "a"}},
+			LogFile:    logfile,
+			Importer:   pipeline.NameConfigPair{Name: "test", Config: map[string]interface{}{"a": "a"}},
+			Processors: nil,
+			Exporter:   pipeline.NameConfigPair{Name: "test", Config: map[string]interface{}{"a": "a"}},
 		}
-		data, err := yaml.Marshal(&cfg)
-		require.NoError(t, err)
-		configFile := path.Join(cfg.ConduitArgs.ConduitDataDir, conduit.DefaultConfigName)
-		os.WriteFile(configFile, data, 0755)
-		require.FileExists(t, configFile)
+		args := setupDataDir(t, cfg)
 
-		err = runConduitCmdWithConfig(cfg.ConduitArgs)
+		err = runConduitCmdWithConfig(args)
+		require.ErrorContains(t, err, "pipeline creation error")
 		return os.ReadFile(stdoutFilePath)
 	}
 
@@ -98,7 +117,6 @@ func TestLogFile(t *testing.T) {
 		dataStr := string(data)
 		require.Contains(t, dataStr, "{")
 		require.Contains(t, dataStr, "\nWriting logs to console.")
-		require.Contains(t, dataStr, "\npipeline creation error")
 	})
 
 	// logging to file
@@ -112,9 +130,9 @@ func TestLogFile(t *testing.T) {
 		require.NoError(t, err)
 		logdataStr := string(logdata)
 		require.Contains(t, logdataStr, "{")
+		// pipeline error is not suppressed from log file.
+		require.Contains(t, logdataStr, "pipeline creation error")
 		// written to stdout and logfile
-		require.Contains(t, dataStr, "\npipeline creation error")
 		require.Contains(t, dataStr, "\nWriting logs to file:")
-		require.Contains(t, logdataStr, `"msg":"pipeline creation error`)
 	})
 }

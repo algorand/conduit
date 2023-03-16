@@ -16,8 +16,16 @@ import (
 // Command is the list command to embed in a root cobra command.
 var Command = &cobra.Command{
 	Use:   "list",
-	Short: "lists all plugins available to conduit",
-	Args:  cobra.NoArgs,
+	Short: "List all available Conduit plugins",
+	Long: `List all available Conduit plugins by type and a short description.
+
+Use this utility to explore the plugins. Drill into each plugin to get a
+sample configuration.
+
+Example:
+  conduit list importers algod
+  conduit list processors filter_processor`,
+	Args: cobra.NoArgs,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		printAll()
 		return nil
@@ -26,11 +34,12 @@ var Command = &cobra.Command{
 	SilenceErrors: true,
 }
 
-func makeDetailsCommand(use string, data func() []conduit.Metadata) *cobra.Command {
+func makeDetailsCommand(pluginType string, data func() []conduit.Metadata) *cobra.Command {
 	return &cobra.Command{
-		Use:     use + "s",
-		Aliases: []string{use},
-		Short:   fmt.Sprintf("usage detail for %s plugins", use),
+		Use:     pluginType + "s",
+		Aliases: []string{pluginType},
+		Short:   fmt.Sprintf("Usage details for %s plugins.", pluginType),
+		Long:    fmt.Sprintf(`Usage details for %s plugins. Pass in a specific plugin as a positional argument for a sample configuration file.`, pluginType),
 		Args:    cobra.MaximumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			if len(args) == 0 {

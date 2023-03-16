@@ -19,7 +19,6 @@ var DefaultLogLevel = log.InfoLevel
 var DefaultMetricsPrefix = "conduit"
 
 // Args configuration for conduit running.
-// This is needed to support a CONDUIT_DATA_DIR environment variable.
 type Args struct {
 	ConduitDataDir    string `yaml:"data-dir"`
 	NextRoundOverride uint64 `yaml:"next-round-override"`
