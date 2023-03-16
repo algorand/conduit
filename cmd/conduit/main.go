@@ -99,6 +99,10 @@ func runConduitCmdWithConfig(args *conduit.Args) error {
 
 	err = pipeline.Init()
 	if err != nil {
+		// Suppress log, it is about to be printed to stderr.
+		if pCfg.LogFile != "" {
+			logger.Error(err)
+		}
 		return fmt.Errorf("pipeline init error: %w", err)
 	}
 	pipeline.Start()

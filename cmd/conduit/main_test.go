@@ -130,6 +130,8 @@ func TestLogFile(t *testing.T) {
 		require.NoError(t, err)
 		logdataStr := string(logdata)
 		require.Contains(t, logdataStr, "{")
+		// pipeline error is not suppressed from log file.
+		require.Contains(t, logdataStr, "pipeline creation error")
 		// written to stdout and logfile
 		require.Contains(t, dataStr, "\nWriting logs to file:")
 	})
