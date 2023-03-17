@@ -1,7 +1,6 @@
 # Filter Processor
 
-This is used to filter transactions to include only the ones that you want.  
-This may be useful for some deployments
+This is used to filter transactions to include only the ones that you want. This may be useful for some deployments
 which only require specific applications or accounts.
 Transactions of the same group are returned and match on inner transactions is disabled by default.
 
