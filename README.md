@@ -1,8 +1,8 @@
 <div style="text-align:center" align="center">
   <picture>
-    <img src="./docs/assets/algorand_logo_mark_black.svg" alt="Algorand" width="400">
-    <source media="(prefers-color-scheme: dark)" srcset="./assets/docs/algorand_logo_mark_white.svg">
-    <source media="(prefers-color-scheme: light)" srcset="./assets/docs/algorand_logo_mark_black.svg">
+    <source media="(prefers-color-scheme: dark)" srcset="docs/assets/algorand_logo_mark_white.png">
+    <source media="(prefers-color-scheme: light)" srcset="docs/assets/algorand_logo_mark_black.png">
+    <img alt="Shows a black Algorand logo light mode and white in dark mode." src="docs/assets/algorand_logo_mark_black.png" width="200">
   </picture>
 
 [![CircleCI](https://img.shields.io/circleci/build/github/algorand/indexer/develop?label=develop)](https://circleci.com/gh/algorand/indexer/tree/develop)
