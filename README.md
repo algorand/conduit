@@ -5,9 +5,8 @@
     <img alt="Shows a black Algorand logo light mode and white in dark mode." src="docs/assets/algorand_logo_mark_black.png" width="200">
   </picture>
 
-[![CircleCI](https://img.shields.io/circleci/build/github/algorand/indexer/develop?label=develop)](https://circleci.com/gh/algorand/indexer/tree/develop)
-[![CircleCI](https://img.shields.io/circleci/build/github/algorand/indexer/master?label=master)](https://circleci.com/gh/algorand/indexer/tree/master)
-![Github](https://img.shields.io/github/license/algorand/indexer)
+[![CircleCI](https://img.shields.io/circleci/build/github/algorand/conduit/master?label=master)](https://circleci.com/gh/algorand/conduit/tree/master)
+![Github](https://img.shields.io/github/license/algorand/conduit)
 [![Contribute](https://img.shields.io/badge/contributor-guide-blue?logo=github)](https://github.com/algorand/go-algorand/blob/master/CONTRIBUTING.md)
 </div>
 
@@ -53,7 +52,7 @@ For a step-by-step walkthrough of a basic Conduit setup, see [Writing Blocks To 
 
 # Migrating from Indexer
 
-Indexer was built in a way that strongly coupled it to Postgresql, and the defined REST API. We've built Conduit in a way which is backwards compatible with the preexisting Indexer application. Running the `algorand-indexer` binary will use Conduit to construct a pipeline that replicates the Indexer functionality.
+Indexer was built in a way that strongly coupled it to Postgresql, and the defined REST API. We've built Conduit in a way which is backwards compatible with the preexisting Indexer API and Postgresql DB.
 
 Going forward we will continue to maintain the Indexer application, however our main focus will be enabling and optimizing a multitude of use cases through the Conduit pipeline design rather the singular Indexer pipeline.
 
