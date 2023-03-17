@@ -1,16 +1,18 @@
-## Migrating from Indexer to Conduit
+# Migrating from Indexer to Conduit
 
-The [Algorand Indexer](https://github.com/algorand/indexer) provides both a block processing pipeline to ingest block
-data from an Algorand node into a Postgresql database, and a rest API which serves that data.
+The [Algorand Indexer](https://github.com/algorand/indexer) originally provided both a block processing pipeline to ingest block
+data from an Algorand node into a Postgresql database, and a rest API which serves that data. However, the block
+processing pipeline functionality from Indexer has been moved into, and will be maintained in, Conduit.
 
 The [Conduit](https://github.com/algorand/indexer/blob/develop/docs/Conduit.md) project provides a modular pipeline
 system allowing users to construct block processing pipelines for a variety of use cases as opposed to the single,
-bespoke Indexer construction.
+bespoke pipeline from the original Indexer.
 
-### Migration
+## Migration
 Talking about a migration from Indexer to Conduit is in some ways difficult because they only have partial overlap in
 their applications. For example, Conduit does _not_ currently include a rest API either for checking pipeline health
-or for serving data from the pipeline. 
+or for serving data from the pipeline. So when we talk about migrating from Indexer to Conduit, what we'll focus on is
+moving your postgresql block writing from the Indexer binary to Conduit.
 
 Here is the Indexer architecture diagram at a high level. The raw block data is enriched by the account data retrieved
 from the local ledger, and everything is written to Postgresql which can then be queried via the API.
@@ -34,7 +36,7 @@ graph LR;
 
 However, Conduit was built to generalize and modularize a lot of the tasks which Indexer does when ingesting block data
 into its database. For that reason you can swap out the core data pipeline in Indexer with an equivalent Conduit
-pipeline--and that's just what we've done!
+pipeline--and that's just what we've done (with some caveats discussed below)!
 
 ```mermaid
 graph LR;
@@ -50,17 +52,12 @@ graph LR;
     pe-->restapi;
 ```
 
-Using the most recent release of Indexer will create a Conduit pipeline config and launch the pipeline to ingest the
-data used to serve the rest API. Take a look
-[here](https://github.com/algorand/indexer/blob/develop/cmd/algorand-indexer/daemon.go#L359) if you're interested in
-seeing the exact config used in Indexer.
+## Adopting Conduit features in your Indexer pipeline
 
-### Adopting Conduit features in your Indexer pipeline
-
-Since Indexer is now using Conduit for its data pipeline, it will benefit from the continued development of the specific
-plugins being used. However, we don't plan on exposing the full set of Conduit features through Indexer. In order to
-start using new features, or new plugins to customize, filter, or further enrich the block data, or even change the
-type of DB used in the backed, you will need to separate Indexer's data pipeline into your own custom Conduit pipeline.
+Since Indexer users will now use Conduit for its data pipeline, the continued development of the postgresql exporter
+and the algod importer, will be done in the Conduit repository. You can even start using new features from Conduit,
+or new plugins to customize, filter, or further enrich the block data which the Indexer API serves.
+Or you can change the type of DB used in the backend and write your own API on top of that.
 
 A common deployment of the Indexer might look something like this.
 ```mermaid
@@ -90,10 +87,9 @@ common to use the read only mode to scale out the rest API--running multiple web
 shown in the diagram.
 
 
-Separating the data pipeline from the Indexer when using this setup is simple--take Indexer's Conduit config
-[shown earlier there](https://github.com/algorand/indexer/blob/develop/cmd/algorand-indexer/daemon.go#L359), write it
-to a file, and launch the Conduit binary. Take a look at the [getting started guide](../GettingStarted.md) for more
-information on installing and running Conduit.
+Separating the data pipeline from the Indexer when using this setup was simple--take Indexer's data pipeline, and run
+it using the Conduit binary. Take a look at the [getting started guide](../GettingStarted.md) for more information on
+installing and running Conduit.
 
 We still plan on supporting the Indexer API alongside Conduit--that means that any changes made to the Postgresql plugin
 will either be backwards compatible with the Indexer API, ando/or have corresponding fixes in Indexer.
@@ -126,3 +122,146 @@ graph LR;
 
 With this architecture you're free to do things like use filter processors to limit the size of your database--though
 doing this will affect how some Indexer APIs function.
+
+## Differences Between Existing Indexer Writer and Conduit
+
+Conduit fetches block data from algod just as Indexer did, but whereas Indexer required an Archival algod node so that
+it could fetch any block it needed, Conduit's algod importer is not required to be Archival. Instead, we've implemented
+what is called Follower mode in algod. You can take a look [here](https://github.com/algorand/go-algorand/blob/master/node/follower_node.go)
+if you're interested in looking at the source code for the follower node.
+
+To run algod in Follower mode, it must be launched with `EnableFollowMode` set to `true` in the algod config.  
+Doing this will provide the new features listed below, but will remove the node's ability to participate in consensus
+(propose new blocks), or broadcast transactions to be included in new blocks. It will only, as named, follow the chain.
+
+Follower mode algod provides 2 key features required by Conduit.
+### Sync Rounds
+In order to remove the requirement of algod being Archival, we needed a way to ensure that algod would have the data
+available for the particular round that our Conduit pipeline was importing at any given time. We've done this through
+the concept of a `sync` round. 
+
+The sync round is a parameter which Conduit provides to algod. It specifies the particular round that we want algod to
+ensure is kept in the cache until we've finished running it through our Conduit pipeline. When a sync round is set on a
+Follower node, that node will no-op network fetches of new blocks for any block which would cause data on the sync round
+to fall out of the cache.
+
+Sync rounds operate via a set of APIs on algod.
+
+#### `GET    /v2/ledger/sync`
+Retrieves the sync round. This call will return a `404 Not Found` if the sync round is not currently set.
+#### `DELETE /v2/ledger/sync`
+Removes the sync round constraint. If no sync round is set this will no-op.
+#### `POST   /v2/ledger/sync/{round}`
+Sets the sync round to the provided parameter. The provided sync round cannot be lower than the current sync round.
+If no sync round is currently set, the round must be within `MaxAcctLookback` of the ledger's current round at the time
+of the API call. Providing an invalid round will return a `400 Bad Request`.
+
+### State Deltas
+The algod `block/{round}` endpoint has always been available to retrieve the block header and the transactions which
+were validated during a given round, but Indexer also needs to know the side effects of transaction execution--account
+balance updates, app global and local state changes, etc.
+
+Indexer currently uses a local ledger to get this information, a stripped down version of an algod node which stores
+balance information locally, and evaluates transactions in order to determine changes made without having to do an
+extra database roundtrip.
+
+We've created a new API on algod, `GET v2/deltas/{round}`, which exposes per-round deltas. It is a direct serialization
+of the data which is stored in the cache in algod, and it is backward compatible with the postgresql serialization that
+the Indexer database currently uses.
+
+Now instead of running a local ledger, all that is required to run an Indexer pipeline via Conduit is a Follower algod
+node. Conduit's algod importer plugin will coordinate usage of both the sync round APIs and the deltas API in order to
+fetch all required data directly from the algod node, and ensure that the node is kept in sync with the pipeline round.
+
+
+## Altering Architecture of Indexer Applications
+
+Let's take a look at a theoretical application more closely and see what in particular we need to do to alter it to use
+Conduit. 
+
+Here's a diagram of a containerized application (leaving out some details such as load balancers, and scaled out API
+nodes).
+
+```mermaid
+graph LR;
+    algod["Archival Alogd"]
+    indexer["Indexer"]
+    psql["Postgresql"]
+    subgraph "Persistent Volume"
+        ll["Local Ledger"];
+    end
+    
+    indexer-->algod;
+    indexer-->psql;
+    indexer-->ll;
+```
+
+### Step 1: Convert from Archival to Follower Node
+In our hypothetical existing architecture, we likely have a persistent volume storing the algod data directory for our
+Archival node. It is probably still a good idea to maintain the algod's data in a persistent volume, though the amount
+of storage required will be minimal in comparison.
+
+
+If you have an existing Archival node which is on the same round as your Indexer, you can simply stop algod, alter your
+config as follows, and restart it.
+```yaml
+Archival: false,
+MaxAcctLookback: 256,
+CatchupParallelBlocks: 256,
+EnableFollowMode: true
+```
+Your node will then drop all but the last 1000 rounds from your database, and when will have `2 * MaxAcctLookback`
+rounds in its cache.
+
+However, if your algod node's round is too far beyond your Indexer's you will need to catchup your node from scratch.
+Follower nodes provide the same methods of catchup as regular algod nodes, but will have the sync round set to the most
+recent ledger round upon startup.
+
+In order to manually catchup your node from 0 to 25 million, for example, you will need to call the sync round API to
+update the ledger constraint:
+```
+curl -X POST -H "X-Algo-API-TOKEN:$ALGOD_TOKEN" http://$ALGOD_ADDR/v2/ledger/sync/25000000
+```
+
+Now you can run fast catchup on your node to the closest catchpoint prior to the desired sync round.
+```
+goal node -d $ALGOD_DIR catchup 25000000#EOX5UYQV4IXTGYQCIDR7ZLUK6WZGDC5EG6PYQGBG6PBYNAQUPN2Q
+```
+Once catchup is complete we will resume normal catchup. If your catchpoint is not exactly the round your database is on,
+you will need to wait for normal catchup to get your node to the desired point in time. The sync round we set earlier will ensure that the node does not
+advance past the round Conduit needs before we're ready. 
+
+### Step 2: Remove the Local Ledger
+Because our Conduit pipeline will use the Follower node's state delta API, we no longer need our local ledger persistent 
+volume. Simply remove it.
+
+### Step 3: Refactor our Indexer Writer to Conduit
+You're free to capture any data you like using Conduit. I'd encourage you to take a look at the filter processor and see
+if you can reduce the amount of data you store in your database by removing non-relevant data.
+
+In order to have parity with the previous Indexer, which stored all data, you can use the following Conduit configuration.
+```yaml
+retry-count: 10
+retry-delay: "1s"
+data-dir: $DATA_DIR
+next-round-override: $DB_ROUND
+hide-banner: true
+metrics:
+  prefix: "conduit",
+log-level: logger.GetLevel().String(),
+importer:
+  name: "algod",
+  config: 
+	"netaddr": $ALGOD_ADDR,
+	"token": $ALGOD_TOKEN,
+    # Can we remove this?
+	"mode": "follower",
+exporter:
+  name: "postgresql",
+  config:
+	"connection-string": $PGSQL_CONNECTION_STRING,
+```
+
+Then run Conduit, `conduit -d $CONDUIT_DATA_DIR`!
+
+You can separately run your Indexer with `--no-algod` to connect your API to the database.
