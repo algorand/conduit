@@ -252,10 +252,9 @@ log-level: logger.GetLevel().String(),
 importer:
   name: "algod",
   config: 
-	"netaddr": $ALGOD_ADDR,
-	"token": $ALGOD_TOKEN,
-    # Can we remove this?
-	"mode": "follower",
+    "netaddr": $ALGOD_ADDR,
+    "token": $ALGOD_TOKEN,
+    "mode": "follower",
 exporter:
   name: "postgresql",
   config:
