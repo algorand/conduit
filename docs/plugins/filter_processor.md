@@ -1,7 +1,9 @@
 # Filter Processor
 
-This is used to filter transactions to include only the ones that you want. This may be useful for some deployments
+This is used to filter transactions to include only the ones that you want.  
+This may be useful for some deployments
 which only require specific applications or accounts.
+Transactions of the same group are returned and match on inner transactions is disabled by default.
 
 ## any / all
 One or more top-level operations should be provided.
@@ -47,7 +49,7 @@ The input to the expression. A number or string depending on the expression type
 processors:
   - name: filter_processor
     config:
-      - filters:
+      filters:
           - any
               - tag:
                 expression-type:
