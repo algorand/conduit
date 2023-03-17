@@ -258,7 +258,7 @@ importer:
 exporter:
   name: "postgresql",
   config:
-	"connection-string": $PGSQL_CONNECTION_STRING,
+    "connection-string": $PGSQL_CONNECTION_STRING,
 ```
 
 Then run Conduit, `conduit -d $CONDUIT_DATA_DIR`!
