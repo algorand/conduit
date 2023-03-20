@@ -207,7 +207,7 @@ type mockImporter struct {
 	subsystem       string
 }
 
-func (m *mockImporter) Init(_ context.Context, cfg plugins.PluginConfig, _ *log.Logger) (*sdk.Genesis, error) {
+func (m *mockImporter) Init(_ context.Context, _ data.InitProvider, cfg plugins.PluginConfig, _ *log.Logger) (*sdk.Genesis, error) {
 	m.cfg = cfg
 	return &m.genesis, nil
 }

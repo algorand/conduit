@@ -13,6 +13,11 @@ func (m *MockInitProvider) GetGenesis() *sdk.Genesis {
 	return m.Genesis
 }
 
+// SetGenesis updates the genesis block in the init provider
+func (m *MockInitProvider) SetGenesis(genesis *sdk.Genesis) {
+	m.Genesis = genesis
+}
+
 // NextDBRound provides next database round
 func (m *MockInitProvider) NextDBRound() sdk.Round {
 	return *m.CurrentRound
