@@ -210,7 +210,7 @@ MaxAcctLookback: 256,
 CatchupParallelBlocks: 256,
 EnableFollowMode: true
 ```
-Your node will then drop all but the last 1000 rounds from your database, and when will have `2 * MaxAcctLookback`
+Your node will then drop all but the last 1000 rounds from your database, and will have `2 * MaxAcctLookback`
 rounds in its cache.
 
 However, if your algod node's round is too far beyond your Indexer's you will need to catchup your node from scratch.
