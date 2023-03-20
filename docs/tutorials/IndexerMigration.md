@@ -243,7 +243,7 @@ In order to have parity with the previous Indexer, which stored all data, you ca
 ```yaml
 retry-count: 10
 retry-delay: "1s"
-data-dir: $DATA_DIR
+data-dir: $CONDUIT_DATA_DIR
 next-round-override: $DB_ROUND
 hide-banner: true
 metrics:
