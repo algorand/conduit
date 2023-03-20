@@ -7,6 +7,8 @@ import (
 	"net/http"
 	"net/url"
 	"reflect"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -81,6 +83,20 @@ func init() {
 	}))
 }
 
+func parseCatchpointRound(catchpoint string) (round sdk.Round, err error) {
+	parts := strings.Split(catchpoint, "#")
+	if len(parts) != 2 {
+		err = fmt.Errorf("unable to parse catchpoint, invalid format: %s", catchpoint)
+		return
+	}
+	uiRound, err := strconv.ParseUint(parts[0], 10, 64)
+	if err != nil {
+		return
+	}
+	round = sdk.Round(uiRound)
+	return
+}
+
 func (algodImp *algodImporter) startCatchpointCatchup() error {
 	// Run catchpoint catchup
 	req, err := http.NewRequest(
@@ -145,9 +161,25 @@ func (algodImp *algodImporter) catchupNode(initProvider data.InitProvider) error
 	}
 	// Run Catchpoint Catchup
 	if algodImp.cfg.CatchupConfig.Catchpoint != "" {
-		err = algodImp.startCatchpointCatchup()
+		cpRound, err := parseCatchpointRound(algodImp.cfg.CatchupConfig.Catchpoint)
 		if err != nil {
 			return err
+		}
+		nStatus, err := algodImp.aclient.Status().Do(algodImp.ctx)
+		if err != nil {
+			return fmt.Errorf("received unexpected error failed to get node status: %w", err)
+		}
+		if cpRound <= sdk.Round(nStatus.LastRound) {
+			algodImp.logger.Infof(
+				"Skipping catchpoint catchup for %s, since it's before node round %d",
+				algodImp.cfg.CatchupConfig.Catchpoint,
+				nStatus.LastRound,
+			)
+		} else {
+			err = algodImp.startCatchpointCatchup()
+			if err != nil {
+				return err
+			}
 		}
 		// Wait for algod to catchup
 		err = algodImp.monitorCatchpointCatchup()

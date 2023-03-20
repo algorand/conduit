@@ -86,6 +86,28 @@ netaddr: %s
 	}
 }
 
+func TestInitCatchupFailures(t *testing.T) {
+	tests := []struct {
+		name        string
+		algodServer *httptest.Server
+		err         string
+	}{
+		{"sync round failure", NewAlgodServer(GenesisResponder, MakeSyncRoundResponder(400)), "received unexpected error setting sync round: HTTP 400"},
+	}
+	for _, ttest := range tests {
+		t.Run(ttest.name, func(t *testing.T) {
+			testImporter := New()
+			cfgStr := fmt.Sprintf(`---
+mode: %s
+netaddr: %s
+`, "follower", ttest.algodServer.URL)
+			_, err := testImporter.Init(ctx, conduit.MakePipelineInitProvider(&pRound, nil), plugins.MakePluginConfig(cfgStr), logger)
+			assert.ErrorContains(t, err, ttest.err)
+			testImporter.Close()
+		})
+	}
+}
+
 func TestInitParseUrlFailure(t *testing.T) {
 	tests := []struct {
 		url string
