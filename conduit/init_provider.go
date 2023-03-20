@@ -18,6 +18,11 @@ func MakePipelineInitProvider(currentRound *sdk.Round, genesis *sdk.Genesis) *Pi
 	}
 }
 
+// SetGenesis updates the genesis block in the init provider
+func (a *PipelineInitProvider) SetGenesis(genesis *sdk.Genesis) {
+	a.genesis = genesis
+}
+
 // GetGenesis produces genesis pointer
 func (a *PipelineInitProvider) GetGenesis() *sdk.Genesis {
 	return a.genesis

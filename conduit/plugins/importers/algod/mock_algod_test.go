@@ -77,6 +77,30 @@ func MakeBlockAfterResponder(status models.NodeStatus) func(string, http.Respons
 	return MakeJsonResponder("/wait-for-block-after", status)
 }
 
+// MakeJsonResponderSeries creates a series of responses with the provided http statuses
+func MakeJsonResponderSeries(url string, responseSeries []int, object interface{}) func(string, http.ResponseWriter) bool {
+	i := 0
+	return func(reqPath string, w http.ResponseWriter) bool {
+		if strings.Contains(reqPath, url) {
+			w.WriteHeader(responseSeries[i])
+			_, _ = w.Write(json.Encode(object))
+			if i < len(responseSeries)-1 {
+				i = i + 1
+			}
+			return true
+		}
+		return false
+	}
+}
+
+func MakeSyncRoundResponder(httpStatus int) func(string, http.ResponseWriter) bool {
+	return MakeStatusResponder("/v2/ledger/sync", httpStatus, "")
+}
+
+func MakeNodeStatusResponder(status models.NodeStatus) func(string, http.ResponseWriter) bool {
+	return MakeJsonResponder("/v2/status", status)
+}
+
 var BlockAfterResponder = MakeBlockAfterResponder(models.NodeStatus{})
 
 func MakeLedgerStateDeltaResponder(delta types.LedgerStateDelta) func(string, http.ResponseWriter) bool {

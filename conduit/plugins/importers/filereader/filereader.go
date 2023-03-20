@@ -57,7 +57,7 @@ func init() {
 	}))
 }
 
-func (r *fileReader) Init(ctx context.Context, cfg plugins.PluginConfig, logger *logrus.Logger) (*sdk.Genesis, error) {
+func (r *fileReader) Init(ctx context.Context, _ data.InitProvider, cfg plugins.PluginConfig, logger *logrus.Logger) (*sdk.Genesis, error) {
 	r.ctx, r.cancel = context.WithCancel(ctx)
 	r.logger = logger
 	var err error

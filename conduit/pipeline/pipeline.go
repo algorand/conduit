@@ -264,14 +264,21 @@ func (p *pipelineImpl) Init() error {
 	importerName := (*p.importer).Metadata().Name
 	importerLogger.SetFormatter(makePluginLogFormatter(plugins.Importer, importerName))
 
+	// InitProvider
+	round := sdk.Round(p.pipelineMetadata.NextRound)
+	// Initial genesis object is nil--gets updated after importer.Init
+	var initProvider data.InitProvider = conduit.MakePipelineInitProvider(&round, nil)
+	p.initProvider = &initProvider
+
 	configs, err := yaml.Marshal(p.cfg.Importer.Config)
 	if err != nil {
 		return fmt.Errorf("Pipeline.Start(): could not serialize Importer.Args: %w", err)
 	}
-	genesis, err := (*p.importer).Init(p.ctx, p.makeConfig("importer", importerName, configs), importerLogger)
+	genesis, err := (*p.importer).Init(p.ctx, *p.initProvider, p.makeConfig("importer", importerName, configs), importerLogger)
 	if err != nil {
 		return fmt.Errorf("Pipeline.Start(): could not initialize importer (%s): %w", importerName, err)
 	}
+	(*p.initProvider).SetGenesis(genesis)
 
 	// initialize or load pipeline metadata
 	gh := genesis.Hash()
@@ -292,11 +299,6 @@ func (p *pipelineImpl) Init() error {
 	}
 
 	p.logger.Infof("Initialized Importer: %s", importerName)
-
-	// InitProvider
-	round := sdk.Round(p.pipelineMetadata.NextRound)
-	var initProvider data.InitProvider = conduit.MakePipelineInitProvider(&round, genesis)
-	p.initProvider = &initProvider
 
 	// Initialize Processors
 	for idx, processor := range p.processors {

@@ -18,6 +18,7 @@ import (
 
 	sdk "github.com/algorand/go-algorand-sdk/v2/types"
 
+	"github.com/algorand/conduit/conduit"
 	"github.com/algorand/conduit/conduit/plugins"
 )
 
@@ -25,6 +26,7 @@ var (
 	logger *logrus.Logger
 	ctx    context.Context
 	cancel context.CancelFunc
+	pRound sdk.Round
 )
 
 func init() {
@@ -32,6 +34,7 @@ func init() {
 	logger.SetOutput(os.Stdout)
 	logger.SetLevel(logrus.InfoLevel)
 	ctx, cancel = context.WithCancel(context.Background())
+	pRound = sdk.Round(1)
 }
 
 // New initializes an algod importer
@@ -48,13 +51,13 @@ func TestImporterMetadata(t *testing.T) {
 }
 
 func TestCloseSuccess(t *testing.T) {
-	ts := NewAlgodServer(GenesisResponder)
+	ts := NewAlgodServer(GenesisResponder, MakeSyncRoundResponder(200), BlockAfterResponder)
 	testImporter := New()
 	cfgStr := fmt.Sprintf(`---
 mode: %s
 netaddr: %s
 `, archivalModeStr, ts.URL)
-	_, err := testImporter.Init(ctx, plugins.MakePluginConfig(cfgStr), logger)
+	_, err := testImporter.Init(ctx, conduit.MakePipelineInitProvider(&pRound, nil), plugins.MakePluginConfig(cfgStr), logger)
 	assert.NoError(t, err)
 	err = testImporter.Close()
 	assert.NoError(t, err)
@@ -69,13 +72,13 @@ func TestInitSuccess(t *testing.T) {
 	}
 	for _, ttest := range tests {
 		t.Run(ttest.name, func(t *testing.T) {
-			ts := NewAlgodServer(GenesisResponder)
+			ts := NewAlgodServer(GenesisResponder, MakeSyncRoundResponder(200), BlockAfterResponder)
 			testImporter := New()
 			cfgStr := fmt.Sprintf(`---
 mode: %s
 netaddr: %s
 `, ttest.name, ts.URL)
-			_, err := testImporter.Init(ctx, plugins.MakePluginConfig(cfgStr), logger)
+			_, err := testImporter.Init(ctx, conduit.MakePipelineInitProvider(&pRound, nil), plugins.MakePluginConfig(cfgStr), logger)
 			assert.NoError(t, err)
 			assert.NotEqual(t, testImporter, nil)
 			testImporter.Close()
@@ -96,7 +99,7 @@ func TestInitParseUrlFailure(t *testing.T) {
 mode: %s
 netaddr: %s
 `, "follower", ttest.url)
-			_, err := testImporter.Init(ctx, plugins.MakePluginConfig(cfgStr), logger)
+			_, err := testImporter.Init(ctx, conduit.MakePipelineInitProvider(&pRound, nil), plugins.MakePluginConfig(cfgStr), logger)
 			assert.ErrorContains(t, err, "parse")
 		})
 	}
@@ -116,7 +119,7 @@ func TestInitModeFailure(t *testing.T) {
 mode: %s
 netaddr: %s
 `, ttest.name, ts.URL)
-			_, err := testImporter.Init(ctx, plugins.MakePluginConfig(cfgStr), logger)
+			_, err := testImporter.Init(ctx, conduit.MakePipelineInitProvider(&pRound, nil), plugins.MakePluginConfig(cfgStr), logger)
 			assert.EqualError(t, err, fmt.Sprintf("algod importer was set to a mode (%s) that wasn't supported", ttest.name))
 		})
 	}
@@ -129,7 +132,7 @@ func TestInitGenesisFailure(t *testing.T) {
 mode: %s
 netaddr: %s
 `, archivalModeStr, ts.URL)
-	_, err := testImporter.Init(ctx, plugins.MakePluginConfig(cfgStr), logger)
+	_, err := testImporter.Init(ctx, conduit.MakePipelineInitProvider(&pRound, nil), plugins.MakePluginConfig(cfgStr), logger)
 	assert.Error(t, err)
 	assert.ErrorContains(t, err, "unable to fetch genesis file")
 	testImporter.Close()
@@ -137,7 +140,7 @@ netaddr: %s
 
 func TestInitUnmarshalFailure(t *testing.T) {
 	testImporter := New()
-	_, err := testImporter.Init(ctx, plugins.MakePluginConfig("`"), logger)
+	_, err := testImporter.Init(ctx, conduit.MakePipelineInitProvider(&pRound, nil), plugins.MakePluginConfig("`"), logger)
 	assert.Error(t, err)
 	assert.ErrorContains(t, err, "connect failure in unmarshalConfig")
 	testImporter.Close()
@@ -153,13 +156,13 @@ func TestConfigDefault(t *testing.T) {
 }
 
 func TestWaitForBlockBlockFailure(t *testing.T) {
-	ts := NewAlgodServer(GenesisResponder)
+	ts := NewAlgodServer(GenesisResponder, MakeSyncRoundResponder(200), BlockAfterResponder)
 	testImporter := New()
 	cfgStr := fmt.Sprintf(`---
 mode: %s
 netaddr: %s
 `, archivalModeStr, ts.URL)
-	_, err := testImporter.Init(ctx, plugins.MakePluginConfig(cfgStr), logger)
+	_, err := testImporter.Init(ctx, conduit.MakePipelineInitProvider(&pRound, nil), plugins.MakePluginConfig(cfgStr), logger)
 	assert.NoError(t, err)
 	assert.NotEqual(t, testImporter, nil)
 
@@ -176,13 +179,15 @@ func TestGetBlockSuccess(t *testing.T) {
 	}{
 		{"", NewAlgodServer(GenesisResponder,
 			BlockResponder,
-			BlockAfterResponder)},
+			BlockAfterResponder,
+			MakeSyncRoundResponder(200))},
 		{"archival", NewAlgodServer(GenesisResponder,
 			BlockResponder,
-			BlockAfterResponder)},
+			BlockAfterResponder,
+			MakeSyncRoundResponder(200))},
 		{"follower", NewAlgodServer(GenesisResponder,
 			BlockResponder,
-			BlockAfterResponder, LedgerStateDeltaResponder)},
+			BlockAfterResponder, LedgerStateDeltaResponder, MakeSyncRoundResponder(200))},
 	}
 	for _, ttest := range tests {
 		t.Run(ttest.name, func(t *testing.T) {
@@ -193,7 +198,7 @@ func TestGetBlockSuccess(t *testing.T) {
 mode: %s
 netaddr: %s
 `, ttest.name, ttest.algodServer.URL)
-			_, err := testImporter.Init(ctx, plugins.MakePluginConfig(cfgStr), logger)
+			_, err := testImporter.Init(ctx, conduit.MakePipelineInitProvider(&pRound, nil), plugins.MakePluginConfig(cfgStr), logger)
 			assert.NoError(t, err)
 			assert.NotEqual(t, testImporter, nil)
 
@@ -225,10 +230,12 @@ func TestGetBlockContextCancelled(t *testing.T) {
 	}{
 		{"archival", NewAlgodServer(GenesisResponder,
 			BlockResponder,
-			BlockAfterResponder)},
+			BlockAfterResponder,
+			MakeSyncRoundResponder(200))},
 		{"follower", NewAlgodServer(GenesisResponder,
 			BlockResponder,
-			BlockAfterResponder, LedgerStateDeltaResponder)},
+			BlockAfterResponder, LedgerStateDeltaResponder,
+			MakeSyncRoundResponder(200))},
 	}
 
 	for _, ttest := range tests {
@@ -239,7 +246,7 @@ func TestGetBlockContextCancelled(t *testing.T) {
 mode: %s
 netaddr: %s
 `, ttest.name, ttest.algodServer.URL)
-			_, err := testImporter.Init(ctx, plugins.MakePluginConfig(cfgStr), logger)
+			_, err := testImporter.Init(ctx, conduit.MakePipelineInitProvider(&pRound, nil), plugins.MakePluginConfig(cfgStr), logger)
 			assert.NoError(t, err)
 			assert.NotEqual(t, testImporter, nil)
 
@@ -256,9 +263,9 @@ func TestGetBlockFailure(t *testing.T) {
 		algodServer *httptest.Server
 	}{
 		{"archival", NewAlgodServer(GenesisResponder,
-			BlockAfterResponder)},
+			BlockAfterResponder, MakeSyncRoundResponder(200))},
 		{"follower", NewAlgodServer(GenesisResponder,
-			BlockAfterResponder, LedgerStateDeltaResponder)},
+			BlockAfterResponder, LedgerStateDeltaResponder, MakeSyncRoundResponder(200))},
 	}
 	for _, ttest := range tests {
 		t.Run(ttest.name, func(t *testing.T) {
@@ -269,7 +276,7 @@ func TestGetBlockFailure(t *testing.T) {
 mode: %s
 netaddr: %s
 `, ttest.name, ttest.algodServer.URL)
-			_, err := testImporter.Init(ctx, plugins.MakePluginConfig(cfgStr), logger)
+			_, err := testImporter.Init(ctx, conduit.MakePipelineInitProvider(&pRound, nil), plugins.MakePluginConfig(cfgStr), logger)
 			assert.NoError(t, err)
 			assert.NotEqual(t, testImporter, nil)
 
@@ -298,7 +305,7 @@ func TestGetBlockErrors(t *testing.T) {
 		{
 			name:                "Cannot get status",
 			rnd:                 123,
-			blockAfterResponder: MakeStatusResponder("/wait-for-block-after", http.StatusNotFound, ""),
+			blockAfterResponder: MakeJsonResponderSeries("/wait-for-block-after", []int{http.StatusOK, http.StatusNotFound}, models.NodeStatus{}),
 			err:                 fmt.Sprintf("error getting status for round"),
 			logs:                []string{"error getting status for round 123", "failed to get block for round 123 "},
 		},
@@ -339,6 +346,7 @@ func TestGetBlockErrors(t *testing.T) {
 			// Setup mock algod
 			handler := NewAlgodHandler(
 				GenesisResponder,
+				MakeSyncRoundResponder(200),
 				tc.blockAfterResponder,
 				tc.blockResponder,
 				tc.deltaResponder)
@@ -354,7 +362,7 @@ func TestGetBlockErrors(t *testing.T) {
 			pcfg := plugins.MakePluginConfig(string(cfgStr))
 			ctx, cancel = context.WithCancel(context.Background())
 			testImporter := &algodImporter{}
-			_, err = testImporter.Init(ctx, pcfg, testLogger)
+			_, err = testImporter.Init(ctx, conduit.MakePipelineInitProvider(&pRound, nil), pcfg, testLogger)
 			require.NoError(t, err)
 
 			// Run the test

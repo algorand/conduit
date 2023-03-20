@@ -15,6 +15,7 @@ type RoundProvider interface {
 // variables
 type InitProvider interface {
 	GetGenesis() *sdk.Genesis
+	SetGenesis(*sdk.Genesis)
 	NextDBRound() sdk.Round
 }
 

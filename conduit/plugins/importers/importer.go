@@ -20,7 +20,7 @@ type Importer interface {
 	// Init will initialize each importer with a given config. This config will contain the Unmarhsalled config file specific to this plugin.
 	// It is called during initialization of an importer plugin such as setting up network connections, file buffers etc.
 	// Importers will also be responsible for returning a valid Genesis object pointer
-	Init(ctx context.Context, cfg plugins.PluginConfig, logger *logrus.Logger) (*sdk.Genesis, error)
+	Init(ctx context.Context, initProvider data.InitProvider, cfg plugins.PluginConfig, logger *logrus.Logger) (*sdk.Genesis, error)
 
 	// Config returns the configuration options used to create an Importer. Initialized during Init.
 	Config() string

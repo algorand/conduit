@@ -911,7 +911,7 @@ func (e *errorImporter) Metadata() conduit.Metadata {
 	return errorImporterMetadata
 }
 
-func (e *errorImporter) Init(_ context.Context, _ plugins.PluginConfig, _ *log.Logger) (*sdk.Genesis, error) {
+func (e *errorImporter) Init(_ context.Context, _ data.InitProvider, _ plugins.PluginConfig, _ *log.Logger) (*sdk.Genesis, error) {
 	return e.genesis, nil
 }
 

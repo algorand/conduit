@@ -4,6 +4,7 @@ import (
 	"context"
 	_ "embed" // used to embed config
 	"fmt"
+	"net/http"
 	"net/url"
 	"reflect"
 	"time"
@@ -80,7 +81,88 @@ func init() {
 	}))
 }
 
-func (algodImp *algodImporter) Init(ctx context.Context, cfg plugins.PluginConfig, logger *logrus.Logger) (*sdk.Genesis, error) {
+func (algodImp *algodImporter) startCatchpointCatchup() error {
+	// Run catchpoint catchup
+	req, err := http.NewRequest(
+		"POST",
+		fmt.Sprintf("%s/v2/catchup/%s", algodImp.cfg.NetAddr, algodImp.cfg.CatchupConfig.Catchpoint),
+		nil,
+	)
+	if err != nil {
+		return fmt.Errorf("received unexpected error creating v2/catchup http request: %w", err)
+	}
+	req.Header.Set("X-Algo-API-Token", algodImp.cfg.CatchupConfig.AdminToken)
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return fmt.Errorf("POST /v2/catchup/ received unexpected error: %w", err)
+	}
+	_ = resp.Body.Close()
+	return nil
+}
+
+func (algodImp *algodImporter) monitorCatchpointCatchup() error {
+	// Delay is the time to wait for catchup service startup
+	var delay = 5 * time.Second
+	start := time.Now()
+	// Report progress periodically while waiting for catchup to complete
+	running := true
+	for running {
+		select {
+		case <-time.After(delay):
+		case <-algodImp.ctx.Done():
+			return algodImp.ctx.Err()
+		}
+		stat, err := algodImp.aclient.Status().Do(algodImp.ctx)
+		if err != nil {
+			return fmt.Errorf("received unexpected error getting node status: %w", err)
+		}
+		running = stat.Catchpoint != ""
+		switch {
+		case !running:
+			break
+		case stat.CatchpointAcquiredBlocks > 0:
+			algodImp.logger.Infof("catchup phase 3 of 4 (Acquired Blocks): %d / %d", stat.CatchpointAcquiredBlocks, stat.CatchpointTotalBlocks)
+		case stat.CatchpointVerifiedAccounts > 0:
+			algodImp.logger.Infof("catchup phase 2 of 4 (Verified Accounts):  %d / %d", stat.CatchpointVerifiedAccounts, stat.CatchpointTotalAccounts)
+		case stat.CatchpointProcessedAccounts > 0:
+			algodImp.logger.Infof("catchup phase 1 of 4 (Processed Accounts): %d / %d", stat.CatchpointProcessedAccounts, stat.CatchpointTotalAccounts)
+		default:
+			// Todo: We should expose catchupService.VerifiedBlocks via the NodeStatusResponse
+			algodImp.logger.Infof("catchup phase 4 of 4 (Verified Blocks)")
+		}
+
+	}
+
+	algodImp.logger.Infof("Catchpoint catchup finished in %s", time.Since(start))
+	return nil
+}
+
+func (algodImp *algodImporter) catchupNode(initProvider data.InitProvider) error {
+	// Set the sync round to the round provided by initProvider
+	_, err := algodImp.aclient.SetSyncRound(uint64(initProvider.NextDBRound())).Do(algodImp.ctx)
+	if err != nil {
+		return fmt.Errorf("received unexpected error setting sync round: %w", err)
+	}
+	// Run Catchpoint Catchup
+	if algodImp.cfg.CatchupConfig.Catchpoint != "" {
+		err = algodImp.startCatchpointCatchup()
+		if err != nil {
+			return err
+		}
+		// Wait for algod to catchup
+		err = algodImp.monitorCatchpointCatchup()
+		if err != nil {
+			return err
+		}
+	}
+	_, err = algodImp.aclient.StatusAfterBlock(uint64(initProvider.NextDBRound())).Do(algodImp.ctx)
+	if err != nil {
+		err = fmt.Errorf("received unexpected error (StatusAfterBlock) waiting for node to catchup: %w", err)
+	}
+	return err
+}
+
+func (algodImp *algodImporter) Init(ctx context.Context, initProvider data.InitProvider, cfg plugins.PluginConfig, logger *logrus.Logger) (*sdk.Genesis, error) {
 	algodImp.ctx, algodImp.cancel = context.WithCancel(ctx)
 	algodImp.logger = logger
 	err := cfg.UnmarshalConfig(&algodImp.cfg)
@@ -133,6 +215,8 @@ func (algodImp *algodImporter) Init(ctx context.Context, cfg plugins.PluginConfi
 	if reflect.DeepEqual(genesis, sdk.Genesis{}) {
 		return nil, fmt.Errorf("unable to fetch genesis file from API at %s", algodImp.cfg.NetAddr)
 	}
+
+	err = algodImp.catchupNode(initProvider)
 
 	return &genesis, err
 }

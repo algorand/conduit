@@ -12,4 +12,14 @@ type Config struct {
 	NetAddr string `yaml:"netaddr"`
 	// <code>token</code> is the Algod API endpoint token.
 	Token string `yaml:"token"`
+	// <code>catchup-config</code> is an optional set of parameters used to catchup an algod node in follower mode with the pipeline round on startup.
+	CatchupConfig CatchupParams `yaml:"catchup-config"`
+}
+
+// CatchupParams provides information required to sync a follower node to the pipeline round
+type CatchupParams struct {
+	// <code>catchpoint</code> is the catchpoint used to run fast catchup on startup when your node is behind the current pipeline round.
+	Catchpoint string `yaml:"catchpoint"`
+	// <code>admin-token</code> is the algod admin API token.
+	AdminToken string `yaml:"admin-token"`
 }
