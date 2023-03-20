@@ -5,10 +5,10 @@ log-level: INFO
 #log-file:
 
 # Number of retries to perform after a pipeline plugin error.
-retry-count:
+retry-count: 10
 
 # Time duration to wait between retry attempts.
-retry-delay:
+retry-delay: "1s"
 
 # Optional filepath to use for pidfile.
 #pid-filepath: /path/to/pidfile
