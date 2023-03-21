@@ -248,7 +248,7 @@ next-round-override: $DB_ROUND
 hide-banner: true
 metrics:
   prefix: "conduit",
-log-level: logger.GetLevel().String(),
+log-level: "INFO"
 importer:
   name: "algod",
   config: 
