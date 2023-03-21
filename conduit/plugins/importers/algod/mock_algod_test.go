@@ -77,15 +77,18 @@ func MakeBlockAfterResponder(status models.NodeStatus) func(string, http.Respons
 	return MakeJsonResponder("/wait-for-block-after", status)
 }
 
-// MakeJsonResponderSeries creates a series of responses with the provided http statuses
-func MakeJsonResponderSeries(url string, responseSeries []int, object interface{}) func(string, http.ResponseWriter) bool {
-	i := 0
+// MakeJsonResponderSeries creates a series of responses with the provided http statuses and objects
+func MakeJsonResponderSeries(url string, responseSeries []int, responseObjects []interface{}) func(string, http.ResponseWriter) bool {
+	var i, j = 0, 0
 	return func(reqPath string, w http.ResponseWriter) bool {
 		if strings.Contains(reqPath, url) {
 			w.WriteHeader(responseSeries[i])
-			_, _ = w.Write(json.Encode(object))
+			_, _ = w.Write(json.Encode(responseObjects[j]))
 			if i < len(responseSeries)-1 {
 				i = i + 1
+			}
+			if j < len(responseObjects)-1 {
+				j = j + 1
 			}
 			return true
 		}

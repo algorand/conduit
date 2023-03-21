@@ -4,7 +4,6 @@ import (
 	"context"
 	_ "embed" // used to embed config
 	"fmt"
-	"net/http"
 	"net/url"
 	"reflect"
 	"strconv"
@@ -99,20 +98,22 @@ func parseCatchpointRound(catchpoint string) (round sdk.Round, err error) {
 
 func (algodImp *algodImporter) startCatchpointCatchup() error {
 	// Run catchpoint catchup
-	req, err := http.NewRequest(
-		"POST",
-		fmt.Sprintf("%s/v2/catchup/%s", algodImp.cfg.NetAddr, algodImp.cfg.CatchupConfig.Catchpoint),
+	client, err := common.MakeClient(algodImp.cfg.NetAddr, "X-Algo-API-Token", algodImp.cfg.CatchupConfig.AdminToken)
+	if err != nil {
+		return fmt.Errorf("received unexpected error creating catchpoint client: %w", err)
+	}
+	var resp string
+	err = client.Post(
+		algodImp.ctx,
+		&resp,
+		fmt.Sprintf("/v2/catchup/%s", common.EscapeParams(algodImp.cfg.CatchupConfig.Catchpoint)...),
+		nil,
+		nil,
 		nil,
 	)
 	if err != nil {
-		return fmt.Errorf("received unexpected error creating v2/catchup http request: %w", err)
+		return fmt.Errorf("POST /v2/catchup/%s received unexpected error: %w", algodImp.cfg.CatchupConfig.Catchpoint, err)
 	}
-	req.Header.Set("X-Algo-API-Token", algodImp.cfg.CatchupConfig.AdminToken)
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return fmt.Errorf("POST /v2/catchup/ received unexpected error: %w", err)
-	}
-	_ = resp.Body.Close()
 	return nil
 }
 
@@ -139,7 +140,7 @@ func (algodImp *algodImporter) monitorCatchpointCatchup() error {
 		case stat.CatchpointAcquiredBlocks > 0:
 			algodImp.logger.Infof("catchup phase 3 of 4 (Acquired Blocks): %d / %d", stat.CatchpointAcquiredBlocks, stat.CatchpointTotalBlocks)
 		case stat.CatchpointVerifiedAccounts > 0:
-			algodImp.logger.Infof("catchup phase 2 of 4 (Verified Accounts):  %d / %d", stat.CatchpointVerifiedAccounts, stat.CatchpointTotalAccounts)
+			algodImp.logger.Infof("catchup phase 2 of 4 (Verified Accounts): %d / %d", stat.CatchpointVerifiedAccounts, stat.CatchpointTotalAccounts)
 		case stat.CatchpointProcessedAccounts > 0:
 			algodImp.logger.Infof("catchup phase 1 of 4 (Processed Accounts): %d / %d", stat.CatchpointProcessedAccounts, stat.CatchpointTotalAccounts)
 		default:
