@@ -132,9 +132,9 @@ func makeInitCmd() *cobra.Command {
 		Use:   "init",
 		Short: "initializes a Conduit data directory",
 		Long: `Initializes a Conduit data directory and conduit.yml file. By default
-the config file uses an algod archival node importer and a block file
-writer exporter. The plugin templates can be changed using the
-different flags.
+the config file uses an algod importer in follower mode and a block
+file writer exporter. The plugin templates can be changed using the
+different options.
 
 Once initialized the conduit.yml file needs to be modified. Refer to the file
 comments for details.
