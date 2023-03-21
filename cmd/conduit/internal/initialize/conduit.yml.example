@@ -1,5 +1,20 @@
-# Generated conduit configuration file.
+# Log verbosity: PANIC, FATAL, ERROR, WARN, INFO, DEBUG, TRACE
 log-level: INFO
+
+# If no log file is provided logs are written to stdout.
+#log-file:
+
+# Number of retries to perform after a pipeline plugin error.
+retry-count: 10
+
+# Time duration to wait between retry attempts.
+retry-delay: "1s"
+
+# Optional filepath to use for pidfile.
+#pid-filepath: /path/to/pidfile
+
+# Whether or not to print the conduit banner on startup.
+hide-banner: false
 
 # When enabled prometheus metrics are available on '/metrics'
 metrics:
@@ -7,11 +22,11 @@ metrics:
   addr: ":9999"
   prefix: "conduit"
 
-# The importer is typically an algod archival instance.
+# The importer is typically an algod follower node.
 importer:
 %s
 
-# One or more processors may be defined to manipulate what data
+# Zero or more processors may be defined to manipulate what data
 # reaches the exporter.
 processors:
 %s
