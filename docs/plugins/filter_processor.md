@@ -4,8 +4,6 @@ This is used to filter transactions to include only the ones that you want. This
 which only require specific applications or accounts. Using the default configuration, results for a matched transaction
 would also include its transaction group and search is disable for inner transactions. 
 
-Transactions of the same group are returned and match on inner transactions is disabled by default.
-
 ## any / all
 One or more top-level operations should be provided.
 * any: transactions are included if they match `any` of the nested sub expressions.
