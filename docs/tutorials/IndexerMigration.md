@@ -1,5 +1,8 @@
 # Migrating from Indexer to Conduit
 
+The first part of this document gives an overview and background on Indexer and Conduit architectures. To skip directly
+to the migration instructions, see [the overview on altering indexer applications.](#altering-architecture-of-indexer-applications)
+
 The [Algorand Indexer](https://github.com/algorand/indexer) originally provided both a block processing pipeline to ingest block
 data from an Algorand node into a Postgresql database, and a rest API which serves that data. However, the block
 processing pipeline functionality from Indexer has been moved into, and will be maintained in, Conduit.
@@ -207,7 +210,7 @@ config as follows, and restart it.
 ```yaml
 Archival: false,
 MaxAcctLookback: 256,
-CatchupParallelBlocks: 256,
+CatchupParallelBlocks: 32,
 EnableFollowMode: true
 ```
 Your node will then drop all but the last 1000 rounds from your database, and will have `2 * MaxAcctLookback`
@@ -223,7 +226,12 @@ update the ledger constraint:
 curl -X POST -H "X-Algo-API-TOKEN:$ALGOD_TOKEN" http://$ALGOD_ADDR/v2/ledger/sync/25000000
 ```
 
-Now you can run fast catchup on your node to the closest catchpoint prior to the desired sync round.
+Now you can run fast catchup on your node to the closest catchpoint prior to the desired sync round. For a list of catchpoints,
+you can reference the following:
+* [Mainnet](https://algorand-catchpoints.s3.us-east-2.amazonaws.com/consolidated/mainnet_catchpoints.txt)
+* [Testnet](https://algorand-catchpoints.s3.us-east-2.amazonaws.com/consolidated/testnet_catchpoints.txt)
+* [Betanet](https://algorand-catchpoints.s3.us-east-2.amazonaws.com/consolidated/betanet_catchpoints.txt)
+
 ```
 goal node -d $ALGOD_DIR catchup 25000000#EOX5UYQV4IXTGYQCIDR7ZLUK6WZGDC5EG6PYQGBG6PBYNAQUPN2Q
 ```
@@ -233,13 +241,18 @@ advance past the round Conduit needs before we're ready.
 
 ### Step 2: Remove the Local Ledger
 Because our Conduit pipeline will use the Follower node's state delta API, we no longer need our local ledger persistent 
-volume. Simply remove it.
+volume. It can be removed.
 
 ### Step 3: Refactor our Indexer Writer to Conduit
 You're free to capture any data you like using Conduit. I'd encourage you to take a look at the filter processor and see
 if you can reduce the amount of data you store in your database by removing non-relevant data.
 
-In order to have parity with the previous Indexer, which stored all data, you can use the following Conduit configuration.
+If you would like to maintain parity with the legacy Indexer, which stored all data, you can use the `conduit init` command to create
+an initial Conduit config.
+```
+conduit init --importer algod --exporter postgresql --data new_data_dir
+```
+Here is an example of a basic config which runs the `algod` importer and `postgresql` exporter.
 ```yaml
 retry-count: 10
 retry-delay: "1s"
