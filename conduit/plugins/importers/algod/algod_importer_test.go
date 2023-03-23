@@ -98,7 +98,7 @@ func TestInitCatchup(t *testing.T) {
 			NewAlgodServer(
 				GenesisResponder,
 				MakeSyncRoundResponder(400)),
-			"received unexpected error setting sync round: HTTP 400",
+			"received unexpected error setting sync round (1): HTTP 400",
 			[]string{}},
 		{"catchpoint parse failure", "notvalid",
 			NewAlgodServer(

@@ -264,6 +264,16 @@ func (p *pipelineImpl) Init() error {
 	importerName := (*p.importer).Metadata().Name
 	importerLogger.SetFormatter(makePluginLogFormatter(plugins.Importer, importerName))
 
+	var err error
+	p.pipelineMetadata, err = p.initializeOrLoadBlockMetadata()
+	if err != nil {
+		return fmt.Errorf("Pipeline.Start(): could not read metadata: %w", err)
+	}
+	// overriding NextRound if NextRoundOverride is set
+	if p.cfg.ConduitArgs.NextRoundOverride > 0 {
+		p.logger.Infof("Overriding default next round from %d to %d.", p.pipelineMetadata.NextRound, p.cfg.ConduitArgs.NextRoundOverride)
+		p.pipelineMetadata.NextRound = p.cfg.ConduitArgs.NextRoundOverride
+	}
 	// InitProvider
 	round := sdk.Round(p.pipelineMetadata.NextRound)
 	// Initial genesis object is nil--gets updated after importer.Init
@@ -285,17 +295,8 @@ func (p *pipelineImpl) Init() error {
 	ghbase64 := base64.StdEncoding.EncodeToString(gh[:])
 	p.pipelineMetadata.GenesisHash = ghbase64
 	p.pipelineMetadata.Network = genesis.Network
-	p.pipelineMetadata, err = p.initializeOrLoadBlockMetadata()
-	if err != nil {
-		return fmt.Errorf("Pipeline.Start(): could not read metadata: %w", err)
-	}
 	if p.pipelineMetadata.GenesisHash != ghbase64 {
 		return fmt.Errorf("Pipeline.Start(): genesis hash in metadata does not match expected value: actual %s, expected %s", gh, p.pipelineMetadata.GenesisHash)
-	}
-	// overriding NextRound if NextRoundOverride is set
-	if p.cfg.ConduitArgs.NextRoundOverride > 0 {
-		p.logger.Infof("Overriding default next round from %d to %d.", p.pipelineMetadata.NextRound, p.cfg.ConduitArgs.NextRoundOverride)
-		p.pipelineMetadata.NextRound = p.cfg.ConduitArgs.NextRoundOverride
 	}
 
 	p.logger.Infof("Initialized Importer: %s", importerName)

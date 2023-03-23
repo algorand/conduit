@@ -158,7 +158,7 @@ func (algodImp *algodImporter) catchupNode(initProvider data.InitProvider) error
 	// Set the sync round to the round provided by initProvider
 	_, err := algodImp.aclient.SetSyncRound(uint64(initProvider.NextDBRound())).Do(algodImp.ctx)
 	if err != nil {
-		return fmt.Errorf("received unexpected error setting sync round: %w", err)
+		return fmt.Errorf("received unexpected error setting sync round (%d): %w", initProvider.NextDBRound(), err)
 	}
 	// Run Catchpoint Catchup
 	if algodImp.cfg.CatchupConfig.Catchpoint != "" {
