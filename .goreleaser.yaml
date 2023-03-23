@@ -1,0 +1,47 @@
+before:
+  hooks:
+    # You may remove this if you don't use go modules.
+    - go mod tidy
+    # you may remove this if you don't need go generate
+    - go generate ./...
+
+# Build mac universal binary.
+universal_binaries:
+  - replace: true
+
+builds:
+  - main: cmd/conduit/main.go
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - windows
+      - darwin
+    # skip 386 architecture.
+    goarch:
+      - amd64
+      - arm64
+    ldflags: >
+      -s -w
+      -X github.com/algorand/conduit/version.Hash={{.FullCommit}}
+      -X github.com/algorand/conduit/version.ShortHash={{.ShortCommit}}
+      -X github.com/algorand/conduit/version.CompileTime={{.Timestamp}}
+      -X github.com/algorand/conduit/version.ReleaseVersion={{.Version}}
+
+archives:
+  - replacements:
+      darwin: Darwin
+      linux: Linux
+      windows: Windows
+      amd64: x86_64
+checksum:
+  name_template: 'checksums.txt'
+snapshot:
+  name_template: "{{ incpatch .Version }}-next"
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - '^chore:'
+      - '^docs:'
+      - '^test:'

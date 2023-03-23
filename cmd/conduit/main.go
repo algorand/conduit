@@ -11,8 +11,6 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/cobra/doc"
 
-	"github.com/algorand/indexer/version"
-
 	"github.com/algorand/conduit/cmd/conduit/internal/initialize"
 	"github.com/algorand/conduit/cmd/conduit/internal/list"
 	"github.com/algorand/conduit/conduit"
@@ -21,6 +19,7 @@ import (
 	_ "github.com/algorand/conduit/conduit/plugins/exporters/all"
 	_ "github.com/algorand/conduit/conduit/plugins/importers/all"
 	_ "github.com/algorand/conduit/conduit/plugins/processors/all"
+	"github.com/algorand/conduit/version"
 )
 
 var (
@@ -72,6 +71,7 @@ func runConduitCmdWithConfig(args *conduit.Args) error {
 		return fmt.Errorf("failed to create logger: %w", err)
 	}
 
+	logger.Infof("Starting Conduit %s", version.LongVersion())
 	logger.Infof("Using data directory: %s", args.ConduitDataDir)
 	logger.Info("Conduit configuration is valid")
 
@@ -138,7 +138,6 @@ Detailed documentation is online: https://github.com/algorand/conduit`,
 		},
 		PersistentPreRun: func(cmd *cobra.Command, args []string) {
 			if vFlag {
-				fmt.Println("Conduit Pre-Release")
 				fmt.Printf("%s\n", version.LongVersion())
 				os.Exit(0)
 			}
