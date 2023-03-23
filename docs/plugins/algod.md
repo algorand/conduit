@@ -12,5 +12,9 @@ importer:
     config:
       - netaddr: "algod URL"
         token: "algod REST API token"
+        # This is an optional section which will enable Conduit to run fast catchup on your behalf using the provided catchpoint
+        catchup-config:
+          catchpoint: "the catchpoint to use for fast catchup"
+          admin-token: "the algod admin API token (used to run catchpoint catchup)"
 ```
 
