@@ -28,3 +28,10 @@ jobs:
           args: release --clean
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # After a release, generate a PR to publish docs.
+  # Enable this post release if docs-pr.yml works
+  #  publish-docs-trigger:
+  #    name: Trigger a PR to update documentation.
+  #    needs: goreleaser
+  #    uses: ./.github/workflows/docs-pr.yml
