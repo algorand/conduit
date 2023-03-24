@@ -27,7 +27,7 @@ jobs:
       - name: Install golang
         uses: actions/setup-go@v3
         with:
-          go-version-file: 'go.mod'
+          go-version-file: 'conduit/go.mod'
       - name: Generate and install docs
         run: |
           cd conduit
