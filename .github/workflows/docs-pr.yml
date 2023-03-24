@@ -39,7 +39,7 @@ jobs:
           # Update hand-written documentation
           rm -rf docs/docs/get-details/conduit/
           cp -r conduit/docs docs/docs/get-details/conduit
-          # TODO: check if there are any changes?
+          # TODO: check if there are any changes before creating a PR?
       - name: Create algorand/docs Pull Request
         uses: peter-evans/create-pull-request@v4
         with:
