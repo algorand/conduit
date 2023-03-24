@@ -3,6 +3,7 @@ name: "Doc Repo PR Generator"
 # For now, only trigger manually
 on:
   workflow_dispatch:
+  pull_request:
 
 jobs:
   docs-pr:
