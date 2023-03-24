@@ -1,5 +1,9 @@
 name: "Doc Repo PR Generator"
 
+# For now, only trigger manually
+on:
+  workflow_dispatch:
+
 jobs:
   docs-pr:
     runs-on: ubuntu-latest
