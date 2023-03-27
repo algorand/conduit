@@ -7,7 +7,7 @@ import (
 	"github.com/sirupsen/logrus/hooks/test"
 	"github.com/stretchr/testify/assert"
 
-	"github.com/algorand/conduit/conduit"
+	"github.com/algorand/conduit/conduit/plugins"
 )
 
 var logger *logrus.Logger
@@ -20,8 +20,8 @@ type mockExporter struct {
 	Exporter
 }
 
-func (m *mockExporter) Metadata() conduit.Metadata {
-	return conduit.Metadata{}
+func (m *mockExporter) Metadata() plugins.Metadata {
+	return plugins.Metadata{}
 }
 
 type mockExporterConstructor struct {

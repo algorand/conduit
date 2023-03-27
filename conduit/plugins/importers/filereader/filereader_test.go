@@ -3,22 +3,23 @@ package fileimporter
 import (
 	"context"
 	"fmt"
-	"github.com/algorand/conduit/conduit"
 	"os"
 	"path"
 	"testing"
 	"time"
 
-	sdk "github.com/algorand/go-algorand-sdk/v2/types"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v3"
 
+	"github.com/algorand/conduit/conduit"
 	"github.com/algorand/conduit/conduit/data"
 	"github.com/algorand/conduit/conduit/plugins"
 	"github.com/algorand/conduit/conduit/plugins/exporters/filewriter"
 	"github.com/algorand/conduit/conduit/plugins/importers"
+
+	sdk "github.com/algorand/go-algorand-sdk/v2/types"
 )
 
 var (

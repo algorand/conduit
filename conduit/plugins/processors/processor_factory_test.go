@@ -7,7 +7,7 @@ import (
 	"github.com/sirupsen/logrus/hooks/test"
 	"github.com/stretchr/testify/assert"
 
-	"github.com/algorand/conduit/conduit"
+	"github.com/algorand/conduit/conduit/plugins"
 )
 
 var logger *logrus.Logger
@@ -20,8 +20,8 @@ type mockProcessor struct {
 	Processor
 }
 
-func (m *mockProcessor) Metadata() conduit.Metadata {
-	return conduit.Metadata{
+func (m *mockProcessor) Metadata() plugins.Metadata {
+	return plugins.Metadata{
 		Name:         "foobar",
 		Description:  "",
 		Deprecated:   false,

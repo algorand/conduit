@@ -13,3 +13,9 @@
 
     # Algod API token.
     token: ""
+
+    # Algod catchpoint catchup arguments
+    catchup-config:
+        catchpoint: ""
+        # Algod Admin API Token
+        admin-token: ""

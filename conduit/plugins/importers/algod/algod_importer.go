@@ -21,7 +21,6 @@ import (
 	"github.com/algorand/go-algorand-sdk/v2/encoding/msgpack"
 	sdk "github.com/algorand/go-algorand-sdk/v2/types"
 
-	"github.com/algorand/conduit/conduit"
 	"github.com/algorand/conduit/conduit/data"
 	"github.com/algorand/conduit/conduit/plugins"
 	"github.com/algorand/conduit/conduit/plugins/importers"
@@ -56,7 +55,8 @@ type algodImporter struct {
 //go:embed sample.yaml
 var sampleConfig string
 
-var algodImporterMetadata = conduit.Metadata{
+var algodImporterMetadata = plugins.Metadata{
+	Type:         plugins.Importer,
 	Name:         PluginName,
 	Description:  "Importer for fetching blocks from an algod REST API.",
 	Deprecated:   false,
@@ -71,7 +71,7 @@ func (algodImp *algodImporter) OnComplete(input data.BlockData) error {
 	return err
 }
 
-func (algodImp *algodImporter) Metadata() conduit.Metadata {
+func (algodImp *algodImporter) Metadata() plugins.Metadata {
 	return algodImporterMetadata
 }
 

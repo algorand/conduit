@@ -6,7 +6,6 @@ import (
 
 	"github.com/sirupsen/logrus"
 
-	"github.com/algorand/conduit/conduit"
 	"github.com/algorand/conduit/conduit/data"
 	"github.com/algorand/conduit/conduit/plugins"
 	"github.com/algorand/conduit/conduit/plugins/exporters"
@@ -20,7 +19,8 @@ var sampleConfig string
 
 // Each Exporter should implement its own Metadata object. These fields shouldn't change at runtime so there is
 // no reason to construct more than a single metadata object.
-var metadata = conduit.Metadata{
+var metadata = plugins.Metadata{
+	Type:         plugins.Exporter,
 	Name:         "example",
 	Description:  "example exporter",
 	Deprecated:   false,
@@ -28,7 +28,7 @@ var metadata = conduit.Metadata{
 }
 
 // Metadata returns the Exporter's Metadata object
-func (exp *exampleExporter) Metadata() conduit.Metadata {
+func (exp *exampleExporter) Metadata() plugins.Metadata {
 	return metadata
 }
 

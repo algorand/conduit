@@ -5,7 +5,6 @@ import (
 
 	"github.com/sirupsen/logrus"
 
-	"github.com/algorand/conduit/conduit"
 	"github.com/algorand/conduit/conduit/data"
 	"github.com/algorand/conduit/conduit/plugins"
 )
@@ -13,7 +12,7 @@ import (
 // Exporter defines the interface for plugins
 type Exporter interface {
 	// PluginMetadata implement this interface.
-	conduit.PluginMetadata
+	plugins.PluginMetadata
 
 	// Init will be called during initialization, before block data starts going through the pipeline.
 	// Typically used for things like initializing network connections.

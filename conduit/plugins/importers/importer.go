@@ -7,7 +7,6 @@ import (
 
 	sdk "github.com/algorand/go-algorand-sdk/v2/types"
 
-	"github.com/algorand/conduit/conduit"
 	"github.com/algorand/conduit/conduit/data"
 	"github.com/algorand/conduit/conduit/plugins"
 )
@@ -15,7 +14,7 @@ import (
 // Importer defines the interface for importer plugins
 type Importer interface {
 	// PluginMetadata implement this interface.
-	conduit.PluginMetadata
+	plugins.PluginMetadata
 
 	// Init will initialize each importer with a given config. This config will contain the Unmarhsalled config file specific to this plugin.
 	// It is called during initialization of an importer plugin such as setting up network connections, file buffers etc.

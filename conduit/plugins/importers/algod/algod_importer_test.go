@@ -51,7 +51,7 @@ func TestImporterMetadata(t *testing.T) {
 }
 
 func TestCloseSuccess(t *testing.T) {
-	ts := NewAlgodServer(GenesisResponder, MakeSyncRoundResponder(200), BlockAfterResponder)
+	ts := NewAlgodServer(GenesisResponder, MakeSyncRoundResponder(http.StatusOK), BlockAfterResponder)
 	testImporter := New()
 	cfgStr := fmt.Sprintf(`---
 mode: %s
@@ -72,7 +72,7 @@ func TestInitSuccess(t *testing.T) {
 	}
 	for _, ttest := range tests {
 		t.Run(ttest.name, func(t *testing.T) {
-			ts := NewAlgodServer(GenesisResponder, MakeSyncRoundResponder(200), BlockAfterResponder)
+			ts := NewAlgodServer(GenesisResponder, MakeSyncRoundResponder(http.StatusOK), BlockAfterResponder)
 			testImporter := New()
 			cfgStr := fmt.Sprintf(`---
 mode: %s
@@ -97,56 +97,56 @@ func TestInitCatchup(t *testing.T) {
 		{"sync round failure", "",
 			NewAlgodServer(
 				GenesisResponder,
-				MakeSyncRoundResponder(400)),
+				MakeSyncRoundResponder(http.StatusBadRequest)),
 			"received unexpected error setting sync round (1): HTTP 400",
 			[]string{}},
 		{"catchpoint parse failure", "notvalid",
 			NewAlgodServer(
 				GenesisResponder,
-				MakeSyncRoundResponder(200)),
+				MakeSyncRoundResponder(http.StatusOK)),
 			"unable to parse catchpoint, invalid format",
 			[]string{}},
 		{"invalid catchpoint round uint parsing error", "abcd#abcd",
 			NewAlgodServer(
 				GenesisResponder,
-				MakeSyncRoundResponder(200)),
+				MakeSyncRoundResponder(http.StatusOK)),
 			"invalid syntax",
 			[]string{}},
 		{"node status failure", "1234#abcd",
 			NewAlgodServer(
 				GenesisResponder,
-				MakeSyncRoundResponder(200),
-				MakeStatusResponder("/v2/status", 400, "")),
+				MakeSyncRoundResponder(http.StatusOK),
+				MakeStatusResponder("/v2/status", http.StatusBadRequest, "")),
 			"received unexpected error failed to get node status: HTTP 400",
 			[]string{}},
 		{"catchpoint round before node round skips fast catchup", "1234#abcd",
 			NewAlgodServer(
 				GenesisResponder,
-				MakeSyncRoundResponder(200),
+				MakeSyncRoundResponder(http.StatusOK),
 				MakeNodeStatusResponder(models.NodeStatus{LastRound: 1235})),
 			"",
 			[]string{"Skipping catchpoint catchup for 1234#abcd, since it's before node round 1235"}},
 		{"start catchpoint catchup failure", "1236#abcd",
 			NewAlgodServer(
 				GenesisResponder,
-				MakeSyncRoundResponder(200),
+				MakeSyncRoundResponder(http.StatusOK),
 				MakeNodeStatusResponder(models.NodeStatus{LastRound: 1235}),
-				MakeStatusResponder("/v2/catchup/", 400, "")),
+				MakeStatusResponder("/v2/catchup/", http.StatusBadRequest, "")),
 			"POST /v2/catchup/1236#abcd received unexpected error: HTTP 400",
 			[]string{}},
 		{"monitor catchup node status failure", "1236#abcd",
 			NewAlgodServer(
 				GenesisResponder,
-				MakeSyncRoundResponder(200),
-				MakeJsonResponderSeries("/v2/status", []int{200, 400}, []interface{}{models.NodeStatus{LastRound: 1235}}),
-				MakeStatusResponder("/v2/catchup/", 200, "")),
+				MakeSyncRoundResponder(http.StatusOK),
+				MakeJsonResponderSeries("/v2/status", []int{http.StatusOK, http.StatusBadRequest}, []interface{}{models.NodeStatus{LastRound: 1235}}),
+				MakeStatusResponder("/v2/catchup/", http.StatusOK, "")),
 			"received unexpected error getting node status: HTTP 400",
 			[]string{}},
 		{"monitor catchup success", "1236#abcd",
 			NewAlgodServer(
 				GenesisResponder,
-				MakeSyncRoundResponder(200),
-				MakeJsonResponderSeries("/v2/status", []int{200}, []interface{}{
+				MakeSyncRoundResponder(http.StatusOK),
+				MakeJsonResponderSeries("/v2/status", []int{http.StatusOK}, []interface{}{
 					models.NodeStatus{LastRound: 1235},
 					models.NodeStatus{Catchpoint: "1236#abcd", CatchpointProcessedAccounts: 1, CatchpointTotalAccounts: 1},
 					models.NodeStatus{Catchpoint: "1236#abcd", CatchpointVerifiedAccounts: 1, CatchpointTotalAccounts: 1},
@@ -154,7 +154,7 @@ func TestInitCatchup(t *testing.T) {
 					models.NodeStatus{Catchpoint: "1236#abcd"},
 					models.NodeStatus{LastRound: 1236},
 				}),
-				MakeStatusResponder("/v2/catchup/", 200, "")),
+				MakeStatusResponder("/v2/catchup/", http.StatusOK, "")),
 			"",
 			[]string{
 				"catchup phase 1 of 4 (Processed Accounts): 1 / 1",
@@ -165,9 +165,9 @@ func TestInitCatchup(t *testing.T) {
 		{"wait for node to catchup error", "1236#abcd",
 			NewAlgodServer(
 				GenesisResponder,
-				MakeSyncRoundResponder(200),
-				MakeJsonResponderSeries("/v2/status", []int{200, 200, 400}, []interface{}{models.NodeStatus{LastRound: 1235}}),
-				MakeStatusResponder("/v2/catchup/", 200, "")),
+				MakeSyncRoundResponder(http.StatusOK),
+				MakeJsonResponderSeries("/v2/status", []int{http.StatusOK, http.StatusOK, http.StatusBadRequest}, []interface{}{models.NodeStatus{LastRound: 1235}}),
+				MakeStatusResponder("/v2/catchup/", http.StatusOK, "")),
 			"received unexpected error (StatusAfterBlock) waiting for node to catchup: HTTP 400",
 			[]string{}},
 	}
@@ -183,9 +183,9 @@ catchup-config:
 `, "follower", ttest.algodServer.URL, ttest.catchpoint)
 			_, err := testImporter.Init(ctx, conduit.MakePipelineInitProvider(&pRound, nil), plugins.MakePluginConfig(cfgStr), testLogger)
 			if ttest.err != "" {
-				assert.ErrorContains(t, err, ttest.err)
+				require.ErrorContains(t, err, ttest.err)
 			} else {
-				assert.NoError(t, err)
+				require.NoError(t, err)
 			}
 			_ = testImporter.Close()
 			// Make sure each of the expected log messages are present
@@ -270,7 +270,7 @@ func TestConfigDefault(t *testing.T) {
 }
 
 func TestWaitForBlockBlockFailure(t *testing.T) {
-	ts := NewAlgodServer(GenesisResponder, MakeSyncRoundResponder(200), BlockAfterResponder)
+	ts := NewAlgodServer(GenesisResponder, MakeSyncRoundResponder(http.StatusOK), BlockAfterResponder)
 	testImporter := New()
 	cfgStr := fmt.Sprintf(`---
 mode: %s
@@ -294,14 +294,14 @@ func TestGetBlockSuccess(t *testing.T) {
 		{"", NewAlgodServer(GenesisResponder,
 			BlockResponder,
 			BlockAfterResponder,
-			MakeSyncRoundResponder(200))},
+			MakeSyncRoundResponder(http.StatusOK))},
 		{"archival", NewAlgodServer(GenesisResponder,
 			BlockResponder,
 			BlockAfterResponder,
-			MakeSyncRoundResponder(200))},
+			MakeSyncRoundResponder(http.StatusOK))},
 		{"follower", NewAlgodServer(GenesisResponder,
 			BlockResponder,
-			BlockAfterResponder, LedgerStateDeltaResponder, MakeSyncRoundResponder(200))},
+			BlockAfterResponder, LedgerStateDeltaResponder, MakeSyncRoundResponder(http.StatusOK))},
 	}
 	for _, ttest := range tests {
 		t.Run(ttest.name, func(t *testing.T) {
@@ -345,11 +345,11 @@ func TestGetBlockContextCancelled(t *testing.T) {
 		{"archival", NewAlgodServer(GenesisResponder,
 			BlockResponder,
 			BlockAfterResponder,
-			MakeSyncRoundResponder(200))},
+			MakeSyncRoundResponder(http.StatusOK))},
 		{"follower", NewAlgodServer(GenesisResponder,
 			BlockResponder,
 			BlockAfterResponder, LedgerStateDeltaResponder,
-			MakeSyncRoundResponder(200))},
+			MakeSyncRoundResponder(http.StatusOK))},
 	}
 
 	for _, ttest := range tests {
@@ -377,9 +377,9 @@ func TestGetBlockFailure(t *testing.T) {
 		algodServer *httptest.Server
 	}{
 		{"archival", NewAlgodServer(GenesisResponder,
-			BlockAfterResponder, MakeSyncRoundResponder(200))},
+			BlockAfterResponder, MakeSyncRoundResponder(http.StatusOK))},
 		{"follower", NewAlgodServer(GenesisResponder,
-			BlockAfterResponder, LedgerStateDeltaResponder, MakeSyncRoundResponder(200))},
+			BlockAfterResponder, LedgerStateDeltaResponder, MakeSyncRoundResponder(http.StatusOK))},
 	}
 	for _, ttest := range tests {
 		t.Run(ttest.name, func(t *testing.T) {
@@ -460,7 +460,7 @@ func TestGetBlockErrors(t *testing.T) {
 			// Setup mock algod
 			handler := NewAlgodHandler(
 				GenesisResponder,
-				MakeSyncRoundResponder(200),
+				MakeSyncRoundResponder(http.StatusOK),
 				tc.blockAfterResponder,
 				tc.blockResponder,
 				tc.deltaResponder)
