@@ -138,14 +138,14 @@ func (algodImp *algodImporter) monitorCatchpointCatchup() error {
 		case !running:
 			break
 		case stat.CatchpointAcquiredBlocks > 0:
-			algodImp.logger.Infof("catchup phase 3 of 4 (Acquired Blocks): %d / %d", stat.CatchpointAcquiredBlocks, stat.CatchpointTotalBlocks)
+			algodImp.logger.Infof("catchup phase Acquired Blocks: %d / %d", stat.CatchpointAcquiredBlocks, stat.CatchpointTotalBlocks)
 		case stat.CatchpointVerifiedAccounts > 0:
-			algodImp.logger.Infof("catchup phase 2 of 4 (Verified Accounts): %d / %d", stat.CatchpointVerifiedAccounts, stat.CatchpointTotalAccounts)
+			algodImp.logger.Infof("catchup phase Verified Accounts: %d / %d", stat.CatchpointVerifiedAccounts, stat.CatchpointTotalAccounts)
 		case stat.CatchpointProcessedAccounts > 0:
-			algodImp.logger.Infof("catchup phase 1 of 4 (Processed Accounts): %d / %d", stat.CatchpointProcessedAccounts, stat.CatchpointTotalAccounts)
+			algodImp.logger.Infof("catchup phase Processed Accounts: %d / %d", stat.CatchpointProcessedAccounts, stat.CatchpointTotalAccounts)
 		default:
 			// Todo: We should expose catchupService.VerifiedBlocks via the NodeStatusResponse
-			algodImp.logger.Infof("catchup phase 4 of 4 (Verified Blocks)")
+			algodImp.logger.Infof("catchup phase Verified Blocks")
 		}
 
 	}
