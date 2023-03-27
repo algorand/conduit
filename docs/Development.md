@@ -7,6 +7,11 @@ There are three different interfaces to implement, depending on what sort of fun
 
 All plugins should be implemented in the respective `importers`, `processors`, or `exporters` package.
 
+For interface details, refer to the godoc:
+* [Importer](https://pkg.go.dev/github.com/algorand/conduit/conduit/plugins/importers)
+* [Processor](https://pkg.go.dev/github.com/algorand/conduit/conduit/plugins/processors)
+* [Exporter](https://pkg.go.dev/github.com/algorand/conduit/conduit/plugins/exporters)
+
 # Registering a plugin
 
 ## Register the Constructor
