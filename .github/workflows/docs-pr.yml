@@ -50,5 +50,4 @@ jobs:
           reviewers: "nullun,barnjamin,ryanrfox"
           delete-branch: true
           base: staging
-          author: algo-devops-service <ci-bot@algorand.com>
           token: ${{ secrets.PAT }}
