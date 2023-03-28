@@ -69,7 +69,7 @@ func instantiateCollectors(subsystem string) {
 		prometheus.GaugeOpts{
 			Subsystem: subsystem,
 			Name:      ImportedRoundGaugeName,
-			Help:      "The most recent round indexer has imported.",
+			Help:      "The most recent round conduit has imported.",
 		})
 
 	ImporterTimeSeconds = prometheus.NewSummary(

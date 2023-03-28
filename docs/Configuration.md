@@ -32,8 +32,11 @@ metrics:
 
 # Define one importer.
 importer:
-    name:
+    name: "name for the importer"
     config:
+      mode: "archival or follower"
+      netaddr: "importer URL"
+      token: "importer API token"
 
 # Define one or more processors.
 processors:

@@ -18,14 +18,14 @@ type Exporter interface {
 	// Init will be called during initialization, before block data starts going through the pipeline.
 	// Typically used for things like initializing network connections.
 	// The ExporterConfig passed to Connect will contain the Unmarhsalled config file specific to this plugin.
-	// Should return an error if it fails--this will result in the Indexer process terminating.
+	// Should return an error if it fails--this will result in the Conduit process terminating.
 	Init(ctx context.Context, initProvider data.InitProvider, cfg plugins.PluginConfig, logger *logrus.Logger) error
 
 	// Config returns the configuration options used to create an Exporter.
 	// Initialized during Connect, it should return nil until the Exporter has been Connected.
 	Config() string
 
-	// Close will be called during termination of the Indexer process.
+	// Close will be called during termination of the Conduit process.
 	// There is no guarantee that plugin lifecycle hooks will be invoked in any specific order in relation to one another.
 	// Returns an error if it fails which will be surfaced in the logs, but the process is already terminating.
 	Close() error
