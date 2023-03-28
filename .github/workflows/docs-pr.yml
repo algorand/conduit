@@ -47,7 +47,8 @@ jobs:
           branch: "conduit-automated-pr"
           title: "Conduit Documentation Update"
           body: "Regenerate CLI documentation and update hand written documentation."
-          reviewers: "nullun,barnjamin,ryanrfox"
+          # this group is configurable in github teams.
+          reviewers: "algorand/algorand-docs-team"
           delete-branch: true
           base: staging
           token: ${{ secrets.PAT }}
