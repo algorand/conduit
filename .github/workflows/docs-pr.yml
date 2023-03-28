@@ -44,6 +44,7 @@ jobs:
         uses: peter-evans/create-pull-request@v4
         with:
           path: docs
+          author: algo-dev-service <ci-bot@algorand.com>
           branch: "conduit-automated-pr"
           title: "Conduit Documentation Update"
           body: "Regenerate CLI documentation and update hand written documentation."
