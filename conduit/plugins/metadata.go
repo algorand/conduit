@@ -6,7 +6,6 @@ type Metadata struct {
 	Description  string
 	Deprecated   bool
 	SampleConfig string
-	Type         PluginType
 }
 
 // PluginMetadata is the common interface for providing plugin metadata.

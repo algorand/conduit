@@ -42,7 +42,6 @@ var sampleConfig string
 // Metadata returns metadata
 func (a *FilterProcessor) Metadata() plugins.Metadata {
 	return plugins.Metadata{
-		Type:         plugins.Processor,
 		Name:         PluginName,
 		Description:  "Filter transactions out of the results according to a configurable pattern.",
 		Deprecated:   false,

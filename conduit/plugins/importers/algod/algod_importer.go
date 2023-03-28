@@ -56,7 +56,6 @@ type algodImporter struct {
 var sampleConfig string
 
 var algodImporterMetadata = plugins.Metadata{
-	Type:         plugins.Importer,
 	Name:         PluginName,
 	Description:  "Importer for fetching blocks from an algod REST API.",
 	Deprecated:   false,

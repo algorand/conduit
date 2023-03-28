@@ -33,7 +33,6 @@ type fileExporter struct {
 var sampleFile string
 
 var metadata = plugins.Metadata{
-	Type:         plugins.Exporter,
 	Name:         PluginName,
 	Description:  "Exporter for writing data to a file.",
 	Deprecated:   false,

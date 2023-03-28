@@ -29,7 +29,6 @@ type noopExporter struct {
 var sampleConfig string
 
 var metadata = plugins.Metadata{
-	Type:         plugins.Exporter,
 	Name:         PluginName,
 	Description:  "noop exporter",
 	Deprecated:   false,

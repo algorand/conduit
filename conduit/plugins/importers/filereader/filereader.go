@@ -39,7 +39,6 @@ func New() importers.Importer {
 var sampleConfig string
 
 var metadata = plugins.Metadata{
-	Type:         plugins.Importer,
 	Name:         PluginName,
 	Description:  "Importer for fetching blocks from files in a directory created by the 'file_writer' plugin.",
 	Deprecated:   false,

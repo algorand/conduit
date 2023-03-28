@@ -30,7 +30,6 @@ var sampleConfig string
 // Metadata noop
 func (p *Processor) Metadata() plugins.Metadata {
 	return plugins.Metadata{
-		Type:         plugins.Processor,
 		Name:         PluginName,
 		Description:  "noop processor",
 		Deprecated:   false,

@@ -20,7 +20,6 @@ var sampleConfig string
 // Each Exporter should implement its own Metadata object. These fields shouldn't change at runtime so there is
 // no reason to construct more than a single metadata object.
 var metadata = plugins.Metadata{
-	Type:         plugins.Exporter,
 	Name:         "example",
 	Description:  "example exporter",
 	Deprecated:   false,

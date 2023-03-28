@@ -157,10 +157,10 @@ func TestInitCatchup(t *testing.T) {
 				MakeStatusResponder("/v2/catchup/", http.StatusOK, "")),
 			"",
 			[]string{
-				"catchup phase 1 of 4 (Processed Accounts): 1 / 1",
-				"catchup phase 2 of 4 (Verified Accounts): 1 / 1",
-				"catchup phase 3 of 4 (Acquired Blocks): 1 / 1",
-				"catchup phase 4 of 4 (Verified Blocks)",
+				"catchup phase Processed Accounts: 1 / 1",
+				"catchup phase Verified Accounts: 1 / 1",
+				"catchup phase Acquired Blocks: 1 / 1",
+				"catchup phase Verified Blocks",
 			}},
 		{"wait for node to catchup error", "1236#abcd",
 			NewAlgodServer(

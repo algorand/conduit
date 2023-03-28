@@ -43,7 +43,6 @@ type postgresqlExporter struct {
 var sampleConfig string
 
 var metadata = plugins.Metadata{
-	Type:         plugins.Exporter,
 	Name:         PluginName,
 	Description:  "Exporter for writing data to a postgresql instance.",
 	Deprecated:   false,
