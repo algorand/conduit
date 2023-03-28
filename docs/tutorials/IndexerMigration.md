@@ -207,6 +207,12 @@ of storage required will be minimal in comparison.
 
 If you have an existing Archival node which is on the same round as your Indexer, you can simply stop algod, alter your
 config as follows, and restart it.
+```bash
+# Stop Algod
+goal -d $ALGOD_DIR node stop
+# Start Algod
+goal -d $ALGOD_DIR node start
+```
 ```yaml
 Archival: false,
 MaxAcctLookback: 256,
@@ -220,22 +226,34 @@ However, if your algod node's round is too far beyond your Indexer's you will ne
 Follower nodes provide the same methods of catchup as regular algod nodes, but will have the sync round set to the most
 recent ledger round upon startup.
 
+To check your algod round against your Indexer round you can use the following commands.
+`goal -d $ALGOD_DIR node status` will output general data for your node. It should contain a line listing the last committed
+block, `Last committed block: 25101152` for example.
+
+The Indexer stores the latest round in the database, and you can read it via the `/health` endpoint. The result is formatted in json
+so you can use jq to more easily see your Indexer's round (if your Indexer is listening locally on port 8980).
+```bash
+curl http://localhost:8980/health | jq '.round'
+```
+
 In order to manually catchup your node from 0 to 25 million, for example, you will need to call the sync round API to
 update the ledger constraint:
-```
+```bash
+goal -d $ALGOD_DIR node start
 curl -X POST -H "X-Algo-API-TOKEN:$ALGOD_TOKEN" http://$ALGOD_ADDR/v2/ledger/sync/25000000
 ```
 
-Now you can run fast catchup on your node to the closest catchpoint prior to the desired sync round. For a list of catchpoints,
-you can reference the following:
+Now you can run fast catchup on your node to the closest catchpoint prior to the desired sync round. 
+For a list of catchpoints, you can reference the following:
 * [Mainnet](https://algorand-catchpoints.s3.us-east-2.amazonaws.com/consolidated/mainnet_catchpoints.txt)
 * [Testnet](https://algorand-catchpoints.s3.us-east-2.amazonaws.com/consolidated/testnet_catchpoints.txt)
 * [Betanet](https://algorand-catchpoints.s3.us-east-2.amazonaws.com/consolidated/betanet_catchpoints.txt)
 
-```
+```bash
 goal node -d $ALGOD_DIR catchup 25000000#EOX5UYQV4IXTGYQCIDR7ZLUK6WZGDC5EG6PYQGBG6PBYNAQUPN2Q
 ```
-Once catchup is complete we will resume normal catchup. If your catchpoint is not exactly the round your database is on,
+
+Once catchup is complete the node will resume normal catchup. If your catchpoint is not exactly the round your database is on,
 you will need to wait for normal catchup to get your node to the desired point in time. The sync round we set earlier will ensure that the node does not
 advance past the round Conduit needs before we're ready. 
 
@@ -244,7 +262,7 @@ Because our Conduit pipeline will use the Follower node's state delta API, we no
 volume. It can be removed.
 
 ### Step 3: Refactor our Indexer Writer to Conduit
-You're free to capture any data you like using Conduit. I'd encourage you to take a look at the filter processor and see
+You're free to capture any data you like using Conduit. I'd encourage you to take a look at the [filter processor](./FilterDeepDive.md) and see
 if you can reduce the amount of data you store in your database by removing non-relevant data.
 
 If you would like to maintain parity with the legacy Indexer, which stored all data, you can use the `conduit init` command to create
