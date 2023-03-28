@@ -14,7 +14,7 @@ which are not sending either algos or some other asset to our account.
 
 ## Getting Started
 
-First we need to make sure we have Conduit installed. Head over to [GettingStarted.md](./GettingStarted.md)
+First we need to make sure we have Conduit installed. Head over to [GettingStarted.md](../GettingStarted.md)
 in order to get more details on how to install Conduit. We'll just build it from source:  
 ```bash
 git clone https://github.com/algorand/indexer.git $HOME/indexer

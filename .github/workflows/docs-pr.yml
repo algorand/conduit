@@ -1,0 +1,54 @@
+name: "Doc Repo PR Generator"
+
+on:
+  workflow_dispatch:
+  workflow_call:
+
+jobs:
+  docs-pr:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install python for doc scripts
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+      - name: Clone conduit repo
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+          path: conduit
+      - name: Clone docs repo
+        uses: actions/checkout@v3
+        with:
+          token: ${{ secrets.PAT }}
+          fetch-depth: 0
+          repository: algorand/docs
+          ref: staging
+          path: docs
+      - name: Install golang
+        uses: actions/setup-go@v3
+        with:
+          go-version-file: 'conduit/go.mod'
+      - name: Generate and install docs
+        run: |
+          cd conduit
+          make
+          cd ..
+          # Regenerate CLI documentation
+          ./docs/scripts/reformat.py -doc-dir docs/docs/clis/conduit/ -cmd conduit/cmd/conduit/conduit
+          # Update hand-written documentation
+          rm -rf docs/docs/get-details/conduit/
+          cp -r conduit/docs docs/docs/get-details/conduit
+          # TODO: check if there are any changes before creating a PR?
+      - name: Create algorand/docs Pull Request
+        uses: peter-evans/create-pull-request@v4
+        with:
+          path: docs
+          author: algo-dev-service <ci-bot@algorand.com>
+          branch: "conduit-automated-pr"
+          title: "Conduit Documentation Update"
+          body: "Regenerate CLI documentation and update hand written documentation."
+          reviewers: "nullun,barnjamin,ryanrfox"
+          delete-branch: true
+          base: staging
+          token: ${{ secrets.PAT }}
