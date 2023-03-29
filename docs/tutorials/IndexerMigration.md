@@ -4,16 +4,16 @@ The first part of this document gives an overview and background on Indexer and 
 to the migration instructions, see [the overview on altering indexer applications.](#altering-architecture-of-indexer-applications)
 
 The [Algorand Indexer](https://github.com/algorand/indexer) originally provided both a block processing pipeline to ingest block
-data from an Algorand node into a Postgresql database, and a rest API which serves that data. However, the block
+data from an Algorand node into a Postgresql database, and a REST API which serves that data. However, the block
 processing pipeline functionality from Indexer has been moved into, and will be maintained in, Conduit.
 
-The [Conduit](https://github.com/algorand/indexer/blob/develop/docs/Conduit.md) project provides a modular pipeline
+The [Conduit](https://github.com/algorand/conduit) project provides a modular pipeline
 system allowing users to construct block processing pipelines for a variety of use cases as opposed to the single,
 bespoke pipeline from the original Indexer.
 
 ## Migration
 Talking about a migration from Indexer to Conduit is in some ways difficult because they only have partial overlap in
-their applications. For example, Conduit does _not_ currently include a rest API either for checking pipeline health
+their applications. For example, Conduit does _not_ currently include a REST API either for checking pipeline health
 or for serving data from the pipeline. So when we talk about migrating from Indexer to Conduit, what we'll focus on is
 moving your postgresql block writing from the Indexer binary to Conduit.
 
@@ -25,7 +25,7 @@ graph LR;
     index["Indexer"]
     ledger["Local Ledger"]
     psql["Postgresql"]
-    restapi["Rest API"]
+    restapi["REST API"]
     
     algod-->index;
     subgraph "Data Pipeline"
@@ -46,7 +46,7 @@ graph LR;
     algod["Algod"]
     pe["postgresql Exporter"]
     algodimp["algod Importer"]
-    restapi["Rest API"]
+    restapi["REST API"]
 
     algod-->algodimp
     subgraph "Conduit Pipeline"
@@ -65,7 +65,7 @@ Or you can change the type of DB used in the backend and write your own API on t
 A common deployment of the Indexer might look something like this.
 ```mermaid
 graph LR;
-    algod["Alogd"]
+    algod["Algod"]
     lb["Load Balancer"]
     index["Indexer"]
     ro1["ReadOnly Indexer"]
@@ -86,7 +86,7 @@ graph LR;
 ```
 Because the database connection can only tolerate a single writer without having race conditions and/or deadlocks,
 Indexer offers a read-only mode which does not run the data pipeline and has no write access to the database. It's
-common to use the read only mode to scale out the rest API--running multiple web servers behind a load balancer as is
+common to use the read only mode to scale out the REST API--running multiple web servers behind a load balancer as is
 shown in the diagram.
 
 
@@ -95,12 +95,12 @@ it using the Conduit binary. Take a look at the [getting started guide](../Getti
 installing and running Conduit.
 
 We still plan on supporting the Indexer API alongside Conduit--that means that any changes made to the Postgresql plugin
-will either be backwards compatible with the Indexer API, ando/or have corresponding fixes in Indexer.
+will either be backwards compatible with the Indexer API, and/or have corresponding fixes in Indexer.
 
 Here is our architecture diagram with Conduit as our data pipeline.
 ```mermaid
 graph LR;
-    algod["Alogd"]
+    algod["Algod"]
     lb["Load Balancer"]
     ro1["ReadOnly Indexer"]
     ro2["ReadOnly Indexer"]
@@ -135,9 +135,10 @@ if you're interested in looking at the source code for the follower node.
 
 To run algod in Follower mode, it must be launched with `EnableFollowMode` set to `true` in the algod config.  
 Doing this will provide the new features listed below, but will remove the node's ability to participate in consensus
-(propose new blocks), or broadcast transactions to be included in new blocks. It will only, as named, follow the chain.
+(propose new blocks), or broadcast transactions to be included in new blocks. It will only, as hinted by its name, follow the chain.
 
 Follower mode algod provides 2 key features required by Conduit.
+
 ### Sync Rounds
 In order to remove the requirement of algod being Archival, we needed a way to ensure that algod would have the data
 available for the particular round that our Conduit pipeline was importing at any given time. We've done this through
@@ -150,21 +151,23 @@ to fall out of the cache.
 
 Sync rounds operate via a set of APIs on algod.
 
-#### `GET    /v2/ledger/sync`
-Retrieves the sync round. This call will return a `404 Not Found` if the sync round is not currently set.
-#### `DELETE /v2/ledger/sync`
-Removes the sync round constraint. If no sync round is set this will no-op.
-#### `POST   /v2/ledger/sync/{round}`
+#### [`GET    /v2/ledger/sync`](https://developer.algorand.org/docs/rest-apis/algod/#get-v2ledgersync)
+Retrieves the sync round.
+
+#### [`DELETE /v2/ledger/sync`](https://developer.algorand.org/docs/rest-apis/algod/#delete-v2ledgersync)
+Removes the sync round constraint.
+
+#### [`POST   /v2/ledger/sync/{round}`](https://developer.algorand.org/docs/rest-apis/algod/#post-v2ledgersyncround)
 Sets the sync round to the provided parameter. The provided sync round cannot be lower than the current sync round.
 If no sync round is currently set, the round must be within `MaxAcctLookback` of the ledger's current round at the time
-of the API call. Providing an invalid round will return a `400 Bad Request`.
+of the API call.
 
 ### State Deltas
 The algod `block/{round}` endpoint has always been available to retrieve the block header and the transactions which
 were validated during a given round, but Indexer also needs to know the side effects of transaction execution--account
 balance updates, app global and local state changes, etc.
 
-Indexer currently uses a local ledger to get this information, a stripped down version of an algod node which stores
+Indexer currently uses a local ledger to get this information, which is a stripped down version of an algod node that stores
 balance information locally, and evaluates transactions in order to determine changes made without having to do an
 extra database roundtrip.
 
@@ -187,7 +190,7 @@ nodes).
 
 ```mermaid
 graph LR;
-    algod["Archival Alogd"]
+    algod["Archival Algod"]
     indexer["Indexer"]
     psql["Postgresql"]
     subgraph "Persistent Volume"
@@ -206,7 +209,8 @@ of storage required will be minimal in comparison.
 
 
 If you have an existing Archival node which is on the same round as your Indexer, you can simply stop algod, alter your
-config as follows, and restart it.
+config as follows, and restart it. Interacting with algod is done primarily using the `goal` CLI. You can find more details
+about installing and using `goal` in the [goal docs](https://developer.algorand.org/docs/clis/goal/goal/).
 ```bash
 # Stop Algod
 goal -d $ALGOD_DIR node stop
@@ -227,7 +231,7 @@ Follower nodes provide the same methods of catchup as regular algod nodes, but w
 recent ledger round upon startup.
 
 To check your algod round against your Indexer round you can use the following commands.
-`goal -d $ALGOD_DIR node status` will output general data for your node. It should contain a line listing the last committed
+`goal -d $ALGOD_DIR node status` will output general data about your node. It should contain a line listing the last committed
 block, `Last committed block: 25101152` for example.
 
 The Indexer stores the latest round in the database, and you can read it via the `/health` endpoint. The result is formatted in json
@@ -250,6 +254,7 @@ For a list of catchpoints, you can reference the following:
 * [Betanet](https://algorand-catchpoints.s3.us-east-2.amazonaws.com/consolidated/betanet_catchpoints.txt)
 
 ```bash
+# The catchup param should match one of the lines in the above files based on the network you're using.
 goal node -d $ALGOD_DIR catchup 25000000#EOX5UYQV4IXTGYQCIDR7ZLUK6WZGDC5EG6PYQGBG6PBYNAQUPN2Q
 ```
 
