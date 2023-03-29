@@ -834,11 +834,6 @@ var errorImporterMetadata = plugins.Metadata{
 	SampleConfig: "",
 }
 
-func (e *errorImporter) Name() string {
-	//TODO implement me
-	panic("implement me")
-}
-
 func (e *errorImporter) Metadata() plugins.Metadata {
 	return errorImporterMetadata
 }
