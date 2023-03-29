@@ -1,6 +1,6 @@
 # Algod Importer
 
-Fetch blocks one by one from the [algod REST API](https://developer.algorand.org/docs/rest-apis/algod/v2/). The node must be configured as an archival node in order to provide old blocks.
+Fetch blocks one by one from the [algod REST API](https://developer.algorand.org/docs/rest-apis/algod). The node must be configured as an archival node in order to provide old blocks.
 
 `TODO: we can't use a follower ?`
 
