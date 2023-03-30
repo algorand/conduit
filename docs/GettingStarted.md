@@ -21,7 +21,7 @@ that work is complete users should be able to use `go install` to install binari
 ## Getting Started
 
 Conduit requires a configuration file to set up and run a data pipeline. To generate an initial skeleton for a conduit
-config file, you can run `./conduit init`. This will set up a sample data directory with a config located at
+config file, you can run `./conduit init -d data`. This will set up a sample data directory with a config located at
 `data/conduit.yml`.
 
 You will need to manually edit the data in the config file, filling in a valid configuration for conduit to run.  
