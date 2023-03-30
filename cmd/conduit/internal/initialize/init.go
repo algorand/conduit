@@ -2,7 +2,9 @@ package initialize
 
 import (
 	_ "embed"
+	"errors"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -20,6 +22,8 @@ import (
 var InitCommand = makeInitCmd()
 
 const defaultDataDirectory = "data"
+
+var StdoutAndPathErr = errors.New("do not provide a path and toStdout")
 
 //go:embed conduit.yml.example
 var sampleConfig string
@@ -41,25 +45,34 @@ func formatArrayObject(obj string) string {
 
 }
 
-func runConduitInit(path string, importerFlag string, processorsFlag []string, exporterFlag string) error {
+func runConduitInit(path string, configWriter io.Writer, importerFlag string, processorsFlag []string, exporterFlag string) error {
+	if configWriter != nil && path != "" {
+		return StdoutAndPathErr
+	}
+
 	var location string
-	if path == "" {
-		path = defaultDataDirectory
-		location = "in the current working directory"
-	} else {
-		location = fmt.Sprintf("at '%s'", path)
-	}
 
-	if err := os.MkdirAll(path, 0755); err != nil {
-		return err
-	}
+	// to get here, the path must be initialized
+	if configWriter == nil {
+		if path == "" && configWriter == nil {
+			path = defaultDataDirectory
+			location = "in the current working directory"
+		} else {
+			location = fmt.Sprintf("at '%s'", path)
+		}
 
-	configFilePath := filepath.Join(path, conduit.DefaultConfigName)
-	f, err := os.Create(configFilePath)
-	if err != nil {
-		return fmt.Errorf("runConduitInit(): failed to create %s", configFilePath)
+		if err := os.MkdirAll(path, 0755); err != nil {
+			return err
+		}
+
+		configFilePath := filepath.Join(path, conduit.DefaultConfigName)
+		f, err := os.Create(configFilePath)
+		if err != nil {
+			return fmt.Errorf("runConduitInit(): failed to create %s", configFilePath)
+		}
+		defer f.Close()
+		configWriter = f
 	}
-	defer f.Close()
 
 	var importer string
 	if importerFlag == "" {
@@ -106,24 +119,27 @@ func runConduitInit(path string, importerFlag string, processorsFlag []string, e
 
 	config := fmt.Sprintf(sampleConfig, importer, processors, exporter)
 
-	_, _ = f.WriteString(config)
-
+	_, err := configWriter.Write([]byte(config))
 	if err != nil {
 		return fmt.Errorf("runConduitInit(): failed to write sample config: %w", err)
 	}
 
-	fmt.Printf("A data directory has been created %s.\n", location)
-	fmt.Printf("\nBefore it can be used, the config file needs to be updated with\n")
-	fmt.Printf("values for the selected import, export and processor modules. For example,\n")
-	fmt.Printf("if the default algod importer was used, set the address/token and the block-dir\n")
-	fmt.Printf("path where Conduit should write the block files.\n")
-	fmt.Printf("\nOnce the config file is updated, start Conduit with:\n")
-	fmt.Printf("  ./conduit -d %s\n", path)
+	// If a data dir is created, print some additional help.
+	if path != "" {
+		fmt.Printf("A data directory has been created %s.\n", location)
+		fmt.Printf("\nBefore it can be used, the config file needs to be updated with\n")
+		fmt.Printf("values for the selected import, export and processor modules. For example,\n")
+		fmt.Printf("if the default algod importer was used, set the address/token and the block-dir\n")
+		fmt.Printf("path where Conduit should write the block files.\n")
+		fmt.Printf("\nOnce the config file is updated, start Conduit with:\n")
+		fmt.Printf("  ./conduit -d %s\n", path)
+	}
 	return nil
 }
 
 // makeInitCmd creates a sample data directory.
 func makeInitCmd() *cobra.Command {
+	var toStdout bool
 	var data string
 	var importer string
 	var exporter string
@@ -143,12 +159,17 @@ Once configured, launch conduit with './conduit -d /path/to/data'.`,
 		Example: "conduit init  -d /path/to/data -i importer -p processor1,processor2 -e exporter",
 		Args:    cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return runConduitInit(data, importer, processors, exporter)
+			if toStdout {
+				return runConduitInit("", os.Stdout, importer, processors, exporter)
+			} else {
+				return runConduitInit(data, nil, importer, processors, exporter)
+			}
 		},
 		SilenceUsage: true,
 	}
 
 	cmd.Flags().StringVarP(&data, "data", "d", "", "Full path to new data directory. If not set, a directory named 'data' will be created in the current directory.")
+	cmd.Flags().BoolVarP(&toStdout, "stdout", "s", false, "Write the config file to stdout. Useful if you already have a data directory or are using init from the docker container.")
 	cmd.Flags().StringVarP(&importer, "importer", "i", "", "data importer name.")
 	cmd.Flags().StringSliceVarP(&processors, "processors", "p", []string{}, "comma-separated list of processors.")
 	cmd.Flags().StringVarP(&exporter, "exporter", "e", "", "data exporter name.")

@@ -1,10 +1,12 @@
 package initialize
 
 import (
+	"bytes"
 	_ "embed"
 	"fmt"
 	"gopkg.in/yaml.v3"
 	"os"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -24,10 +26,7 @@ var defaultYml string
 
 // TestInitDataDirectory tests the initialization of the data directory
 func TestInitDataDirectory(t *testing.T) {
-	verifyFile := func(file string, importer string, exporter string, processors []string) {
-		require.FileExists(t, file)
-		data, err := os.ReadFile(file)
-		require.NoError(t, err)
+	verifyYaml := func(data []byte, importer string, exporter string, processors []string) {
 		var cfg pipeline.Config
 		require.NoError(t, yaml.Unmarshal(data, &cfg))
 		assert.Equal(t, importer, cfg.Importer.Name)
@@ -37,22 +36,39 @@ func TestInitDataDirectory(t *testing.T) {
 			assert.Equal(t, processors[i], cfg.Processors[i].Name)
 		}
 	}
+	verifyFile := func(file string, importer string, exporter string, processors []string) {
+		require.FileExists(t, file)
+		data, err := os.ReadFile(file)
+		require.NoError(t, err)
+		verifyYaml(data, importer, exporter, processors)
+	}
 
 	// Defaults
 	dataDirectory := t.TempDir()
-	err := runConduitInit(dataDirectory, "", []string{}, "")
+	err := runConduitInit(dataDirectory, nil, "", []string{}, "")
 	require.NoError(t, err)
 	verifyFile(fmt.Sprintf("%s/conduit.yml", dataDirectory), algodimporter.PluginName, filewriter.PluginName, nil)
 
 	// Explicit defaults
 	dataDirectory = t.TempDir()
-	err = runConduitInit(dataDirectory, algodimporter.PluginName, []string{noopProcessor.PluginName}, filewriter.PluginName)
+	err = runConduitInit(dataDirectory, nil, algodimporter.PluginName, []string{noopProcessor.PluginName}, filewriter.PluginName)
 	require.NoError(t, err)
 	verifyFile(fmt.Sprintf("%s/conduit.yml", dataDirectory), algodimporter.PluginName, filewriter.PluginName, []string{noopProcessor.PluginName})
 
 	// Different
 	dataDirectory = t.TempDir()
-	err = runConduitInit(dataDirectory, fileimporter.PluginName, []string{noopProcessor.PluginName, filterprocessor.PluginName}, noopExporter.PluginName)
+	err = runConduitInit(dataDirectory, nil, fileimporter.PluginName, []string{noopProcessor.PluginName, filterprocessor.PluginName}, noopExporter.PluginName)
 	require.NoError(t, err)
 	verifyFile(fmt.Sprintf("%s/conduit.yml", dataDirectory), fileimporter.PluginName, noopExporter.PluginName, []string{noopProcessor.PluginName, filterprocessor.PluginName})
+
+	// Stdout
+	var buf bytes.Buffer
+	err = runConduitInit("", &buf, fileimporter.PluginName, []string{noopProcessor.PluginName, filterprocessor.PluginName}, noopExporter.PluginName)
+	require.NoError(t, err)
+	verifyYaml(buf.Bytes(), fileimporter.PluginName, noopExporter.PluginName, []string{noopProcessor.PluginName, filterprocessor.PluginName})
+}
+
+func TestBadInput(t *testing.T) {
+	err := runConduitInit("some-path", &strings.Builder{}, "", []string{}, "")
+	require.ErrorIs(t, err, StdoutAndPathErr)
 }
