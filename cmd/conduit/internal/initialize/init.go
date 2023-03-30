@@ -23,7 +23,7 @@ var InitCommand = makeInitCmd()
 
 const defaultDataDirectory = "data"
 
-var StdoutAndPathErr = errors.New("do not provide a path and toStdout")
+var errStdoutAndPath = errors.New("do not provide a path and toStdout")
 
 //go:embed conduit.yml.example
 var sampleConfig string
@@ -47,7 +47,7 @@ func formatArrayObject(obj string) string {
 
 func runConduitInit(path string, configWriter io.Writer, importerFlag string, processorsFlag []string, exporterFlag string) error {
 	if configWriter != nil && path != "" {
-		return StdoutAndPathErr
+		return errStdoutAndPath
 	}
 
 	var location string
@@ -163,9 +163,8 @@ Once configured, launch conduit with './conduit -d /path/to/data'.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if data == "" {
 				return runConduitInit("", os.Stdout, importer, processors, exporter)
-			} else {
-				return runConduitInit(data, nil, importer, processors, exporter)
 			}
+			return runConduitInit(data, nil, importer, processors, exporter)
 		},
 		SilenceUsage: true,
 	}

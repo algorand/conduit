@@ -70,5 +70,5 @@ func TestInitDataDirectory(t *testing.T) {
 
 func TestBadInput(t *testing.T) {
 	err := runConduitInit("some-path", &strings.Builder{}, "", []string{}, "")
-	require.ErrorIs(t, err, StdoutAndPathErr)
+	require.ErrorIs(t, err, errStdoutAndPath)
 }
