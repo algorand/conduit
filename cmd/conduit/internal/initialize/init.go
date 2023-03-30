@@ -54,7 +54,7 @@ func runConduitInit(path string, configWriter io.Writer, importerFlag string, pr
 
 	// to get here, the path must be initialized
 	if configWriter == nil {
-		if path == "" && configWriter == nil {
+		if path == "" {
 			path = defaultDataDirectory
 			location = "in the current working directory"
 		} else {
