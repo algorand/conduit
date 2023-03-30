@@ -28,6 +28,17 @@ builds:
       -X github.com/algorand/conduit/version.CompileTime={{.Timestamp}}
       -X github.com/algorand/conduit/version.ReleaseVersion={{.Version}}
 
+nfpms:
+  - vendor: Algorand
+    homepage: https://algorand.com
+    maintainer: Algorand <dev@algorand.com>
+    description: framework for processing Algorand blockchain data
+    license: MIT
+    formats:
+      #- deb
+      #- rpm
+    file_name_template: "{{ .ConventionalFileName }}"
+
 archives:
   - replacements:
       darwin: Darwin
