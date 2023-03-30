@@ -139,7 +139,6 @@ func runConduitInit(path string, configWriter io.Writer, importerFlag string, pr
 
 // makeInitCmd creates a sample data directory.
 func makeInitCmd() *cobra.Command {
-	var toStdout bool
 	var data string
 	var importer string
 	var exporter string
@@ -147,7 +146,7 @@ func makeInitCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "init",
 		Short: "initializes a Conduit data directory",
-		Long: `Initializes a Conduit data directory and conduit.yml file. By default
+		Long: `Initializes a conduit.yml file and writes it to stdout. By default
 the config file uses an algod importer in follower mode and a block
 file writer exporter. The plugin templates can be changed using the
 different options.
@@ -155,11 +154,14 @@ different options.
 Once initialized the conduit.yml file needs to be modified. Refer to the file
 comments for details.
 
+If the 'data' option is used, the file will be written to that
+directory and additional help is written to stdout.
+
 Once configured, launch conduit with './conduit -d /path/to/data'.`,
 		Example: "conduit init  -d /path/to/data -i importer -p processor1,processor2 -e exporter",
 		Args:    cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if toStdout {
+			if data == "" {
 				return runConduitInit("", os.Stdout, importer, processors, exporter)
 			} else {
 				return runConduitInit(data, nil, importer, processors, exporter)
@@ -168,8 +170,7 @@ Once configured, launch conduit with './conduit -d /path/to/data'.`,
 		SilenceUsage: true,
 	}
 
-	cmd.Flags().StringVarP(&data, "data", "d", "", "Full path to new data directory. If not set, a directory named 'data' will be created in the current directory.")
-	cmd.Flags().BoolVarP(&toStdout, "stdout", "s", false, "Write the config file to stdout. Useful if you already have a data directory or are using init from the docker container.")
+	cmd.Flags().StringVarP(&data, "data", "d", "", "Full path to new data directory to initialize. If not set, the conduit configuration YAML is written to stdout.")
 	cmd.Flags().StringVarP(&importer, "importer", "i", "", "data importer name.")
 	cmd.Flags().StringSliceVarP(&processors, "processors", "p", []string{}, "comma-separated list of processors.")
 	cmd.Flags().StringVarP(&exporter, "exporter", "e", "", "data exporter name.")
