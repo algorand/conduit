@@ -23,7 +23,7 @@ var InitCommand = makeInitCmd()
 
 const defaultDataDirectory = "data"
 
-var errStdoutAndPath = errors.New("do not provide path and configWriter")
+var errNoWriter = errors.New("configWriter is required")
 
 //go:embed conduit.yml.example
 var sampleConfig string
@@ -45,33 +45,46 @@ func formatArrayObject(obj string) string {
 
 }
 
-func runConduitInit(path string, configWriter io.Writer, importerFlag string, processorsFlag []string, exporterFlag string) error {
-	if configWriter != nil && path != "" {
-		return errStdoutAndPath
+func runConduitInit(path string, importerFlag string, processorsFlag []string, exporterFlag string) error {
+	var location string
+	if path == "" {
+		path = defaultDataDirectory
+		location = "in the current working directory"
+	} else {
+		location = fmt.Sprintf("at '%s'", path)
 	}
 
-	var location string
+	if err := os.MkdirAll(path, 0755); err != nil {
+		return err
+	}
 
-	// to get here, the path must be initialized
+	configFilePath := filepath.Join(path, conduit.DefaultConfigName)
+	f, err := os.Create(configFilePath)
+	if err != nil {
+		return fmt.Errorf("runConduitInit(): failed to create %s", configFilePath)
+	}
+	defer f.Close()
+
+	// generate the config file.
+	err = writeConfigFile(f, importerFlag, processorsFlag, exporterFlag)
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("A data directory has been created %s.\n", location)
+	fmt.Printf("\nBefore it can be used, the config file needs to be updated with\n")
+	fmt.Printf("values for the selected import, export and processor modules. For example,\n")
+	fmt.Printf("if the default algod importer was used, set the address/token and the block-dir\n")
+	fmt.Printf("path where Conduit should write the block files.\n")
+	fmt.Printf("\nOnce the config file is updated, start Conduit with:\n")
+	fmt.Printf("  ./conduit -d %s\n", path)
+
+	return nil
+}
+
+func writeConfigFile(configWriter io.Writer, importerFlag string, processorsFlag []string, exporterFlag string) error {
 	if configWriter == nil {
-		if path == "" {
-			path = defaultDataDirectory
-			location = "in the current working directory"
-		} else {
-			location = fmt.Sprintf("at '%s'", path)
-		}
-
-		if err := os.MkdirAll(path, 0755); err != nil {
-			return err
-		}
-
-		configFilePath := filepath.Join(path, conduit.DefaultConfigName)
-		f, err := os.Create(configFilePath)
-		if err != nil {
-			return fmt.Errorf("runConduitInit(): failed to create %s", configFilePath)
-		}
-		defer f.Close()
-		configWriter = f
+		return errNoWriter
 	}
 
 	var importer string
@@ -123,17 +136,6 @@ func runConduitInit(path string, configWriter io.Writer, importerFlag string, pr
 	if err != nil {
 		return fmt.Errorf("runConduitInit(): failed to write sample config: %w", err)
 	}
-
-	// If a data dir is created, print some additional help.
-	if path != "" {
-		fmt.Printf("A data directory has been created %s.\n", location)
-		fmt.Printf("\nBefore it can be used, the config file needs to be updated with\n")
-		fmt.Printf("values for the selected import, export and processor modules. For example,\n")
-		fmt.Printf("if the default algod importer was used, set the address/token and the block-dir\n")
-		fmt.Printf("path where Conduit should write the block files.\n")
-		fmt.Printf("\nOnce the config file is updated, start Conduit with:\n")
-		fmt.Printf("  ./conduit -d %s\n", path)
-	}
 	return nil
 }
 
@@ -162,9 +164,9 @@ Once configured, launch conduit with './conduit -d /path/to/data'.`,
 		Args:    cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if data == "" {
-				return runConduitInit("", os.Stdout, importer, processors, exporter)
+				return writeConfigFile(os.Stdout, importer, processors, exporter)
 			}
-			return runConduitInit(data, nil, importer, processors, exporter)
+			return runConduitInit(data, importer, processors, exporter)
 		},
 		SilenceUsage: true,
 	}

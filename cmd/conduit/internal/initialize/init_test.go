@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"gopkg.in/yaml.v3"
 	"os"
-	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -45,30 +44,30 @@ func TestInitDataDirectory(t *testing.T) {
 
 	// Defaults
 	dataDirectory := t.TempDir()
-	err := runConduitInit(dataDirectory, nil, "", []string{}, "")
+	err := runConduitInit(dataDirectory, "", []string{}, "")
 	require.NoError(t, err)
 	verifyFile(fmt.Sprintf("%s/conduit.yml", dataDirectory), algodimporter.PluginName, filewriter.PluginName, nil)
 
 	// Explicit defaults
 	dataDirectory = t.TempDir()
-	err = runConduitInit(dataDirectory, nil, algodimporter.PluginName, []string{noopProcessor.PluginName}, filewriter.PluginName)
+	err = runConduitInit(dataDirectory, algodimporter.PluginName, []string{noopProcessor.PluginName}, filewriter.PluginName)
 	require.NoError(t, err)
 	verifyFile(fmt.Sprintf("%s/conduit.yml", dataDirectory), algodimporter.PluginName, filewriter.PluginName, []string{noopProcessor.PluginName})
 
 	// Different
 	dataDirectory = t.TempDir()
-	err = runConduitInit(dataDirectory, nil, fileimporter.PluginName, []string{noopProcessor.PluginName, filterprocessor.PluginName}, noopExporter.PluginName)
+	err = runConduitInit(dataDirectory, fileimporter.PluginName, []string{noopProcessor.PluginName, filterprocessor.PluginName}, noopExporter.PluginName)
 	require.NoError(t, err)
 	verifyFile(fmt.Sprintf("%s/conduit.yml", dataDirectory), fileimporter.PluginName, noopExporter.PluginName, []string{noopProcessor.PluginName, filterprocessor.PluginName})
 
-	// Stdout
+	// config writer
 	var buf bytes.Buffer
-	err = runConduitInit("", &buf, fileimporter.PluginName, []string{noopProcessor.PluginName, filterprocessor.PluginName}, noopExporter.PluginName)
+	err = writeConfigFile(&buf, fileimporter.PluginName, []string{noopProcessor.PluginName, filterprocessor.PluginName}, noopExporter.PluginName)
 	require.NoError(t, err)
 	verifyYaml(buf.Bytes(), fileimporter.PluginName, noopExporter.PluginName, []string{noopProcessor.PluginName, filterprocessor.PluginName})
 }
 
 func TestBadInput(t *testing.T) {
-	err := runConduitInit("some-path", &strings.Builder{}, "", []string{}, "")
-	require.ErrorIs(t, err, errStdoutAndPath)
+	err := writeConfigFile(nil, "", []string{}, "")
+	require.ErrorIs(t, err, errNoWriter)
 }
