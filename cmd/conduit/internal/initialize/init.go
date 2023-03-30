@@ -23,7 +23,7 @@ var InitCommand = makeInitCmd()
 
 const defaultDataDirectory = "data"
 
-var errStdoutAndPath = errors.New("do not provide a path and toStdout")
+var errStdoutAndPath = errors.New("do not provide path and configWriter")
 
 //go:embed conduit.yml.example
 var sampleConfig string
