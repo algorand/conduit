@@ -33,7 +33,7 @@ dockers:
     goos: linux
     goarch: amd64
     image_templates:
-    - "algorand/conduit:latest-amd64"
+    - "algorand/conduit:latest{{ if .IsSnapshot }}-snapshot{{ end }}-amd64"
     - "algorand/conduit:{{ .Version }}-amd64"
     build_flag_templates:
     - --platform=linux/amd64
@@ -46,7 +46,7 @@ dockers:
     goos: linux
     goarch: arm64
     image_templates:
-    - "algorand/conduit:latest-arm64"
+    - "algorand/conduit:latest{{ if .IsSnapshot }}-snapshot{{ end }}-arm64"
     - "algorand/conduit:{{ .Version }}-arm64"
     build_flag_templates:
     - --platform=linux/arm64
@@ -62,10 +62,10 @@ docker_manifests:
     image_templates:
     - "algorand/conduit:{{ .Version }}-amd64"
     - "algorand/conduit:{{ .Version }}-arm64"
-  - name_template: "algorand/conduit:latest"
+  - name_template: "algorand/conduit:latest{{ if .IsSnapshot }}-snapshot{{ end }}"
     image_templates:
-    - "algorand/conduit:latest-amd64"
-    - "algorand/conduit:latest-arm64"
+    - "algorand/conduit:latest{{ if .IsSnapshot }}-snapshot{{ end }}-amd64"
+    - "algorand/conduit:latest{{ if .IsSnapshot }}-snapshot{{ end }}-arm64"
 
 archives:
   - replacements:
