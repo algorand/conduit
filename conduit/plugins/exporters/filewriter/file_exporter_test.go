@@ -13,10 +13,10 @@ import (
 	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v3"
 
+	"github.com/algorand/conduit/conduit"
 	"github.com/algorand/conduit/conduit/data"
 	"github.com/algorand/conduit/conduit/plugins"
 	"github.com/algorand/conduit/conduit/plugins/exporters"
-	"github.com/algorand/conduit/conduit/plugins/tools/testutil"
 
 	sdk "github.com/algorand/go-algorand-sdk/v2/types"
 )
@@ -80,7 +80,7 @@ func TestExporterInitDefaults(t *testing.T) {
 			defer fileExp.Close()
 			pcfg := plugins.MakePluginConfig(fmt.Sprintf("block-dir: %s", tc.blockdir))
 			pcfg.DataDir = tempdir
-			err := fileExp.Init(context.Background(), testutil.MockedInitProvider(&round), pcfg, logger)
+			err := fileExp.Init(context.Background(), conduit.MakePipelineInitProvider(&round, nil), pcfg, logger)
 			require.NoError(t, err)
 			pluginConfig := fileExp.Config()
 			assert.Contains(t, pluginConfig, fmt.Sprintf("block-dir: %s", tc.expected))
@@ -94,14 +94,14 @@ func TestExporterInit(t *testing.T) {
 	defer fileExp.Close()
 
 	// creates a new output file
-	err := fileExp.Init(context.Background(), testutil.MockedInitProvider(&round), plugins.MakePluginConfig(config), logger)
+	err := fileExp.Init(context.Background(), conduit.MakePipelineInitProvider(&round, nil), plugins.MakePluginConfig(config), logger)
 	pluginConfig := fileExp.Config()
 	configWithDefault := config + "filename-pattern: '%[1]d_block.json'\n" + "drop-certificate: false\n"
 	assert.Equal(t, configWithDefault, string(pluginConfig))
 	fileExp.Close()
 
 	// can open existing file
-	err = fileExp.Init(context.Background(), testutil.MockedInitProvider(&round), plugins.MakePluginConfig(config), logger)
+	err = fileExp.Init(context.Background(), conduit.MakePipelineInitProvider(&round, nil), plugins.MakePluginConfig(config), logger)
 	assert.NoError(t, err)
 	fileExp.Close()
 }
@@ -125,7 +125,7 @@ func sendData(t *testing.T, fileExp exporters.Exporter, config string, numRounds
 
 	// initialize
 	rnd := sdk.Round(0)
-	err = fileExp.Init(context.Background(), testutil.MockedInitProvider(&rnd), plugins.MakePluginConfig(config), logger)
+	err = fileExp.Init(context.Background(), conduit.MakePipelineInitProvider(&rnd, nil), plugins.MakePluginConfig(config), logger)
 	require.NoError(t, err)
 
 	// incorrect round
@@ -186,7 +186,7 @@ func TestExporterClose(t *testing.T) {
 	config, _ := getConfig(t)
 	fileExp := fileCons.New()
 	rnd := sdk.Round(0)
-	fileExp.Init(context.Background(), testutil.MockedInitProvider(&rnd), plugins.MakePluginConfig(config), logger)
+	fileExp.Init(context.Background(), conduit.MakePipelineInitProvider(&rnd, nil), plugins.MakePluginConfig(config), logger)
 	require.NoError(t, fileExp.Close())
 }
 

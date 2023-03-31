@@ -14,7 +14,6 @@ import (
 
 	sdk "github.com/algorand/go-algorand-sdk/v2/types"
 
-	"github.com/algorand/conduit/conduit"
 	"github.com/algorand/conduit/conduit/data"
 	"github.com/algorand/conduit/conduit/plugins"
 	"github.com/algorand/conduit/conduit/plugins/exporters/filewriter"
@@ -39,14 +38,14 @@ func New() importers.Importer {
 //go:embed sample.yaml
 var sampleConfig string
 
-var metadata = conduit.Metadata{
+var metadata = plugins.Metadata{
 	Name:         PluginName,
 	Description:  "Importer for fetching blocks from files in a directory created by the 'file_writer' plugin.",
 	Deprecated:   false,
 	SampleConfig: sampleConfig,
 }
 
-func (r *fileReader) Metadata() conduit.Metadata {
+func (r *fileReader) Metadata() plugins.Metadata {
 	return metadata
 }
 
@@ -57,7 +56,7 @@ func init() {
 	}))
 }
 
-func (r *fileReader) Init(ctx context.Context, cfg plugins.PluginConfig, logger *logrus.Logger) (*sdk.Genesis, error) {
+func (r *fileReader) Init(ctx context.Context, _ data.InitProvider, cfg plugins.PluginConfig, logger *logrus.Logger) (*sdk.Genesis, error) {
 	r.ctx, r.cancel = context.WithCancel(ctx)
 	r.logger = logger
 	var err error

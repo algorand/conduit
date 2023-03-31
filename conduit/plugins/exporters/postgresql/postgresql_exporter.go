@@ -17,7 +17,6 @@ import (
 	"github.com/algorand/indexer/types"
 	iutil "github.com/algorand/indexer/util"
 
-	"github.com/algorand/conduit/conduit"
 	"github.com/algorand/conduit/conduit/data"
 	"github.com/algorand/conduit/conduit/plugins"
 	"github.com/algorand/conduit/conduit/plugins/exporters"
@@ -43,14 +42,14 @@ type postgresqlExporter struct {
 //go:embed sample.yaml
 var sampleConfig string
 
-var metadata = conduit.Metadata{
+var metadata = plugins.Metadata{
 	Name:         PluginName,
 	Description:  "Exporter for writing data to a postgresql instance.",
 	Deprecated:   false,
 	SampleConfig: sampleConfig,
 }
 
-func (exp *postgresqlExporter) Metadata() conduit.Metadata {
+func (exp *postgresqlExporter) Metadata() plugins.Metadata {
 	return metadata
 }
 

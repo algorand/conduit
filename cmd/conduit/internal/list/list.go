@@ -9,8 +9,8 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/algorand/conduit/conduit"
 	"github.com/algorand/conduit/conduit/pipeline"
+	"github.com/algorand/conduit/conduit/plugins"
 )
 
 // Command is the list command to embed in a root cobra command.
@@ -34,7 +34,7 @@ Example:
 	SilenceErrors: true,
 }
 
-func makeDetailsCommand(pluginType string, data func() []conduit.Metadata) *cobra.Command {
+func makeDetailsCommand(pluginType string, data func() []plugins.Metadata) *cobra.Command {
 	return &cobra.Command{
 		Use:     pluginType + "s",
 		Aliases: []string{pluginType},
@@ -57,7 +57,7 @@ func init() {
 	Command.AddCommand(makeDetailsCommand("exporter", pipeline.ExporterMetadata))
 }
 
-func printDetails(name string, plugins []conduit.Metadata) {
+func printDetails(name string, plugins []plugins.Metadata) {
 	for _, data := range plugins {
 		if data.Name == name {
 			fmt.Println(data.SampleConfig)
@@ -68,7 +68,7 @@ func printDetails(name string, plugins []conduit.Metadata) {
 	fmt.Printf("Plugin not found: %s\n", name)
 }
 
-func printMetadata(w io.Writer, plugins []conduit.Metadata, leftIndent int) {
+func printMetadata(w io.Writer, plugins []plugins.Metadata, leftIndent int) {
 	sort.Slice(plugins, func(i, j int) bool {
 		return plugins[i].Name < plugins[j].Name
 	})

@@ -11,7 +11,6 @@ import (
 	"github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v3"
 
-	"github.com/algorand/conduit/conduit"
 	"github.com/algorand/conduit/conduit/data"
 	"github.com/algorand/conduit/conduit/plugins"
 	"github.com/algorand/conduit/conduit/plugins/exporters"
@@ -33,14 +32,14 @@ type fileExporter struct {
 //go:embed sample.yaml
 var sampleFile string
 
-var metadata = conduit.Metadata{
+var metadata = plugins.Metadata{
 	Name:         PluginName,
 	Description:  "Exporter for writing data to a file.",
 	Deprecated:   false,
 	SampleConfig: sampleFile,
 }
 
-func (exp *fileExporter) Metadata() conduit.Metadata {
+func (exp *fileExporter) Metadata() plugins.Metadata {
 	return metadata
 }
 

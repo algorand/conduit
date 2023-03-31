@@ -207,7 +207,7 @@ type mockImporter struct {
 	subsystem       string
 }
 
-func (m *mockImporter) Init(_ context.Context, cfg plugins.PluginConfig, _ *log.Logger) (*sdk.Genesis, error) {
+func (m *mockImporter) Init(_ context.Context, _ data.InitProvider, cfg plugins.PluginConfig, _ *log.Logger) (*sdk.Genesis, error) {
 	m.cfg = cfg
 	return &m.genesis, nil
 }
@@ -216,8 +216,8 @@ func (m *mockImporter) Close() error {
 	return nil
 }
 
-func (m *mockImporter) Metadata() conduit.Metadata {
-	return conduit.Metadata{Name: "mockImporter"}
+func (m *mockImporter) Metadata() plugins.Metadata {
+	return plugins.Metadata{Name: "mockImporter"}
 }
 
 func (m *mockImporter) GetBlock(rnd uint64) (data.BlockData, error) {
@@ -263,8 +263,8 @@ func (m *mockProcessor) Close() error {
 	return nil
 }
 
-func (m *mockProcessor) Metadata() conduit.Metadata {
-	return conduit.Metadata{
+func (m *mockProcessor) Metadata() plugins.Metadata {
+	return plugins.Metadata{
 		Name: "mockProcessor",
 	}
 }
@@ -298,8 +298,8 @@ type mockExporter struct {
 	onCompleteError bool
 }
 
-func (m *mockExporter) Metadata() conduit.Metadata {
-	return conduit.Metadata{
+func (m *mockExporter) Metadata() plugins.Metadata {
+	return plugins.Metadata{
 		Name: "mockExporter",
 	}
 }
@@ -634,79 +634,6 @@ func TestPluginConfigDataDir(t *testing.T) {
 	assert.DirExists(t, mExporter.cfg.DataDir)
 }
 
-// TestBlockMetaDataFile tests that metadata.json file is created as expected
-func TestBlockMetaDataFile(t *testing.T) {
-
-	var pImporter importers.Importer = &mockImporter{}
-	var pProcessor processors.Processor = &mockProcessor{}
-	var pExporter exporters.Exporter = &mockExporter{}
-
-	datadir := t.TempDir()
-	l, _ := test.NewNullLogger()
-	pImpl := pipelineImpl{
-		cfg: &Config{
-			ConduitArgs: &conduit.Args{
-				ConduitDataDir: datadir,
-			},
-			Importer: NameConfigPair{
-				Name:   "",
-				Config: map[string]interface{}{},
-			},
-			Processors: []NameConfigPair{
-				{
-					Name:   "",
-					Config: map[string]interface{}{},
-				},
-			},
-			Exporter: NameConfigPair{
-				Name:   "",
-				Config: map[string]interface{}{},
-			},
-		},
-		logger:       l,
-		initProvider: nil,
-		importer:     &pImporter,
-		processors:   []*processors.Processor{&pProcessor},
-		exporter:     &pExporter,
-		pipelineMetadata: state{
-			NextRound: 3,
-		},
-	}
-
-	err := pImpl.Init()
-	assert.NoError(t, err)
-
-	// Test that file is created
-	blockMetaDataFile := filepath.Join(datadir, "metadata.json")
-	_, err = os.Stat(blockMetaDataFile)
-	assert.NoError(t, err)
-
-	// Test that file loads correctly
-	metaData, err := pImpl.initializeOrLoadBlockMetadata()
-	assert.NoError(t, err)
-	assert.Equal(t, pImpl.pipelineMetadata.GenesisHash, metaData.GenesisHash)
-	assert.Equal(t, pImpl.pipelineMetadata.NextRound, metaData.NextRound)
-	assert.Equal(t, pImpl.pipelineMetadata.Network, metaData.Network)
-
-	// Test that file encodes correctly
-	pImpl.pipelineMetadata.GenesisHash = "HASH"
-	pImpl.pipelineMetadata.NextRound = 7
-	err = pImpl.encodeMetadataToFile()
-	assert.NoError(t, err)
-	metaData, err = pImpl.initializeOrLoadBlockMetadata()
-	assert.NoError(t, err)
-	assert.Equal(t, "HASH", metaData.GenesisHash)
-	assert.Equal(t, uint64(7), metaData.NextRound)
-	assert.Equal(t, pImpl.pipelineMetadata.Network, metaData.Network)
-
-	// invalid file directory
-	pImpl.cfg.ConduitArgs.ConduitDataDir = "datadir"
-	metaData, err = pImpl.initializeOrLoadBlockMetadata()
-	assert.Contains(t, err.Error(), "Init(): error creating file")
-	err = pImpl.encodeMetadataToFile()
-	assert.Contains(t, err.Error(), "encodeMetadataToFile(): failed to create temp metadata file")
-}
-
 func TestGenesisHash(t *testing.T) {
 	var pImporter importers.Importer = &mockImporter{genesis: sdk.Genesis{Network: "test"}}
 	var pProcessor processors.Processor = &mockProcessor{}
@@ -750,12 +677,12 @@ func TestGenesisHash(t *testing.T) {
 	assert.NoError(t, err)
 
 	// read genesis hash from metadata.json
-	blockmetaData, err := pImpl.initializeOrLoadBlockMetadata()
+	blockmetaData, err := readBlockMetadata(datadir)
 	assert.NoError(t, err)
 	genesis := &sdk.Genesis{Network: "test"}
 	gh := genesis.Hash()
-	assert.Equal(t, blockmetaData.GenesisHash, base64.StdEncoding.EncodeToString(gh[:]))
-	assert.Equal(t, blockmetaData.Network, "test")
+	assert.Equal(t, base64.StdEncoding.EncodeToString(gh[:]), blockmetaData.GenesisHash)
+	assert.Equal(t, "test", blockmetaData.Network)
 
 	// mock a different genesis hash
 	pImporter = &mockImporter{genesis: sdk.Genesis{Network: "dev"}}
@@ -900,18 +827,18 @@ type errorImporter struct {
 	GetBlockCount uint64
 }
 
-var errorImporterMetadata = conduit.Metadata{
+var errorImporterMetadata = plugins.Metadata{
 	Name:         "error_importer",
 	Description:  "An importer that errors out whenever GetBlock() is called",
 	Deprecated:   false,
 	SampleConfig: "",
 }
 
-func (e *errorImporter) Metadata() conduit.Metadata {
+func (e *errorImporter) Metadata() plugins.Metadata {
 	return errorImporterMetadata
 }
 
-func (e *errorImporter) Init(_ context.Context, _ plugins.PluginConfig, _ *log.Logger) (*sdk.Genesis, error) {
+func (e *errorImporter) Init(_ context.Context, _ data.InitProvider, _ plugins.PluginConfig, _ *log.Logger) (*sdk.Genesis, error) {
 	return e.genesis, nil
 }
 

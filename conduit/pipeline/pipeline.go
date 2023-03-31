@@ -3,8 +3,6 @@ package pipeline
 import (
 	"context"
 	"encoding/base64"
-	"encoding/json"
-	"errors"
 	"fmt"
 	"net/http"
 	"os"
@@ -159,13 +157,6 @@ type pipelineImpl struct {
 	pipelineMetadata state
 }
 
-// state contains the pipeline state.
-type state struct {
-	GenesisHash string `json:"genesis-hash"`
-	Network     string `json:"network"`
-	NextRound   uint64 `json:"next-round"`
-}
-
 func (p *pipelineImpl) Error() error {
 	p.mu.RLock()
 	defer p.mu.RUnlock()
@@ -264,39 +255,55 @@ func (p *pipelineImpl) Init() error {
 	importerName := (*p.importer).Metadata().Name
 	importerLogger.SetFormatter(makePluginLogFormatter(plugins.Importer, importerName))
 
-	configs, err := yaml.Marshal(p.cfg.Importer.Config)
+	var err error
+	// read metadata file if it exists (we have to do this here in order to get
+	// the round from a previous run if it exists.
+	p.pipelineMetadata = state{}
+	populated, err := isFilePopulated(metadataPath(p.cfg.ConduitArgs.ConduitDataDir))
 	if err != nil {
-		return fmt.Errorf("Pipeline.Start(): could not serialize Importer.Args: %w", err)
+		return fmt.Errorf("Pipeline.Init(): could not stat metadata: %w", err)
 	}
-	genesis, err := (*p.importer).Init(p.ctx, p.makeConfig("importer", importerName, configs), importerLogger)
-	if err != nil {
-		return fmt.Errorf("Pipeline.Start(): could not initialize importer (%s): %w", importerName, err)
-	}
-
-	// initialize or load pipeline metadata
-	gh := genesis.Hash()
-	ghbase64 := base64.StdEncoding.EncodeToString(gh[:])
-	p.pipelineMetadata.GenesisHash = ghbase64
-	p.pipelineMetadata.Network = genesis.Network
-	p.pipelineMetadata, err = p.initializeOrLoadBlockMetadata()
-	if err != nil {
-		return fmt.Errorf("Pipeline.Start(): could not read metadata: %w", err)
-	}
-	if p.pipelineMetadata.GenesisHash != ghbase64 {
-		return fmt.Errorf("Pipeline.Start(): genesis hash in metadata does not match expected value: actual %s, expected %s", gh, p.pipelineMetadata.GenesisHash)
+	if populated {
+		p.pipelineMetadata, err = readBlockMetadata(p.cfg.ConduitArgs.ConduitDataDir)
+		if err != nil {
+			return fmt.Errorf("Pipeline.Init(): could not read metadata: %w", err)
+		}
 	}
 	// overriding NextRound if NextRoundOverride is set
 	if p.cfg.ConduitArgs.NextRoundOverride > 0 {
 		p.logger.Infof("Overriding default next round from %d to %d.", p.pipelineMetadata.NextRound, p.cfg.ConduitArgs.NextRoundOverride)
 		p.pipelineMetadata.NextRound = p.cfg.ConduitArgs.NextRoundOverride
 	}
-
-	p.logger.Infof("Initialized Importer: %s", importerName)
-
 	// InitProvider
 	round := sdk.Round(p.pipelineMetadata.NextRound)
-	var initProvider data.InitProvider = conduit.MakePipelineInitProvider(&round, genesis)
+	// Initial genesis object is nil--gets updated after importer.Init
+	var initProvider data.InitProvider = conduit.MakePipelineInitProvider(&round, nil)
 	p.initProvider = &initProvider
+
+	configs, err := yaml.Marshal(p.cfg.Importer.Config)
+	if err != nil {
+		return fmt.Errorf("Pipeline.Init(): could not serialize Importer.Args: %w", err)
+	}
+	genesis, err := (*p.importer).Init(p.ctx, *p.initProvider, p.makeConfig("importer", importerName, configs), importerLogger)
+	if err != nil {
+		return fmt.Errorf("Pipeline.Init(): could not initialize importer (%s): %w", importerName, err)
+	}
+	(*p.initProvider).SetGenesis(genesis)
+
+	// write pipeline metadata
+	gh := genesis.Hash()
+	ghbase64 := base64.StdEncoding.EncodeToString(gh[:])
+	if p.pipelineMetadata.GenesisHash != "" && p.pipelineMetadata.GenesisHash != ghbase64 {
+		return fmt.Errorf("Pipeline.Init(): genesis hash in metadata does not match expected value: actual %s, expected %s", gh, p.pipelineMetadata.GenesisHash)
+	}
+	p.pipelineMetadata.GenesisHash = ghbase64
+	p.pipelineMetadata.Network = genesis.Network
+	err = p.pipelineMetadata.encodeToFile(p.cfg.ConduitArgs.ConduitDataDir)
+	if err != nil {
+		return fmt.Errorf("Pipeline.Init() failed to write metadata to file: %w", err)
+	}
+
+	p.logger.Infof("Initialized Importer: %s", importerName)
 
 	// Initialize Processors
 	for idx, processor := range p.processors {
@@ -459,7 +466,7 @@ func (p *pipelineImpl) Start() {
 
 					// Increment Round, update metadata
 					p.pipelineMetadata.NextRound++
-					err = p.encodeMetadataToFile()
+					err = p.pipelineMetadata.encodeToFile(p.cfg.ConduitArgs.ConduitDataDir)
 					if err != nil {
 						p.logger.Errorf("%v", err)
 					}
@@ -490,60 +497,6 @@ func (p *pipelineImpl) Start() {
 
 func (p *pipelineImpl) Wait() {
 	p.wg.Wait()
-}
-
-func metadataPath(dataDir string) string {
-	return path.Join(dataDir, "metadata.json")
-}
-
-func (p *pipelineImpl) encodeMetadataToFile() error {
-	pipelineMetadataFilePath := metadataPath(p.cfg.ConduitArgs.ConduitDataDir)
-	tempFilename := fmt.Sprintf("%s.temp", pipelineMetadataFilePath)
-	file, err := os.Create(tempFilename)
-	if err != nil {
-		return fmt.Errorf("encodeMetadataToFile(): failed to create temp metadata file: %w", err)
-	}
-	defer file.Close()
-	err = json.NewEncoder(file).Encode(p.pipelineMetadata)
-	if err != nil {
-		return fmt.Errorf("encodeMetadataToFile(): failed to write temp metadata: %w", err)
-	}
-
-	err = os.Rename(tempFilename, pipelineMetadataFilePath)
-	if err != nil {
-		return fmt.Errorf("encodeMetadataToFile(): failed to replace metadata file: %w", err)
-	}
-	return nil
-}
-
-func (p *pipelineImpl) initializeOrLoadBlockMetadata() (state, error) {
-	pipelineMetadataFilePath := metadataPath(p.cfg.ConduitArgs.ConduitDataDir)
-	if stat, err := os.Stat(pipelineMetadataFilePath); errors.Is(err, os.ErrNotExist) || (stat != nil && stat.Size() == 0) {
-		if stat != nil && stat.Size() == 0 {
-			err = os.Remove(pipelineMetadataFilePath)
-			if err != nil {
-				return p.pipelineMetadata, fmt.Errorf("Init(): error creating file: %w", err)
-			}
-		}
-		err = p.encodeMetadataToFile()
-		if err != nil {
-			return p.pipelineMetadata, fmt.Errorf("Init(): error creating file: %w", err)
-		}
-	} else {
-		if err != nil {
-			return p.pipelineMetadata, fmt.Errorf("error opening file: %w", err)
-		}
-		var data []byte
-		data, err = os.ReadFile(pipelineMetadataFilePath)
-		if err != nil {
-			return p.pipelineMetadata, fmt.Errorf("error reading metadata: %w", err)
-		}
-		err = json.Unmarshal(data, &p.pipelineMetadata)
-		if err != nil {
-			return p.pipelineMetadata, fmt.Errorf("error reading metadata: %w", err)
-		}
-	}
-	return p.pipelineMetadata, nil
 }
 
 // start a http server serving /metrics

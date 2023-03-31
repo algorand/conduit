@@ -6,7 +6,6 @@ import (
 
 	"github.com/sirupsen/logrus"
 
-	"github.com/algorand/conduit/conduit"
 	"github.com/algorand/conduit/conduit/data"
 	"github.com/algorand/conduit/conduit/plugins"
 	"github.com/algorand/conduit/conduit/plugins/processors"
@@ -29,8 +28,8 @@ type Processor struct{}
 var sampleConfig string
 
 // Metadata noop
-func (p *Processor) Metadata() conduit.Metadata {
-	return conduit.Metadata{
+func (p *Processor) Metadata() plugins.Metadata {
+	return plugins.Metadata{
 		Name:         PluginName,
 		Description:  "noop processor",
 		Deprecated:   false,

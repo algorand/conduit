@@ -10,7 +10,6 @@ import (
 
 	sdk "github.com/algorand/go-algorand-sdk/v2/types"
 
-	"github.com/algorand/conduit/conduit"
 	"github.com/algorand/conduit/conduit/data"
 	"github.com/algorand/conduit/conduit/plugins"
 	"github.com/algorand/conduit/conduit/plugins/processors"
@@ -41,8 +40,8 @@ type FilterProcessor struct {
 var sampleConfig string
 
 // Metadata returns metadata
-func (a *FilterProcessor) Metadata() conduit.Metadata {
-	return conduit.Metadata{
+func (a *FilterProcessor) Metadata() plugins.Metadata {
+	return plugins.Metadata{
 		Name:         PluginName,
 		Description:  "Filter transactions out of the results according to a configurable pattern.",
 		Deprecated:   false,

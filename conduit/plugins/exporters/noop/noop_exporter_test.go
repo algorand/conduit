@@ -7,11 +7,10 @@ import (
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
 
+	"github.com/algorand/conduit/conduit"
 	"github.com/algorand/conduit/conduit/data"
 	"github.com/algorand/conduit/conduit/plugins"
 	"github.com/algorand/conduit/conduit/plugins/exporters"
-	"github.com/algorand/conduit/conduit/plugins/tools/testutil"
-
 	sdk "github.com/algorand/go-algorand-sdk/v2/types"
 )
 
@@ -36,7 +35,7 @@ func TestExporterMetadata(t *testing.T) {
 }
 
 func TestExporterInit(t *testing.T) {
-	assert.NoError(t, ne.Init(context.Background(), testutil.MockedInitProvider(nil), plugins.MakePluginConfig(""), nil))
+	assert.NoError(t, ne.Init(context.Background(), &conduit.PipelineInitProvider{}, plugins.MakePluginConfig(""), nil))
 }
 
 func TestExporterConfig(t *testing.T) {
@@ -45,7 +44,7 @@ func TestExporterConfig(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unable to Marshal default noop.ExporterConfig: %v", err)
 	}
-	assert.NoError(t, ne.Init(context.Background(), testutil.MockedInitProvider(nil), plugins.MakePluginConfig(""), nil))
+	assert.NoError(t, ne.Init(context.Background(), &conduit.PipelineInitProvider{}, plugins.MakePluginConfig(""), nil))
 	assert.Equal(t, string(expected), ne.Config())
 }
 

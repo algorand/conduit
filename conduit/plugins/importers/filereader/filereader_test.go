@@ -8,16 +8,18 @@ import (
 	"testing"
 	"time"
 
-	sdk "github.com/algorand/go-algorand-sdk/v2/types"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v3"
 
+	"github.com/algorand/conduit/conduit"
 	"github.com/algorand/conduit/conduit/data"
 	"github.com/algorand/conduit/conduit/plugins"
 	"github.com/algorand/conduit/conduit/plugins/exporters/filewriter"
 	"github.com/algorand/conduit/conduit/plugins/importers"
+
+	sdk "github.com/algorand/go-algorand-sdk/v2/types"
 )
 
 var (
@@ -25,12 +27,14 @@ var (
 	ctx          context.Context
 	cancel       context.CancelFunc
 	testImporter importers.Importer
+	pRound       sdk.Round
 )
 
 func init() {
 	logger = logrus.New()
 	logger.SetOutput(os.Stdout)
 	logger.SetLevel(logrus.InfoLevel)
+	pRound = sdk.Round(1)
 }
 
 func TestImporterorterMetadata(t *testing.T) {
@@ -84,7 +88,7 @@ func initializeImporter(t *testing.T, numRounds int) (importer importers.Importe
 	}
 	data, err := yaml.Marshal(cfg)
 	require.NoError(t, err)
-	genesis, err = importer.Init(context.Background(), plugins.MakePluginConfig(string(data)), logger)
+	genesis, err = importer.Init(context.Background(), conduit.MakePipelineInitProvider(&pRound, nil), plugins.MakePluginConfig(string(data)), logger)
 	assert.NoError(t, err)
 	require.NotNil(t, genesis)
 	require.Equal(t, genesisExpected, *genesis)
@@ -98,7 +102,7 @@ func TestInitSuccess(t *testing.T) {
 
 func TestInitUnmarshalFailure(t *testing.T) {
 	testImporter = New()
-	_, err := testImporter.Init(context.Background(), plugins.MakePluginConfig("`"), logger)
+	_, err := testImporter.Init(context.Background(), conduit.MakePipelineInitProvider(&pRound, nil), plugins.MakePluginConfig("`"), logger)
 	assert.Error(t, err)
 	assert.ErrorContains(t, err, "invalid configuration")
 	testImporter.Close()
@@ -137,7 +141,7 @@ func TestRetryAndDuration(t *testing.T) {
 	}
 	data, err := yaml.Marshal(cfg)
 	require.NoError(t, err)
-	_, err = importer.Init(context.Background(), plugins.MakePluginConfig(string(data)), logger)
+	_, err = importer.Init(context.Background(), conduit.MakePipelineInitProvider(&pRound, nil), plugins.MakePluginConfig(string(data)), logger)
 	assert.NoError(t, err)
 
 	start := time.Now()
@@ -161,7 +165,7 @@ func TestRetryWithCancel(t *testing.T) {
 	data, err := yaml.Marshal(cfg)
 	ctx, cancel := context.WithCancel(context.Background())
 	require.NoError(t, err)
-	_, err = importer.Init(ctx, plugins.MakePluginConfig(string(data)), logger)
+	_, err = importer.Init(ctx, conduit.MakePipelineInitProvider(&pRound, nil), plugins.MakePluginConfig(string(data)), logger)
 	assert.NoError(t, err)
 
 	// Cancel after delay

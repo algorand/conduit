@@ -5,7 +5,6 @@ import (
 
 	"github.com/sirupsen/logrus"
 
-	"github.com/algorand/conduit/conduit"
 	"github.com/algorand/conduit/conduit/data"
 	"github.com/algorand/conduit/conduit/plugins"
 )
@@ -13,7 +12,7 @@ import (
 // Processor an interface that defines an object that can filter and process transactions
 type Processor interface {
 	// PluginMetadata implement this interface.
-	conduit.PluginMetadata
+	plugins.PluginMetadata
 
 	// Config returns the configuration options used to create the Processor.
 	Config() string

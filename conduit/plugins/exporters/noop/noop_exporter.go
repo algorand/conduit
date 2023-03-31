@@ -8,7 +8,6 @@ import (
 	"github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v3"
 
-	"github.com/algorand/conduit/conduit"
 	"github.com/algorand/conduit/conduit/data"
 	"github.com/algorand/conduit/conduit/plugins"
 	"github.com/algorand/conduit/conduit/plugins/exporters"
@@ -29,14 +28,14 @@ type noopExporter struct {
 //go:embed sample.yaml
 var sampleConfig string
 
-var metadata = conduit.Metadata{
+var metadata = plugins.Metadata{
 	Name:         PluginName,
 	Description:  "noop exporter",
 	Deprecated:   false,
 	SampleConfig: sampleConfig,
 }
 
-func (exp *noopExporter) Metadata() conduit.Metadata {
+func (exp *noopExporter) Metadata() plugins.Metadata {
 	return metadata
 }
 
