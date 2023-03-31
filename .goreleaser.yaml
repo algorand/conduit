@@ -28,6 +28,13 @@ builds:
       -X github.com/algorand/conduit/version.CompileTime={{.Timestamp}}
       -X github.com/algorand/conduit/version.ReleaseVersion={{.Version}}
 
+dockers:
+  -
+    skip_build: true
+    skip_push: true
+    image_templates:
+    - "algorand/conduit:latest"
+    - "algorand/conduit:{{ .Tag }}"
 archives:
   - replacements:
       darwin: Darwin
