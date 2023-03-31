@@ -18,14 +18,23 @@ jobs:
         with:
           fetch-depth: 0
       - run: git fetch --force --tags
-      - uses: actions/setup-go@v3
+
+      - name: go dependency
+        uses: actions/setup-go@v3
         with:
           go-version-file: 'go.mod'
+
+      - name: Setup QEMU (docker multi-arch dependency)
+        uses: docker/setup-qemu-action@v2
+
+      - name: Setup Docker Buildx (docker multi-arch dependency)
+        uses: docker/setup-buildx-action@v2
+
       - uses: goreleaser/goreleaser-action@v4
         with:
           distribution: goreleaser
           version: latest
-          args: release --clean
+          args: release --clean --skip-docker
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
