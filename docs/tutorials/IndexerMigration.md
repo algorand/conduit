@@ -297,6 +297,6 @@ exporter:
     "connection-string": $PGSQL_CONNECTION_STRING,
 ```
 
-Then run Conduit, `conduit -d $CONDUIT_DATA_DIR`!
+Then run Conduit, `conduit -d $CONDUIT_DATA_DIR --next-round-override $YOUR_ROUND`!
 
 You can separately run your Indexer with `--no-algod` to connect your API to the database.
