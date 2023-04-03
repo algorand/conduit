@@ -22,7 +22,7 @@ const (
 	Exporter = "exporter"
 
 	// Processor PluginType
-	Processor = "processors"
+	Processor = "processor"
 
 	// Importer PluginType
 	Importer = "importer"

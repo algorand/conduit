@@ -201,17 +201,27 @@ func (p *pipelineImpl) registerPluginMetricsCallbacks() {
 	}
 }
 
-func (p *pipelineImpl) makeConfig(pluginType, pluginName string, cfg []byte) (config plugins.PluginConfig) {
-	config.Config = string(cfg)
+func (p *pipelineImpl) makeConfig(cfg NameConfigPair, pluginType plugins.PluginType) (*log.Logger, plugins.PluginConfig, error) {
+	configs, err := yaml.Marshal(cfg.Config)
+	if err != nil {
+		return nil, plugins.PluginConfig{}, fmt.Errorf("makeConfig(): could not serialize config: %w", err)
+	}
+
+	l := log.New()
+	l.SetOutput(p.logger.Out)
+	l.SetFormatter(makePluginLogFormatter(plugins.Processor, cfg.Name))
+
+	var config plugins.PluginConfig
+	config.Config = string(configs)
 	if p.cfg != nil && p.cfg.ConduitArgs != nil {
-		config.DataDir = path.Join(p.cfg.ConduitArgs.ConduitDataDir, fmt.Sprintf("%s_%s", pluginType, pluginName))
-		err := os.MkdirAll(config.DataDir, os.ModePerm)
+		config.DataDir = path.Join(p.cfg.ConduitArgs.ConduitDataDir, fmt.Sprintf("%s_%s", pluginType, cfg.Name))
+		err = os.MkdirAll(config.DataDir, os.ModePerm)
 		if err != nil {
-			p.logger.Errorf("Unable to create plugin data directory: %s", err)
-			config.DataDir = ""
+			return nil, plugins.PluginConfig{}, fmt.Errorf("makeConfig: unable to create plugin data directory: %w", err)
 		}
 	}
-	return
+
+	return l, config, nil
 }
 
 // Init prepares the pipeline for processing block data
@@ -228,14 +238,12 @@ func (p *pipelineImpl) Init() error {
 		var err error
 		profFile, err := os.Create(p.cfg.CPUProfile)
 		if err != nil {
-			p.logger.WithError(err).Errorf("%s: create, %v", p.cfg.CPUProfile, err)
-			return err
+			return fmt.Errorf("Pipeline.Init(): unable to create profile: %w", err)
 		}
 		p.profFile = profFile
 		err = pprof.StartCPUProfile(profFile)
 		if err != nil {
-			p.logger.WithError(err).Errorf("%s: start pprof, %v", p.cfg.CPUProfile, err)
-			return err
+			return fmt.Errorf("Pipeline.Init(): unable to start pprof: %w", err)
 		}
 	}
 
@@ -246,17 +254,7 @@ func (p *pipelineImpl) Init() error {
 		}
 	}
 
-	// TODO Need to change interfaces to accept config of map[string]interface{}
-
-	// Initialize Importer
-	importerLogger := log.New()
-	// Make sure we are thread-safe
-	importerLogger.SetOutput(p.logger.Out)
-	importerName := (*p.importer).Metadata().Name
-	importerLogger.SetFormatter(makePluginLogFormatter(plugins.Importer, importerName))
-
-	var err error
-	// read metadata file if it exists (we have to do this here in order to get
+	// Read metadata file if it exists. We have to do this here in order to get
 	// the round from a previous run if it exists.
 	p.pipelineMetadata = state{}
 	populated, err := isFilePopulated(metadataPath(p.cfg.ConduitArgs.ConduitDataDir))
@@ -280,65 +278,60 @@ func (p *pipelineImpl) Init() error {
 	var initProvider data.InitProvider = conduit.MakePipelineInitProvider(&round, nil)
 	p.initProvider = &initProvider
 
-	configs, err := yaml.Marshal(p.cfg.Importer.Config)
-	if err != nil {
-		return fmt.Errorf("Pipeline.Init(): could not serialize Importer.Args: %w", err)
-	}
-	genesis, err := (*p.importer).Init(p.ctx, *p.initProvider, p.makeConfig("importer", importerName, configs), importerLogger)
-	if err != nil {
-		return fmt.Errorf("Pipeline.Init(): could not initialize importer (%s): %w", importerName, err)
-	}
-	(*p.initProvider).SetGenesis(genesis)
+	// Initialize Importer
+	{
+		importerLogger, pluginConfig, err := p.makeConfig(p.cfg.Importer, plugins.Importer)
+		if err != nil {
+			return fmt.Errorf("Pipeline.Init(): could not make %s config: %w", p.cfg.Importer.Name, err)
+		}
+		genesis, err := (*p.importer).Init(p.ctx, *p.initProvider, pluginConfig, importerLogger)
+		if err != nil {
+			return fmt.Errorf("Pipeline.Init(): could not initialize importer (%s): %w", p.cfg.Importer.Name, err)
+		}
+		(*p.initProvider).SetGenesis(genesis)
 
-	// write pipeline metadata
-	gh := genesis.Hash()
-	ghbase64 := base64.StdEncoding.EncodeToString(gh[:])
-	if p.pipelineMetadata.GenesisHash != "" && p.pipelineMetadata.GenesisHash != ghbase64 {
-		return fmt.Errorf("Pipeline.Init(): genesis hash in metadata does not match expected value: actual %s, expected %s", gh, p.pipelineMetadata.GenesisHash)
-	}
-	p.pipelineMetadata.GenesisHash = ghbase64
-	p.pipelineMetadata.Network = genesis.Network
-	err = p.pipelineMetadata.encodeToFile(p.cfg.ConduitArgs.ConduitDataDir)
-	if err != nil {
-		return fmt.Errorf("Pipeline.Init() failed to write metadata to file: %w", err)
-	}
+		// write pipeline metadata
+		gh := genesis.Hash()
+		ghbase64 := base64.StdEncoding.EncodeToString(gh[:])
+		if p.pipelineMetadata.GenesisHash != "" && p.pipelineMetadata.GenesisHash != ghbase64 {
+			return fmt.Errorf("Pipeline.Init(): genesis hash in metadata does not match expected value: actual %s, expected %s", gh, p.pipelineMetadata.GenesisHash)
+		}
+		p.pipelineMetadata.GenesisHash = ghbase64
+		p.pipelineMetadata.Network = genesis.Network
+		err = p.pipelineMetadata.encodeToFile(p.cfg.ConduitArgs.ConduitDataDir)
+		if err != nil {
+			return fmt.Errorf("Pipeline.Init() failed to write metadata to file: %w", err)
+		}
 
-	p.logger.Infof("Initialized Importer: %s", importerName)
+		p.logger.Infof("Initialized Importer: %s", p.cfg.Importer.Name)
+	}
 
 	// Initialize Processors
 	for idx, processor := range p.processors {
-		processorLogger := log.New()
-		// Make sure we are thread-safe
-		processorLogger.SetOutput(p.logger.Out)
-		processorLogger.SetFormatter(makePluginLogFormatter(plugins.Processor, (*processor).Metadata().Name))
-		configs, err = yaml.Marshal(p.cfg.Processors[idx].Config)
+		ncPair := p.cfg.Processors[idx]
+		logger, config, err := p.makeConfig(ncPair, plugins.Processor)
 		if err != nil {
-			return fmt.Errorf("Pipeline.Start(): could not serialize Processors[%d].Args : %w", idx, err)
+			return fmt.Errorf("Pipeline.Init(): could not initialize processor (%s): %w", ncPair, err)
 		}
-		processorName := (*processor).Metadata().Name
-		err := (*processor).Init(p.ctx, *p.initProvider, p.makeConfig("processor", processorName, configs), processorLogger)
+		err = (*processor).Init(p.ctx, *p.initProvider, config, logger)
 		if err != nil {
-			return fmt.Errorf("Pipeline.Init(): could not initialize processor (%s): %w", processorName, err)
+			return fmt.Errorf("Pipeline.Init(): could not initialize processor (%s): %w", ncPair.Name, err)
 		}
-		p.logger.Infof("Initialized Processor: %s", processorName)
+		p.logger.Infof("Initialized Processor: %s", ncPair.Name)
 	}
 
 	// Initialize Exporter
-	exporterLogger := log.New()
-	// Make sure we are thread-safe
-	exporterLogger.SetOutput(p.logger.Out)
-	exporterLogger.SetFormatter(makePluginLogFormatter(plugins.Exporter, (*p.exporter).Metadata().Name))
-
-	configs, err = yaml.Marshal(p.cfg.Exporter.Config)
-	if err != nil {
-		return fmt.Errorf("Pipeline.Start(): could not serialize Exporter.Args : %w", err)
+	{
+		logger, config, err := p.makeConfig(p.cfg.Exporter, plugins.Exporter)
+		if err != nil {
+			return fmt.Errorf("Pipeline.Init(): could not initialize processor (%s): %w", p.cfg.Exporter.Name, err)
+		}
+		err = (*p.exporter).Init(p.ctx, *p.initProvider, config, logger)
+		if err != nil {
+			return fmt.Errorf("Pipeline.Start(): could not initialize Exporter (%s): %w", p.cfg.Exporter.Name, err)
+		}
+		p.logger.Infof("Initialized Exporter: %s", p.cfg.Exporter.Name)
 	}
-	exporterName := (*p.exporter).Metadata().Name
-	err = (*p.exporter).Init(p.ctx, *p.initProvider, p.makeConfig("exporter", exporterName, configs), exporterLogger)
-	if err != nil {
-		return fmt.Errorf("Pipeline.Start(): could not initialize Exporter (%s): %w", exporterName, err)
-	}
-	p.logger.Infof("Initialized Exporter: %s", exporterName)
 
 	// Register callbacks.
 	p.registerLifecycleCallbacks()

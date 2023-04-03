@@ -599,17 +599,17 @@ func TestPluginConfigDataDir(t *testing.T) {
 				ConduitDataDir: datadir,
 			},
 			Importer: NameConfigPair{
-				Name:   "",
+				Name:   "mockImporter",
 				Config: map[string]interface{}{},
 			},
 			Processors: []NameConfigPair{
 				{
-					Name:   "",
+					Name:   "mockProcessor",
 					Config: map[string]interface{}{},
 				},
 			},
 			Exporter: NameConfigPair{
-				Name:   "",
+				Name:   "mockExporter",
 				Config: map[string]interface{}{},
 			},
 		},
@@ -626,11 +626,11 @@ func TestPluginConfigDataDir(t *testing.T) {
 	err := pImpl.Init()
 	assert.NoError(t, err)
 
-	assert.Equal(t, mImporter.cfg.DataDir, path.Join(datadir, "importer_mockImporter"))
+	assert.Equal(t, path.Join(datadir, "importer_mockImporter"), mImporter.cfg.DataDir)
 	assert.DirExists(t, mImporter.cfg.DataDir)
-	assert.Equal(t, mProcessor.cfg.DataDir, path.Join(datadir, "processor_mockProcessor"))
+	assert.Equal(t, path.Join(datadir, "processor_mockProcessor"), mProcessor.cfg.DataDir)
 	assert.DirExists(t, mProcessor.cfg.DataDir)
-	assert.Equal(t, mExporter.cfg.DataDir, path.Join(datadir, "exporter_mockExporter"))
+	assert.Equal(t, path.Join(datadir, "exporter_mockExporter"), mExporter.cfg.DataDir)
 	assert.DirExists(t, mExporter.cfg.DataDir)
 }
 
