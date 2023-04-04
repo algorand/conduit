@@ -28,6 +28,29 @@ import (
 	"github.com/algorand/conduit/conduit/plugins/processors"
 )
 
+type ErrOverrideConflict struct {
+	pluginOrCLI uint64
+	other       uint64
+	cli         bool
+}
+
+func MakeErrOverrideConflict(pluginOrCLI, other uint64, cli bool) error {
+	return ErrOverrideConflict{
+		pluginOrCLI: pluginOrCLI,
+		other:       other,
+		cli:         cli,
+	}
+}
+
+func (e ErrOverrideConflict) Error() string {
+	if e.cli {
+		return fmt.Sprintf("inconsistent round overrides detected: command line (%d), plugins (%d)", e.pluginOrCLI, e.other)
+
+	} else {
+		return fmt.Sprintf("inconsistent round overrides detected: %d, %d", e.pluginOrCLI, e.other)
+	}
+}
+
 // NameConfigPair is a generic structure used across plugin configuration ser/de
 type NameConfigPair struct {
 	Name   string                 `yaml:"name"`
@@ -224,6 +247,67 @@ func (p *pipelineImpl) makeConfig(cfg NameConfigPair, pluginType plugins.PluginT
 	return l, config, nil
 }
 
+// pluginRoundOverride looks at the round override argument, and attempts to query
+// each plugin for a requested round override. If there is no override, 0 is
+// returned, if there is one or more round override which are in agreement,
+// that round is returned, if there are multiple different round overrides
+// an error is returned.
+func (p *pipelineImpl) pluginRoundOverride() (uint64, error) {
+	var pluginOverride uint64
+
+	if v, ok := (*p.importer).(conduit.RoundRequestor); ok {
+		_, config, err := p.makeConfig(p.cfg.Importer, plugins.Importer)
+		if err != nil {
+			return 0, err
+		}
+		rnd := v.RoundRequest(config)
+		if pluginOverride != 0 && rnd != 0 && rnd != pluginOverride {
+			return 0, MakeErrOverrideConflict(pluginOverride, rnd, false)
+		}
+		if rnd != 0 {
+			pluginOverride = rnd
+		}
+	}
+	for idx, processor := range p.processors {
+		if v, ok := (*processor).(conduit.RoundRequestor); ok {
+			_, config, err := p.makeConfig(p.cfg.Processors[idx], plugins.Processor)
+			if err != nil {
+				return 0, err
+			}
+			rnd := v.RoundRequest(config)
+			if pluginOverride != 0 && rnd != 0 && rnd != pluginOverride {
+				return 0, MakeErrOverrideConflict(pluginOverride, rnd, false)
+			}
+			if rnd != 0 {
+				pluginOverride = rnd
+			}
+		}
+	}
+	if v, ok := (*p.exporter).(conduit.RoundRequestor); ok {
+		_, config, err := p.makeConfig(p.cfg.Importer, plugins.Exporter)
+		if err != nil {
+			return 0, err
+		}
+		rnd := v.RoundRequest(config)
+		if pluginOverride != 0 && rnd != 0 && rnd != pluginOverride {
+			return 0, MakeErrOverrideConflict(pluginOverride, rnd, false)
+		}
+		if rnd != 0 {
+			pluginOverride = rnd
+		}
+	}
+
+	// Check command line arg
+	if pluginOverride != 0 && p.cfg.ConduitArgs.NextRoundOverride != 0 && p.cfg.ConduitArgs.NextRoundOverride != pluginOverride {
+		return 0, MakeErrOverrideConflict(p.cfg.ConduitArgs.NextRoundOverride, pluginOverride, true)
+	}
+	if p.cfg.ConduitArgs.NextRoundOverride != 0 {
+		pluginOverride = p.cfg.ConduitArgs.NextRoundOverride
+	}
+
+	return pluginOverride, nil
+}
+
 // Init prepares the pipeline for processing block data
 func (p *pipelineImpl) Init() error {
 	p.logger.Infof("Starting Pipeline Initialization")
@@ -267,11 +351,17 @@ func (p *pipelineImpl) Init() error {
 			return fmt.Errorf("Pipeline.Init(): could not read metadata: %w", err)
 		}
 	}
-	// overriding NextRound if NextRoundOverride is set
-	if p.cfg.ConduitArgs.NextRoundOverride > 0 {
-		p.logger.Infof("Overriding default next round from %d to %d.", p.pipelineMetadata.NextRound, p.cfg.ConduitArgs.NextRoundOverride)
-		p.pipelineMetadata.NextRound = p.cfg.ConduitArgs.NextRoundOverride
+
+	// Check for round override
+	pluginRoundOverride, err := p.pluginRoundOverride()
+	if err != nil {
+		return fmt.Errorf("Pipeline.Init(): error resolving plugin round override: %w", err)
 	}
+	if pluginRoundOverride > 0 {
+		p.logger.Infof("Overriding default next round from %d to %d.", p.pipelineMetadata.NextRound, p.cfg.ConduitArgs.NextRoundOverride)
+		p.pipelineMetadata.NextRound = pluginRoundOverride
+	}
+
 	// InitProvider
 	round := sdk.Round(p.pipelineMetadata.NextRound)
 	// Initial genesis object is nil--gets updated after importer.Init
