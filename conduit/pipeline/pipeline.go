@@ -260,7 +260,10 @@ func (p *pipelineImpl) pluginRoundOverride() (uint64, error) {
 		if err != nil {
 			return 0, err
 		}
-		rnd := v.RoundRequest(config)
+		rnd, err := v.RoundRequest(config)
+		if err != nil {
+			return 0, err
+		}
 		if pluginOverride != 0 && rnd != 0 && rnd != pluginOverride {
 			return 0, MakeErrOverrideConflict(pluginOverride, rnd, false)
 		}
@@ -274,7 +277,10 @@ func (p *pipelineImpl) pluginRoundOverride() (uint64, error) {
 			if err != nil {
 				return 0, err
 			}
-			rnd := v.RoundRequest(config)
+			rnd, err := v.RoundRequest(config)
+			if err != nil {
+				return 0, err
+			}
 			if pluginOverride != 0 && rnd != 0 && rnd != pluginOverride {
 				return 0, MakeErrOverrideConflict(pluginOverride, rnd, false)
 			}
@@ -288,7 +294,10 @@ func (p *pipelineImpl) pluginRoundOverride() (uint64, error) {
 		if err != nil {
 			return 0, err
 		}
-		rnd := v.RoundRequest(config)
+		rnd, err := v.RoundRequest(config)
+		if err != nil {
+			return 0, err
+		}
 		if pluginOverride != 0 && rnd != 0 && rnd != pluginOverride {
 			return 0, MakeErrOverrideConflict(pluginOverride, rnd, false)
 		}

@@ -3,14 +3,9 @@ package conduit
 import (
 	"github.com/prometheus/client_golang/prometheus"
 
-	sdk "github.com/algorand/go-algorand-sdk/v2/types"
-
 	"github.com/algorand/conduit/conduit/data"
 	"github.com/algorand/conduit/conduit/plugins"
 )
-
-// RoundRequestFunc is the signature for the RoundRequestor interface.
-type RoundRequestFunc func() sdk.Round
 
 // RoundRequestor is an optional interface. Plugins should implement it if
 // they would like to request an override to the pipeline managed round.
@@ -29,7 +24,7 @@ type RoundRequestor interface {
 	// we will add an option to select which override to use. For example,
 	// the override rule could be "command-line", "oldest", or the name
 	// of a plugin which should be preferred.
-	RoundRequest(config plugins.PluginConfig) uint64
+	RoundRequest(config plugins.PluginConfig) (uint64, error)
 }
 
 // ProvideMetricsFunc is the signature for the PluginMetrics interface.

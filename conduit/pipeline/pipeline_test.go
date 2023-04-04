@@ -3,6 +3,7 @@ package pipeline
 import (
 	"context"
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"math"
 	"net/http"
@@ -206,6 +207,7 @@ type mockImporter struct {
 	onCompleteError bool
 	subsystem       string
 	rndOverride     uint64
+	rndReqErr       error
 }
 
 func (m *mockImporter) Init(_ context.Context, _ data.InitProvider, cfg plugins.PluginConfig, _ *log.Logger) (*sdk.Genesis, error) {
@@ -246,8 +248,8 @@ func (m *mockImporter) ProvideMetrics(subsystem string) []prometheus.Collector {
 	return nil
 }
 
-func (m *mockImporter) RoundRequest(_ plugins.PluginConfig) uint64 {
-	return m.rndOverride
+func (m *mockImporter) RoundRequest(_ plugins.PluginConfig) (uint64, error) {
+	return m.rndOverride, m.rndReqErr
 }
 
 type mockProcessor struct {
@@ -258,6 +260,7 @@ type mockProcessor struct {
 	returnError     bool
 	onCompleteError bool
 	rndOverride     uint64
+	rndReqErr       error
 }
 
 func (m *mockProcessor) Init(_ context.Context, _ data.InitProvider, cfg plugins.PluginConfig, _ *log.Logger) error {
@@ -269,8 +272,8 @@ func (m *mockProcessor) Close() error {
 	return nil
 }
 
-func (m *mockProcessor) RoundRequest(_ plugins.PluginConfig) uint64 {
-	return m.rndOverride
+func (m *mockProcessor) RoundRequest(_ plugins.PluginConfig) (uint64, error) {
+	return m.rndOverride, m.rndReqErr
 }
 
 func (m *mockProcessor) Metadata() plugins.Metadata {
@@ -307,6 +310,7 @@ type mockExporter struct {
 	returnError     bool
 	onCompleteError bool
 	rndOverride     uint64
+	rndReqErr       error
 }
 
 func (m *mockExporter) Metadata() plugins.Metadata {
@@ -315,8 +319,8 @@ func (m *mockExporter) Metadata() plugins.Metadata {
 	}
 }
 
-func (m *mockExporter) RoundRequest(_ plugins.PluginConfig) uint64 {
-	return m.rndOverride
+func (m *mockExporter) RoundRequest(_ plugins.PluginConfig) (uint64, error) {
+	return m.rndOverride, m.rndReqErr
 }
 
 func (m *mockExporter) Init(_ context.Context, _ data.InitProvider, cfg plugins.PluginConfig, _ *log.Logger) error {
@@ -726,6 +730,34 @@ func TestRoundOverrideInvalidConflict(t *testing.T) {
 	pImpl.cfg.ConduitArgs.NextRoundOverride = 10
 	err = pImpl.Init()
 	assert.ErrorIs(t, err, MakeErrOverrideConflict(10, 1, true))
+}
+
+func TestRoundRequestError(t *testing.T) {
+	pImpl, _, mImporter, mProcessor, mExporter := mockPipeline(t, "")
+
+	{
+		sentinelErr := errors.New("the error 1")
+		mImporter.rndReqErr = sentinelErr
+		err := pImpl.Init()
+		assert.ErrorIs(t, err, sentinelErr)
+		mImporter.rndReqErr = nil
+	}
+
+	{
+		sentinelErr := errors.New("the error 2")
+		mProcessor.rndReqErr = sentinelErr
+		err := pImpl.Init()
+		assert.ErrorIs(t, err, sentinelErr)
+		mProcessor.rndReqErr = nil
+	}
+
+	{
+		sentinelErr := errors.New("the error 3")
+		mExporter.rndReqErr = sentinelErr
+		err := pImpl.Init()
+		assert.ErrorIs(t, err, sentinelErr)
+		mExporter.rndReqErr = nil
+	}
 }
 
 func TestRoundOverride(t *testing.T) {

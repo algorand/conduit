@@ -5,6 +5,7 @@ import (
 	_ "embed" // used to embed config
 	"errors"
 	"fmt"
+	"io"
 	"sync"
 	"sync/atomic"
 
@@ -51,6 +52,46 @@ var metadata = plugins.Metadata{
 
 func (exp *postgresqlExporter) Metadata() plugins.Metadata {
 	return metadata
+}
+
+// RoundRequest connects to the database, queries the round, and closes the
+// connection. If there is a problem with the configuration, an error will be
+// returned in the Init phase and this function will return 0.
+func (exp *postgresqlExporter) RoundRequest(cfg plugins.PluginConfig) (uint64, error) {
+	dbName := "postgres"
+	var exporterConfig ExporterConfig
+	if err := cfg.UnmarshalConfig(&exporterConfig); err != nil {
+		return 0, fmt.Errorf("postgres.RoundRequest(): unable to read config: %w", err)
+	}
+	// Inject a dummy db for unit testing
+	if exporterConfig.Test {
+		dbName = "dummy"
+	}
+	var opts idb.IndexerDbOptions
+	opts.MaxConn = exporterConfig.MaxConn
+	opts.ReadOnly = true // skip migration
+
+	// for some reason when ConnectionString is empty, it's automatically
+	// connecting to a local instance that's running.
+	// this behavior can be reproduced in TestConnectDbFailure.
+	if !exporterConfig.Test && exporterConfig.ConnectionString == "" {
+		return 0, fmt.Errorf("postgres.RoundRequest(): missing connection string")
+	}
+
+	// No logging.
+	nullLogger := logrus.New()
+	nullLogger.Out = io.Discard
+	db, _, err := idb.IndexerDbByName(dbName, exporterConfig.ConnectionString, opts, nullLogger)
+	if err != nil {
+		return 0, fmt.Errorf("postgres.RoundRequest(): db connection failed: %w", err)
+	}
+
+	rnd, err := db.GetNextRoundToAccount()
+	if err != nil {
+		return 0, fmt.Errorf("postgres.RoundRequest(): failed to get next round: %w", err)
+	}
+
+	return rnd, nil
 }
 
 func (exp *postgresqlExporter) Init(ctx context.Context, initProvider data.InitProvider, cfg plugins.PluginConfig, logger *logrus.Logger) error {
