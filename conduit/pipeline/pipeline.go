@@ -256,6 +256,7 @@ func (p *pipelineImpl) makeConfig(cfg NameConfigPair, pluginType plugins.PluginT
 func (p *pipelineImpl) pluginRoundOverride() (uint64, error) {
 	var pluginOverride uint64
 
+	p.logger.Infof("Checking importer.")
 	if v, ok := (*p.importer).(conduit.RoundRequestor); ok {
 		_, config, err := p.makeConfig(p.cfg.Importer, plugins.Importer)
 		if err != nil {
@@ -272,7 +273,9 @@ func (p *pipelineImpl) pluginRoundOverride() (uint64, error) {
 			pluginOverride = rnd
 		}
 	}
+	p.logger.Infof("Checking processors...")
 	for idx, processor := range p.processors {
+		p.logger.Infof("processor %d", idx)
 		if v, ok := (*processor).(conduit.RoundRequestor); ok {
 			_, config, err := p.makeConfig(p.cfg.Processors[idx], plugins.Processor)
 			if err != nil {
@@ -290,6 +293,7 @@ func (p *pipelineImpl) pluginRoundOverride() (uint64, error) {
 			}
 		}
 	}
+	p.logger.Infof("exporter")
 	if v, ok := (*p.exporter).(conduit.RoundRequestor); ok {
 		_, config, err := p.makeConfig(p.cfg.Importer, plugins.Exporter)
 		if err != nil {

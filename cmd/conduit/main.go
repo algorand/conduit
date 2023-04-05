@@ -133,7 +133,6 @@ Detailed documentation is online: https://github.com/algorand/conduit`,
 			err := runConduitCmdWithConfig(cfg)
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "\nExiting with error:\n%s.\n", err)
-				fmt.Fprintf(os.Stdout, "\nExiting with error:\n%s.\n", err)
 				os.Exit(1)
 			}
 		},
