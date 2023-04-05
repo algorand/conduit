@@ -105,6 +105,9 @@ func (exp *postgresqlExporter) RoundRequest(cfg plugins.PluginConfig) (uint64, e
 }
 
 func (exp *postgresqlExporter) Init(ctx context.Context, initProvider data.InitProvider, cfg plugins.PluginConfig, logger *logrus.Logger) error {
+	exp.ctx, exp.cf = context.WithCancel(ctx)
+	exp.logger = logger
+
 	db, ready, err := createIndexerDB(exp.logger, false, cfg)
 	if err != nil {
 		return fmt.Errorf("db create error: %v", err)
@@ -112,8 +115,6 @@ func (exp *postgresqlExporter) Init(ctx context.Context, initProvider data.InitP
 	<-ready
 
 	exp.db = db
-	exp.ctx, exp.cf = context.WithCancel(ctx)
-	exp.logger = logger
 	_, err = iutil.EnsureInitialImport(exp.db, *initProvider.GetGenesis())
 	if err != nil {
 		return fmt.Errorf("error importing genesis: %v", err)
