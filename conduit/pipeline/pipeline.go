@@ -363,6 +363,7 @@ func (p *pipelineImpl) Init() error {
 	}
 
 	// Check for round override
+	p.logger.Infof("Checking for round override")
 	pluginRoundOverride, err := p.pluginRoundOverride()
 	if err != nil {
 		return fmt.Errorf("Pipeline.Init(): error resolving plugin round override: %w", err)
