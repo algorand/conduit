@@ -295,7 +295,7 @@ func (p *pipelineImpl) pluginRoundOverride() (uint64, error) {
 	}
 	p.logger.Infof("exporter")
 	if v, ok := (*p.exporter).(conduit.RoundRequestor); ok {
-		_, config, err := p.makeConfig(p.cfg.Importer, plugins.Exporter)
+		_, config, err := p.makeConfig(p.cfg.Exporter, plugins.Exporter)
 		if err != nil {
 			return 0, err
 		}
