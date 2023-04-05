@@ -28,12 +28,14 @@ import (
 	"github.com/algorand/conduit/conduit/plugins/processors"
 )
 
+// ErrOverrideConflict is used when there are two different round overrides detected.
 type ErrOverrideConflict struct {
 	pluginOrCLI uint64
 	other       uint64
 	cli         bool
 }
 
+// MakeErrOverrideConflict creates a new ErrOverrideConflict.
 func MakeErrOverrideConflict(pluginOrCLI, other uint64, cli bool) error {
 	return ErrOverrideConflict{
 		pluginOrCLI: pluginOrCLI,
@@ -42,13 +44,12 @@ func MakeErrOverrideConflict(pluginOrCLI, other uint64, cli bool) error {
 	}
 }
 
+// Error implements the error interface.
 func (e ErrOverrideConflict) Error() string {
 	if e.cli {
 		return fmt.Sprintf("inconsistent round overrides detected: command line (%d), plugins (%d)", e.pluginOrCLI, e.other)
-
-	} else {
-		return fmt.Sprintf("inconsistent round overrides detected: %d, %d", e.pluginOrCLI, e.other)
 	}
+	return fmt.Sprintf("inconsistent round overrides detected: %d, %d", e.pluginOrCLI, e.other)
 }
 
 // NameConfigPair is a generic structure used across plugin configuration ser/de

@@ -362,7 +362,7 @@ func (c mockedExporterNew) New() exporters.Exporter { return &mockExporter{} }
 
 */
 
-func mockPipeline(t *testing.T, dataDir string) (pipelineImpl, *test.Hook, *mockImporter, *mockProcessor, *mockExporter) {
+func mockPipeline(t *testing.T, dataDir string) (*pipelineImpl, *test.Hook, *mockImporter, *mockProcessor, *mockExporter) {
 	if dataDir == "" {
 		dataDir = t.TempDir()
 	}
@@ -407,7 +407,7 @@ func mockPipeline(t *testing.T, dataDir string) (pipelineImpl, *test.Hook, *mock
 		},
 	}
 
-	return pImpl, hook, mImporter, mProcessor, mExporter
+	return &pImpl, hook, mImporter, mProcessor, mExporter
 }
 
 // TestPipelineRun tests that running the pipeline calls the correct functions with mocking
