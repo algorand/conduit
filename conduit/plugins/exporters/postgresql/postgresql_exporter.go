@@ -97,7 +97,7 @@ func (exp *postgresqlExporter) RoundRequest(cfg plugins.PluginConfig) (uint64, e
 	}
 
 	rnd, err := db.GetNextRoundToAccount()
-	if err != nil {
+	if err != nil && err != idb.ErrorNotInitialized {
 		return 0, fmt.Errorf("postgres.RoundRequest(): failed to get next round: %w", err)
 	}
 
