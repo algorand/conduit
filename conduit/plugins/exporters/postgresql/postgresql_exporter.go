@@ -93,7 +93,9 @@ func (exp *postgresqlExporter) RoundRequest(cfg plugins.PluginConfig) (uint64, e
 
 	db, _, err := createIndexerDB(nullLogger, true, cfg)
 	if err != nil {
-		return 0, fmt.Errorf("db create error: %v", err)
+		// Assume the error is related to an uninitialized DB.
+		// If it is something more serious, the failure will be detected during Init.
+		return 0, nil
 	}
 
 	rnd, err := db.GetNextRoundToAccount()
