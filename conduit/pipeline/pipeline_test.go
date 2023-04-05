@@ -351,17 +351,6 @@ func (m *mockExporter) OnComplete(input data.BlockData) error {
 	return err
 }
 
-/*
-type mockedImporterNew struct{}
-
-func (c mockedImporterNew) New() importers.Importer { return &mockImporter{} }
-
-type mockedExporterNew struct{}
-
-func (c mockedExporterNew) New() exporters.Exporter { return &mockExporter{} }
-
-*/
-
 func mockPipeline(t *testing.T, dataDir string) (*pipelineImpl, *test.Hook, *mockImporter, *mockProcessor, *mockExporter) {
 	if dataDir == "" {
 		dataDir = t.TempDir()
@@ -695,113 +684,128 @@ func TestPipelineMetricsConfigs(t *testing.T) {
 }
 
 func TestRoundOverrideValidConflict(t *testing.T) {
-	pImpl, _, mImporter, mProcessor, mExporter := mockPipeline(t, "")
-	mImporter.rndOverride = 10
-	mProcessor.rndOverride = 10
+	t.Run("processor_no_conflict", func(t *testing.T) {
+		pImpl, _, mImporter, mProcessor, _ := mockPipeline(t, "")
+		mImporter.rndOverride = 10
+		mProcessor.rndOverride = 10
+		err := pImpl.Init()
+		assert.NoError(t, err)
+	})
 
-	err := pImpl.Init()
-	assert.NoError(t, err)
+	t.Run("exporter_no_conflict", func(t *testing.T) {
+		pImpl, _, _, mProcessor, mExporter := mockPipeline(t, "")
+		mProcessor.rndOverride = 10
+		mExporter.rndOverride = 10
+		err := pImpl.Init()
+		assert.NoError(t, err)
+	})
 
-	mProcessor.rndOverride = 0
-	mExporter.rndOverride = 10
-	err = pImpl.Init()
-	assert.NoError(t, err)
-
-	mExporter.rndOverride = 0
-	pImpl.cfg.ConduitArgs.NextRoundOverride = 10
-	err = pImpl.Init()
-	assert.NoError(t, err)
+	t.Run("cli_no_conflict", func(t *testing.T) {
+		pImpl, _, mImporter, _, _ := mockPipeline(t, "")
+		mImporter.rndOverride = 10
+		pImpl.cfg.ConduitArgs.NextRoundOverride = 10
+		err := pImpl.Init()
+		assert.NoError(t, err)
+	})
 }
 
 func TestRoundOverrideInvalidConflict(t *testing.T) {
-	pImpl, _, mImporter, mProcessor, mExporter := mockPipeline(t, "")
-	mImporter.rndOverride = 1
-	mProcessor.rndOverride = 10
+	t.Run("processor_no_conflict", func(t *testing.T) {
+		t.Parallel()
+		pImpl, _, mImporter, mProcessor, _ := mockPipeline(t, "")
+		mImporter.rndOverride = 1
+		mProcessor.rndOverride = 10
+		err := pImpl.Init()
+		assert.ErrorIs(t, err, MakeErrOverrideConflict(1, 10, false))
+	})
 
-	err := pImpl.Init()
-	assert.ErrorIs(t, err, MakeErrOverrideConflict(1, 10, false))
+	t.Run("exporter_no_conflict", func(t *testing.T) {
+		t.Parallel()
+		pImpl, _, mImporter, _, mExporter := mockPipeline(t, "")
+		mImporter.rndOverride = 1
+		mExporter.rndOverride = 10
+		err := pImpl.Init()
+		assert.ErrorIs(t, err, MakeErrOverrideConflict(1, 10, false))
+	})
 
-	mProcessor.rndOverride = 0
-	mExporter.rndOverride = 10
-	err = pImpl.Init()
-	assert.ErrorIs(t, err, MakeErrOverrideConflict(1, 10, false))
-
-	mExporter.rndOverride = 0
-	pImpl.cfg.ConduitArgs.NextRoundOverride = 10
-	err = pImpl.Init()
-	assert.ErrorIs(t, err, MakeErrOverrideConflict(10, 1, true))
+	t.Run("cli_no_conflict", func(t *testing.T) {
+		t.Parallel()
+		pImpl, _, mImporter, _, _ := mockPipeline(t, "")
+		mImporter.rndOverride = 1
+		pImpl.cfg.ConduitArgs.NextRoundOverride = 10
+		err := pImpl.Init()
+		assert.ErrorIs(t, err, MakeErrOverrideConflict(10, 1, true))
+	})
 }
 
 func TestRoundRequestError(t *testing.T) {
-	pImpl, _, mImporter, mProcessor, mExporter := mockPipeline(t, "")
-
-	{
+	t.Run("importer round request error", func(t *testing.T) {
+		t.Parallel()
+		pImpl, _, mImporter, _, _ := mockPipeline(t, "")
 		sentinelErr := errors.New("the error 1")
 		mImporter.rndReqErr = sentinelErr
 		err := pImpl.Init()
 		assert.ErrorIs(t, err, sentinelErr)
-		mImporter.rndReqErr = nil
-	}
+	})
 
-	{
+	t.Run("processor round request error", func(t *testing.T) {
+		t.Parallel()
+		pImpl, _, _, mProcessor, _ := mockPipeline(t, "")
 		sentinelErr := errors.New("the error 2")
 		mProcessor.rndReqErr = sentinelErr
 		err := pImpl.Init()
 		assert.ErrorIs(t, err, sentinelErr)
-		mProcessor.rndReqErr = nil
-	}
+	})
 
-	{
+	t.Run("exporter round request error", func(t *testing.T) {
+		t.Parallel()
+		pImpl, _, _, _, mExporter := mockPipeline(t, "")
 		sentinelErr := errors.New("the error 3")
 		mExporter.rndReqErr = sentinelErr
 		err := pImpl.Init()
 		assert.ErrorIs(t, err, sentinelErr)
-		mExporter.rndReqErr = nil
-	}
+	})
 }
 
 func TestRoundOverride(t *testing.T) {
-	pImpl, _, mImporter, mProcessor, mExporter := mockPipeline(t, "")
-
-	// pipeline should initialize if NextRoundOverride is not set
-	err := pImpl.Init()
-	assert.Nil(t, err)
-
-	// override NextRound
-	for i := 1; i < 10; i++ {
-		pImpl.cfg.ConduitArgs.NextRoundOverride = uint64(i)
-		err = pImpl.Init()
-		assert.Nil(t, err)
-		assert.Equal(t, uint64(i), pImpl.pipelineMetadata.NextRound)
+	// cli override NextRound, 0 is a test for no override.
+	for i := 0; i < 10; i++ {
+		t.Run(fmt.Sprintf("cli round override %d", i), func(t *testing.T) {
+			t.Parallel()
+			pImpl, _, _, _, _ := mockPipeline(t, "")
+			pImpl.cfg.ConduitArgs.NextRoundOverride = uint64(i)
+			err := pImpl.Init()
+			assert.Nil(t, err)
+			assert.Equal(t, uint64(i), pImpl.pipelineMetadata.NextRound)
+		})
 	}
-	pImpl.cfg.ConduitArgs.NextRoundOverride = 0
 
-	// plugin overrides - importer
-	mImporter.rndOverride = 10
-	err = pImpl.Init()
-	assert.Nil(t, err)
-	assert.Equal(t, uint64(10), pImpl.pipelineMetadata.NextRound)
-	mImporter.rndOverride = 0
+	t.Run("importer round override", func(t *testing.T) {
+		t.Parallel()
+		pImpl, _, mImporter, _, _ := mockPipeline(t, "")
+		mImporter.rndOverride = 10
+		err := pImpl.Init()
+		assert.Nil(t, err)
+		assert.Equal(t, uint64(10), pImpl.pipelineMetadata.NextRound)
+	})
 
-	// plugin overrides - processor
-	mProcessor.rndOverride = 10
-	err = pImpl.Init()
-	assert.Nil(t, err)
-	assert.Equal(t, uint64(10), pImpl.pipelineMetadata.NextRound)
-	mProcessor.rndOverride = 0
+	t.Run("processor round override", func(t *testing.T) {
+		t.Parallel()
+		pImpl, _, _, mProcessor, _ := mockPipeline(t, "")
+		mProcessor.rndOverride = 10
+		err := pImpl.Init()
+		assert.Nil(t, err)
+		assert.Equal(t, uint64(10), pImpl.pipelineMetadata.NextRound)
+	})
 
-	// plugin overrides - exporter
-	mExporter.rndOverride = 10
-	err = pImpl.Init()
-	assert.Nil(t, err)
-	assert.Equal(t, uint64(10), pImpl.pipelineMetadata.NextRound)
-	mExporter.rndOverride = 0
-
-	// plugin override error
-}
-
-func TestRoundOverwriteErrors(t *testing.T) {
-
+	t.Run("exporter round override", func(t *testing.T) {
+		t.Parallel()
+		pImpl, _, _, _, mExporter := mockPipeline(t, "")
+		mExporter.rndOverride = 10
+		err := pImpl.Init()
+		assert.Nil(t, err)
+		assert.Equal(t, uint64(10), pImpl.pipelineMetadata.NextRound)
+	})
 }
 
 // an importer that simply errors out when GetBlock() is called
