@@ -254,52 +254,50 @@ func (p *pipelineImpl) makeConfig(cfg NameConfigPair, pluginType plugins.PluginT
 // that round is returned, if there are multiple different round overrides
 // an error is returned.
 func (p *pipelineImpl) pluginRoundOverride() (uint64, error) {
-	var pluginOverride uint64
+	type overrideFunc func(config plugins.PluginConfig) (uint64, error)
+	type overridePart struct {
+		RoundRequest overrideFunc
+		cfg          NameConfigPair
+		t            plugins.PluginType
+	}
+	var parts []overridePart
 
 	p.logger.Infof("Checking importer.")
 	if v, ok := (*p.importer).(conduit.RoundRequestor); ok {
-		_, config, err := p.makeConfig(p.cfg.Importer, plugins.Importer)
-		if err != nil {
-			return 0, err
-		}
-		rnd, err := v.RoundRequest(config)
-		if err != nil {
-			return 0, err
-		}
-		if pluginOverride != 0 && rnd != 0 && rnd != pluginOverride {
-			return 0, MakeErrOverrideConflict(pluginOverride, rnd, false)
-		}
-		if rnd != 0 {
-			pluginOverride = rnd
-		}
+		parts = append(parts, overridePart{
+			RoundRequest: v.RoundRequest,
+			cfg:          p.cfg.Importer,
+			t:            plugins.Importer,
+		})
 	}
 	p.logger.Infof("Checking processors...")
 	for idx, processor := range p.processors {
 		p.logger.Infof("processor %d", idx)
 		if v, ok := (*processor).(conduit.RoundRequestor); ok {
-			_, config, err := p.makeConfig(p.cfg.Processors[idx], plugins.Processor)
-			if err != nil {
-				return 0, err
-			}
-			rnd, err := v.RoundRequest(config)
-			if err != nil {
-				return 0, err
-			}
-			if pluginOverride != 0 && rnd != 0 && rnd != pluginOverride {
-				return 0, MakeErrOverrideConflict(pluginOverride, rnd, false)
-			}
-			if rnd != 0 {
-				pluginOverride = rnd
-			}
+			parts = append(parts, overridePart{
+				RoundRequest: v.RoundRequest,
+				cfg:          p.cfg.Processors[idx],
+				t:            plugins.Processor,
+			})
 		}
 	}
 	p.logger.Infof("exporter")
 	if v, ok := (*p.exporter).(conduit.RoundRequestor); ok {
-		_, config, err := p.makeConfig(p.cfg.Exporter, plugins.Exporter)
+		parts = append(parts, overridePart{
+			RoundRequest: v.RoundRequest,
+			cfg:          p.cfg.Exporter,
+			t:            plugins.Exporter,
+		})
+	}
+
+	// Call the override functions.
+	var pluginOverride uint64
+	for _, part := range parts {
+		_, config, err := p.makeConfig(part.cfg, part.t)
 		if err != nil {
 			return 0, err
 		}
-		rnd, err := v.RoundRequest(config)
+		rnd, err := part.RoundRequest(config)
 		if err != nil {
 			return 0, err
 		}
