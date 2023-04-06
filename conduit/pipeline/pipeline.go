@@ -35,8 +35,8 @@ type ErrOverrideConflict struct {
 	cli         bool
 }
 
-// MakeErrOverrideConflict creates a new ErrOverrideConflict.
-func MakeErrOverrideConflict(pluginOrCLI, other uint64, cli bool) error {
+// makeErrOverrideConflict creates a new ErrOverrideConflict.
+func makeErrOverrideConflict(pluginOrCLI, other uint64, cli bool) error {
 	return ErrOverrideConflict{
 		pluginOrCLI: pluginOrCLI,
 		other:       other,
@@ -298,7 +298,7 @@ func (p *pipelineImpl) pluginRoundOverride() (uint64, error) {
 			return 0, err
 		}
 		if pluginOverride != 0 && rnd != 0 && rnd != pluginOverride {
-			return 0, MakeErrOverrideConflict(pluginOverride, rnd, false)
+			return 0, makeErrOverrideConflict(pluginOverride, rnd, false)
 		}
 		if rnd != 0 {
 			pluginOverride = rnd
@@ -307,7 +307,7 @@ func (p *pipelineImpl) pluginRoundOverride() (uint64, error) {
 
 	// Check command line arg
 	if pluginOverride != 0 && p.cfg.ConduitArgs.NextRoundOverride != 0 && p.cfg.ConduitArgs.NextRoundOverride != pluginOverride {
-		return 0, MakeErrOverrideConflict(p.cfg.ConduitArgs.NextRoundOverride, pluginOverride, true)
+		return 0, makeErrOverrideConflict(p.cfg.ConduitArgs.NextRoundOverride, pluginOverride, true)
 	}
 	if p.cfg.ConduitArgs.NextRoundOverride != 0 {
 		pluginOverride = p.cfg.ConduitArgs.NextRoundOverride
