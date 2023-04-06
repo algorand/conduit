@@ -18,7 +18,7 @@ all: conduit
 conduit:
 	go generate ./... && cd cmd/conduit && go build -ldflags='${GOLDFLAGS}'
 
-install: conduit
+install:
 	cd cmd/conduit && go install -ldflags='${GOLDFLAGS}'
 
 # note: when running e2e tests manually be sure to set the e2e filename: 'export CI_E2E_FILENAME=rel-nightly'
