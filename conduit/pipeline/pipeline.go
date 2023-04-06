@@ -262,7 +262,6 @@ func (p *pipelineImpl) pluginRoundOverride() (uint64, error) {
 	}
 	var parts []overridePart
 
-	p.logger.Infof("Checking importer.")
 	if v, ok := (*p.importer).(conduit.RoundRequestor); ok {
 		parts = append(parts, overridePart{
 			RoundRequest: v.RoundRequest,
@@ -270,9 +269,7 @@ func (p *pipelineImpl) pluginRoundOverride() (uint64, error) {
 			t:            plugins.Importer,
 		})
 	}
-	p.logger.Infof("Checking processors...")
 	for idx, processor := range p.processors {
-		p.logger.Infof("processor %d", idx)
 		if v, ok := (*processor).(conduit.RoundRequestor); ok {
 			parts = append(parts, overridePart{
 				RoundRequest: v.RoundRequest,
@@ -281,7 +278,6 @@ func (p *pipelineImpl) pluginRoundOverride() (uint64, error) {
 			})
 		}
 	}
-	p.logger.Infof("exporter")
 	if v, ok := (*p.exporter).(conduit.RoundRequestor); ok {
 		parts = append(parts, overridePart{
 			RoundRequest: v.RoundRequest,
