@@ -103,7 +103,7 @@ func (exp *postgresqlExporter) RoundRequest(cfg plugins.PluginConfig) (uint64, e
 		return 0, fmt.Errorf("postgres.RoundRequest(): failed to get next round: %w", err)
 	}
 
-	return rnd, nil
+	return rnd - 1, nil
 }
 
 func (exp *postgresqlExporter) Init(ctx context.Context, initProvider data.InitProvider, cfg plugins.PluginConfig, logger *logrus.Logger) error {
