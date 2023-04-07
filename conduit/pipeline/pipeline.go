@@ -28,30 +28,6 @@ import (
 	"github.com/algorand/conduit/conduit/plugins/processors"
 )
 
-// ErrOverrideConflict is used when there are two different round overrides detected.
-type ErrOverrideConflict struct {
-	pluginOrCLI uint64
-	other       uint64
-	cli         bool
-}
-
-// makeErrOverrideConflict creates a new ErrOverrideConflict.
-func makeErrOverrideConflict(pluginOrCLI, other uint64, cli bool) error {
-	return ErrOverrideConflict{
-		pluginOrCLI: pluginOrCLI,
-		other:       other,
-		cli:         cli,
-	}
-}
-
-// Error implements the error interface.
-func (e ErrOverrideConflict) Error() string {
-	if e.cli {
-		return fmt.Sprintf("inconsistent round overrides detected: command line (%d), plugins (%d)", e.pluginOrCLI, e.other)
-	}
-	return fmt.Sprintf("inconsistent round overrides detected: %d, %d", e.pluginOrCLI, e.other)
-}
-
 // NameConfigPair is a generic structure used across plugin configuration ser/de
 type NameConfigPair struct {
 	Name   string                 `yaml:"name"`
@@ -288,6 +264,7 @@ func (p *pipelineImpl) pluginRoundOverride() (uint64, error) {
 
 	// Call the override functions.
 	var pluginOverride uint64
+	var pluginOverrideName string // cache this in case of error.
 	for _, part := range parts {
 		_, config, err := p.makeConfig(part.cfg, part.t)
 		if err != nil {
@@ -298,16 +275,17 @@ func (p *pipelineImpl) pluginRoundOverride() (uint64, error) {
 			return 0, err
 		}
 		if pluginOverride != 0 && rnd != 0 && rnd != pluginOverride {
-			return 0, makeErrOverrideConflict(pluginOverride, rnd, false)
+			return 0, makeErrOverrideConflict(pluginOverrideName, pluginOverride, part.cfg.Name, rnd)
 		}
 		if rnd != 0 {
 			pluginOverride = rnd
+			pluginOverrideName = part.cfg.Name
 		}
 	}
 
 	// Check command line arg
 	if pluginOverride != 0 && p.cfg.ConduitArgs.NextRoundOverride != 0 && p.cfg.ConduitArgs.NextRoundOverride != pluginOverride {
-		return 0, makeErrOverrideConflict(p.cfg.ConduitArgs.NextRoundOverride, pluginOverride, true)
+		return 0, makeErrOverrideConflict(pluginOverrideName, pluginOverride, "command line", p.cfg.ConduitArgs.NextRoundOverride)
 	}
 	if p.cfg.ConduitArgs.NextRoundOverride != 0 {
 		pluginOverride = p.cfg.ConduitArgs.NextRoundOverride

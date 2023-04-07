@@ -716,7 +716,7 @@ func TestRoundOverrideInvalidConflict(t *testing.T) {
 		mImporter.rndOverride = 1
 		mProcessor.rndOverride = 10
 		err := pImpl.Init()
-		assert.ErrorIs(t, err, makeErrOverrideConflict(1, 10, false))
+		assert.ErrorIs(t, err, makeErrOverrideConflict("mockImporter", 1, "mockProcessor", 10))
 	})
 
 	t.Run("exporter_no_conflict", func(t *testing.T) {
@@ -725,7 +725,7 @@ func TestRoundOverrideInvalidConflict(t *testing.T) {
 		mImporter.rndOverride = 1
 		mExporter.rndOverride = 10
 		err := pImpl.Init()
-		assert.ErrorIs(t, err, makeErrOverrideConflict(1, 10, false))
+		assert.ErrorIs(t, err, makeErrOverrideConflict("mockImporter", 1, "mockExporter", 10))
 	})
 
 	t.Run("cli_no_conflict", func(t *testing.T) {
@@ -734,7 +734,7 @@ func TestRoundOverrideInvalidConflict(t *testing.T) {
 		mImporter.rndOverride = 1
 		pImpl.cfg.ConduitArgs.NextRoundOverride = 10
 		err := pImpl.Init()
-		assert.ErrorIs(t, err, makeErrOverrideConflict(10, 1, true))
+		assert.ErrorIs(t, err, makeErrOverrideConflict("mockImporter", 1, "command line", 10))
 	})
 }
 
