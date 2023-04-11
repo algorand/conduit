@@ -24,17 +24,17 @@ graph LR;
     algod["Algod"]
     index["Indexer"]
     ledger["Local Ledger"]
-    db["PostgreSQL DB"]
+    psql["Postgresql"]
     restapi["REST API"]
     
     algod-->index;
     subgraph "Data Pipeline"
         index-->ledger;
         ledger-->index;
-        index-->db;
+        index-->psql;
     end
-    db-->restapi;
-    restapi-->db;
+    psql-->restapi;
+    restapi-->psql;
 ```
 
 However, Conduit was built to generalize and modularize a lot of the tasks which Indexer does when ingesting block data
@@ -46,13 +46,13 @@ graph LR;
     algod["Algod"]
     pe["postgresql Exporter"]
     algodimp["algod Importer"]
-    db["PostgreSQL DB"]
+    restapi["REST API"]
 
     algod-->algodimp
     subgraph "Conduit Pipeline"
         algodimp-->pe;
     end
-    pe-->db;
+    pe-->restapi;
 ```
 
 ## Adopting Conduit features in your Indexer pipeline
