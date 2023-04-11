@@ -99,6 +99,9 @@ func (exp *postgresqlExporter) RoundRequest(cfg plugins.PluginConfig) (uint64, e
 	}
 
 	rnd, err := db.GetNextRoundToAccount()
+	// ignore non initialized error because that would happen during Init.
+	// This case probably wont be hit except in very unusual cases because
+	// in most cases `createIndexerDB` would fail first.
 	if err != nil && err != idb.ErrorNotInitialized {
 		return 0, fmt.Errorf("postgres.RoundRequest(): failed to get next round: %w", err)
 	}
