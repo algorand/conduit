@@ -62,7 +62,7 @@ directory configured for Conduit with the desired network.
 
 Start the node:
 ```bash
-~$ ./bin/goal node start -d algod_data
+./bin/goal node start -d algod_data
 ```
 
 ## PostgreSQL
