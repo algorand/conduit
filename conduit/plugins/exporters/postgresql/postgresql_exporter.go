@@ -5,6 +5,7 @@ import (
 	_ "embed" // used to embed config
 	"errors"
 	"fmt"
+	"io"
 	"sync"
 	"sync/atomic"
 
@@ -53,33 +54,72 @@ func (exp *postgresqlExporter) Metadata() plugins.Metadata {
 	return metadata
 }
 
-func (exp *postgresqlExporter) Init(ctx context.Context, initProvider data.InitProvider, cfg plugins.PluginConfig, logger *logrus.Logger) error {
-	exp.ctx, exp.cf = context.WithCancel(ctx)
-	dbName := "postgres"
-	exp.logger = logger
-	if err := cfg.UnmarshalConfig(&exp.cfg); err != nil {
-		return fmt.Errorf("connect failure in unmarshalConfig: %v", err)
+// createIndexerDB common code for creating the IndexerDb instance.
+func createIndexerDB(logger *logrus.Logger, readonly bool, cfg plugins.PluginConfig) (idb.IndexerDb, chan struct{}, error) {
+	var eCfg ExporterConfig
+	if err := cfg.UnmarshalConfig(&eCfg); err != nil {
+		return nil, nil, fmt.Errorf("connect failure in unmarshalConfig: %v", err)
 	}
+
 	// Inject a dummy db for unit testing
-	if exp.cfg.Test {
+	dbName := "postgres"
+	if eCfg.Test {
 		dbName = "dummy"
 	}
 	var opts idb.IndexerDbOptions
-	opts.MaxConn = exp.cfg.MaxConn
-	opts.ReadOnly = false
+	opts.MaxConn = eCfg.MaxConn
+	opts.ReadOnly = readonly
 
 	// for some reason when ConnectionString is empty, it's automatically
 	// connecting to a local instance that's running.
 	// this behavior can be reproduced in TestConnectDbFailure.
-	if !exp.cfg.Test && exp.cfg.ConnectionString == "" {
-		return fmt.Errorf("connection string is empty for %s", dbName)
+	if !eCfg.Test && eCfg.ConnectionString == "" {
+		return nil, nil, fmt.Errorf("connection string is empty for %s", dbName)
 	}
-	db, ready, err := idb.IndexerDbByName(dbName, exp.cfg.ConnectionString, opts, exp.logger)
+	db, ready, err := idb.IndexerDbByName(dbName, eCfg.ConnectionString, opts, logger)
 	if err != nil {
-		return fmt.Errorf("connect failure constructing db, %s: %v", dbName, err)
+		return nil, nil, fmt.Errorf("connect failure constructing db, %s: %v", dbName, err)
 	}
-	exp.db = db
+
+	return db, ready, nil
+}
+
+// RoundRequest connects to the database, queries the round, and closes the
+// connection. If there is a problem with the configuration, an error will be
+// returned in the Init phase and this function will return 0.
+func (exp *postgresqlExporter) RoundRequest(cfg plugins.PluginConfig) (uint64, error) {
+	nullLogger := logrus.New()
+	nullLogger.Out = io.Discard // no logging
+
+	db, _, err := createIndexerDB(nullLogger, true, cfg)
+	if err != nil {
+		// Assume the error is related to an uninitialized DB.
+		// If it is something more serious, the failure will be detected during Init.
+		return 0, nil
+	}
+
+	rnd, err := db.GetNextRoundToAccount()
+	// ignore non initialized error because that would happen during Init.
+	// This case probably wont be hit except in very unusual cases because
+	// in most cases `createIndexerDB` would fail first.
+	if err != nil && err != idb.ErrorNotInitialized {
+		return 0, fmt.Errorf("postgres.RoundRequest(): failed to get next round: %w", err)
+	}
+
+	return rnd, nil
+}
+
+func (exp *postgresqlExporter) Init(ctx context.Context, initProvider data.InitProvider, cfg plugins.PluginConfig, logger *logrus.Logger) error {
+	exp.ctx, exp.cf = context.WithCancel(ctx)
+	exp.logger = logger
+
+	db, ready, err := createIndexerDB(exp.logger, false, cfg)
+	if err != nil {
+		return fmt.Errorf("db create error: %v", err)
+	}
 	<-ready
+
+	exp.db = db
 	_, err = iutil.EnsureInitialImport(exp.db, *initProvider.GetGenesis())
 	if err != nil {
 		return fmt.Errorf("error importing genesis: %v", err)

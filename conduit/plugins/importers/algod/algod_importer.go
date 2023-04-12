@@ -270,13 +270,13 @@ func (algodImp *algodImporter) getDelta(rnd uint64) (sdk.LedgerStateDelta, error
 	params := struct {
 		Format string `url:"format,omitempty"`
 	}{Format: "msgp"}
-	bytes, err := (*common.Client)(algodImp.aclient).GetRaw(algodImp.ctx, fmt.Sprintf("/v2/deltas/%d", rnd), params, nil)
+	// Note: this uses lenient decoding. GetRaw and msgpack.Decode would allow strict decoding.
+	err := (*common.Client)(algodImp.aclient).GetRawMsgpack(algodImp.ctx, &delta, fmt.Sprintf("/v2/deltas/%d", rnd), params, nil)
 	if err != nil {
-		return delta, err
+		return sdk.LedgerStateDelta{}, err
 	}
 
-	err = msgpack.Decode(bytes, &delta)
-	return delta, err
+	return delta, nil
 }
 
 func (algodImp *algodImporter) GetBlock(rnd uint64) (data.BlockData, error) {
@@ -321,9 +321,9 @@ func (algodImp *algodImporter) GetBlock(rnd uint64) (data.BlockData, error) {
 				delta, err = algodImp.getDelta(rnd)
 				if err != nil {
 					if status.LastRound < rnd {
-						err = fmt.Errorf("ledger state delta not found: node round (%d) is behind required round (%d), ensure follower node has its sync round set to the required round", status.LastRound, rnd)
+						err = fmt.Errorf("ledger state delta not found: node round (%d) is behind required round (%d), ensure follower node has its sync round set to the required round: %w", status.LastRound, rnd, err)
 					} else {
-						err = fmt.Errorf("ledger state delta not found: node round (%d), required round (%d): verify follower node configuration and ensure follower node has its sync round set to the required round, re-deploying the follower node may be necessary", status.LastRound, rnd)
+						err = fmt.Errorf("ledger state delta not found: node round (%d), required round (%d): verify follower node configuration and ensure follower node has its sync round set to the required round, re-deploying the follower node may be necessary: %w", status.LastRound, rnd, err)
 					}
 					algodImp.logger.Error(err.Error())
 					return data.BlockData{}, err

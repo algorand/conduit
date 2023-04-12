@@ -3,6 +3,7 @@ package pipeline
 import (
 	"context"
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"math"
 	"net/http"
@@ -205,6 +206,8 @@ type mockImporter struct {
 	returnError     bool
 	onCompleteError bool
 	subsystem       string
+	rndOverride     uint64
+	rndReqErr       error
 }
 
 func (m *mockImporter) Init(_ context.Context, _ data.InitProvider, cfg plugins.PluginConfig, _ *log.Logger) (*sdk.Genesis, error) {
@@ -245,6 +248,10 @@ func (m *mockImporter) ProvideMetrics(subsystem string) []prometheus.Collector {
 	return nil
 }
 
+func (m *mockImporter) RoundRequest(_ plugins.PluginConfig) (uint64, error) {
+	return m.rndOverride, m.rndReqErr
+}
+
 type mockProcessor struct {
 	mock.Mock
 	processors.Processor
@@ -252,6 +259,8 @@ type mockProcessor struct {
 	finalRound      sdk.Round
 	returnError     bool
 	onCompleteError bool
+	rndOverride     uint64
+	rndReqErr       error
 }
 
 func (m *mockProcessor) Init(_ context.Context, _ data.InitProvider, cfg plugins.PluginConfig, _ *log.Logger) error {
@@ -261,6 +270,10 @@ func (m *mockProcessor) Init(_ context.Context, _ data.InitProvider, cfg plugins
 
 func (m *mockProcessor) Close() error {
 	return nil
+}
+
+func (m *mockProcessor) RoundRequest(_ plugins.PluginConfig) (uint64, error) {
+	return m.rndOverride, m.rndReqErr
 }
 
 func (m *mockProcessor) Metadata() plugins.Metadata {
@@ -296,12 +309,18 @@ type mockExporter struct {
 	finalRound      sdk.Round
 	returnError     bool
 	onCompleteError bool
+	rndOverride     uint64
+	rndReqErr       error
 }
 
 func (m *mockExporter) Metadata() plugins.Metadata {
 	return plugins.Metadata{
 		Name: "mockExporter",
 	}
+}
+
+func (m *mockExporter) RoundRequest(_ plugins.PluginConfig) (uint64, error) {
+	return m.rndOverride, m.rndReqErr
 }
 
 func (m *mockExporter) Init(_ context.Context, _ data.InitProvider, cfg plugins.PluginConfig, _ *log.Logger) error {
@@ -332,13 +351,53 @@ func (m *mockExporter) OnComplete(input data.BlockData) error {
 	return err
 }
 
-type mockedImporterNew struct{}
+func mockPipeline(t *testing.T, dataDir string) (*pipelineImpl, *test.Hook, *mockImporter, *mockProcessor, *mockExporter) {
+	if dataDir == "" {
+		dataDir = t.TempDir()
+	}
+	mImporter := &mockImporter{genesis: sdk.Genesis{Network: "test"}}
+	var pImporter importers.Importer = mImporter
+	mProcessor := &mockProcessor{}
+	var pProcessor processors.Processor = mProcessor
+	mExporter := &mockExporter{}
+	var pExporter exporters.Exporter = mExporter
 
-func (c mockedImporterNew) New() importers.Importer { return &mockImporter{} }
+	l, hook := test.NewNullLogger()
+	pImpl := pipelineImpl{
+		cfg: &Config{
+			ConduitArgs: &conduit.Args{
+				ConduitDataDir:    dataDir,
+				NextRoundOverride: 0,
+			},
+			Importer: NameConfigPair{
+				Name:   "mockImporter",
+				Config: map[string]interface{}{},
+			},
+			Processors: []NameConfigPair{
+				{
+					Name:   "mockProcessor",
+					Config: map[string]interface{}{},
+				},
+			},
+			Exporter: NameConfigPair{
+				Name:   "mockExporter",
+				Config: map[string]interface{}{},
+			},
+		},
+		logger:       l,
+		initProvider: nil,
+		importer:     &pImporter,
+		processors:   []*processors.Processor{&pProcessor},
+		exporter:     &pExporter,
+		pipelineMetadata: state{
+			GenesisHash: "",
+			Network:     "",
+			NextRound:   3,
+		},
+	}
 
-type mockedExporterNew struct{}
-
-func (c mockedExporterNew) New() exporters.Exporter { return &mockExporter{} }
+	return &pImpl, hook, mImporter, mProcessor, mExporter
+}
 
 // TestPipelineRun tests that running the pipeline calls the correct functions with mocking
 func TestPipelineRun(t *testing.T) {
@@ -400,46 +459,11 @@ func TestPipelineRun(t *testing.T) {
 // TestPipelineCpuPidFiles tests that cpu and pid files are created when specified
 func TestPipelineCpuPidFiles(t *testing.T) {
 
-	var pImporter importers.Importer = &mockImporter{}
-	var pProcessor processors.Processor = &mockProcessor{}
-	var pExporter exporters.Exporter = &mockExporter{}
-
 	tempDir := t.TempDir()
 	pidFilePath := filepath.Join(tempDir, "pidfile")
 	cpuFilepath := filepath.Join(tempDir, "cpufile")
 
-	l, _ := test.NewNullLogger()
-	pImpl := pipelineImpl{
-		cfg: &Config{
-			ConduitArgs: &conduit.Args{
-				ConduitDataDir: tempDir,
-			},
-			Importer: NameConfigPair{
-				Name:   "",
-				Config: map[string]interface{}{},
-			},
-			Processors: []NameConfigPair{
-				{
-					Name:   "",
-					Config: map[string]interface{}{},
-				},
-			},
-			Exporter: NameConfigPair{
-				Name:   "",
-				Config: map[string]interface{}{},
-			},
-		},
-		logger:       l,
-		initProvider: nil,
-		importer:     &pImporter,
-		processors:   []*processors.Processor{&pProcessor},
-		exporter:     &pExporter,
-		pipelineMetadata: state{
-			GenesisHash: "",
-			Network:     "",
-			NextRound:   0,
-		},
-	}
+	pImpl, _, _, _, _ := mockPipeline(t, tempDir)
 
 	err := pImpl.Init()
 	assert.NoError(t, err)
@@ -582,95 +606,23 @@ func Test_pipelineImpl_registerLifecycleCallbacks(t *testing.T) {
 
 // TestBlockMetaDataFile tests that metadata.json file is created as expected
 func TestPluginConfigDataDir(t *testing.T) {
-
-	mImporter := mockImporter{}
-	mProcessor := mockProcessor{}
-	mExporter := mockExporter{}
-
-	var pImporter importers.Importer = &mImporter
-	var pProcessor processors.Processor = &mProcessor
-	var pExporter exporters.Exporter = &mExporter
-
 	datadir := t.TempDir()
-	l, _ := test.NewNullLogger()
-	pImpl := pipelineImpl{
-		cfg: &Config{
-			ConduitArgs: &conduit.Args{
-				ConduitDataDir: datadir,
-			},
-			Importer: NameConfigPair{
-				Name:   "",
-				Config: map[string]interface{}{},
-			},
-			Processors: []NameConfigPair{
-				{
-					Name:   "",
-					Config: map[string]interface{}{},
-				},
-			},
-			Exporter: NameConfigPair{
-				Name:   "",
-				Config: map[string]interface{}{},
-			},
-		},
-		logger:       l,
-		initProvider: nil,
-		importer:     &pImporter,
-		processors:   []*processors.Processor{&pProcessor},
-		exporter:     &pExporter,
-		pipelineMetadata: state{
-			NextRound: 3,
-		},
-	}
+	pImpl, _, mImporter, mProcessor, mExporter := mockPipeline(t, datadir)
 
 	err := pImpl.Init()
 	assert.NoError(t, err)
 
-	assert.Equal(t, mImporter.cfg.DataDir, path.Join(datadir, "importer_mockImporter"))
+	assert.Equal(t, path.Join(datadir, "importer_mockImporter"), mImporter.cfg.DataDir)
 	assert.DirExists(t, mImporter.cfg.DataDir)
-	assert.Equal(t, mProcessor.cfg.DataDir, path.Join(datadir, "processor_mockProcessor"))
+	assert.Equal(t, path.Join(datadir, "processor_mockProcessor"), mProcessor.cfg.DataDir)
 	assert.DirExists(t, mProcessor.cfg.DataDir)
-	assert.Equal(t, mExporter.cfg.DataDir, path.Join(datadir, "exporter_mockExporter"))
+	assert.Equal(t, path.Join(datadir, "exporter_mockExporter"), mExporter.cfg.DataDir)
 	assert.DirExists(t, mExporter.cfg.DataDir)
 }
 
 func TestGenesisHash(t *testing.T) {
-	var pImporter importers.Importer = &mockImporter{genesis: sdk.Genesis{Network: "test"}}
-	var pProcessor processors.Processor = &mockProcessor{}
-	var pExporter exporters.Exporter = &mockExporter{}
 	datadir := t.TempDir()
-	l, _ := test.NewNullLogger()
-	pImpl := pipelineImpl{
-		cfg: &Config{
-			ConduitArgs: &conduit.Args{
-				ConduitDataDir: datadir,
-			},
-			Importer: NameConfigPair{
-				Name:   "",
-				Config: map[string]interface{}{},
-			},
-			Processors: []NameConfigPair{
-				{
-					Name:   "",
-					Config: map[string]interface{}{},
-				},
-			},
-			Exporter: NameConfigPair{
-				Name:   "",
-				Config: map[string]interface{}{},
-			},
-		},
-		logger:       l,
-		initProvider: nil,
-		importer:     &pImporter,
-		processors:   []*processors.Processor{&pProcessor},
-		exporter:     &pExporter,
-		pipelineMetadata: state{
-			GenesisHash: "",
-			Network:     "",
-			NextRound:   3,
-		},
-	}
+	pImpl, _, _, _, _ := mockPipeline(t, datadir)
 
 	// write genesis hash to metadata.json
 	err := pImpl.Init()
@@ -685,53 +637,14 @@ func TestGenesisHash(t *testing.T) {
 	assert.Equal(t, "test", blockmetaData.Network)
 
 	// mock a different genesis hash
-	pImporter = &mockImporter{genesis: sdk.Genesis{Network: "dev"}}
+	var pImporter importers.Importer = &mockImporter{genesis: sdk.Genesis{Network: "dev"}}
 	pImpl.importer = &pImporter
 	err = pImpl.Init()
 	assert.Contains(t, err.Error(), "genesis hash in metadata does not match")
 }
 
 func TestPipelineMetricsConfigs(t *testing.T) {
-	var pImporter importers.Importer = &mockImporter{}
-	var pProcessor processors.Processor = &mockProcessor{}
-	var pExporter exporters.Exporter = &mockExporter{}
-	ctx, cf := context.WithCancel(context.Background())
-	l, _ := test.NewNullLogger()
-	pImpl := pipelineImpl{
-		cfg: &Config{
-			ConduitArgs: &conduit.Args{
-				ConduitDataDir: t.TempDir(),
-			},
-			Importer: NameConfigPair{
-				Name:   "",
-				Config: map[string]interface{}{},
-			},
-			Processors: []NameConfigPair{
-				{
-					Name:   "",
-					Config: map[string]interface{}{},
-				},
-			},
-			Exporter: NameConfigPair{
-				Name:   "",
-				Config: map[string]interface{}{},
-			},
-			Metrics: Metrics{},
-		},
-		logger:       l,
-		initProvider: nil,
-		importer:     &pImporter,
-		processors:   []*processors.Processor{&pProcessor},
-		exporter:     &pExporter,
-		cf:           cf,
-		ctx:          ctx,
-		pipelineMetadata: state{
-			GenesisHash: "",
-			Network:     "",
-			NextRound:   0,
-		},
-	}
-	defer pImpl.cf()
+	pImpl, _, _, _, _ := mockPipeline(t, "")
 
 	getMetrics := func() (*http.Response, error) {
 		resp0, err0 := http.Get(fmt.Sprintf("http://localhost%s/metrics", pImpl.cfg.Metrics.Addr))
@@ -770,55 +683,129 @@ func TestPipelineMetricsConfigs(t *testing.T) {
 	assert.Equal(t, pImpl.cfg.Metrics.Prefix, prefixOverride)
 }
 
-func TestRoundOverwrite(t *testing.T) {
-	var pImporter importers.Importer = &mockImporter{genesis: sdk.Genesis{Network: "test"}}
-	var pProcessor processors.Processor = &mockProcessor{}
-	var pExporter exporters.Exporter = &mockExporter{}
-	l, _ := test.NewNullLogger()
-	pImpl := pipelineImpl{
-		cfg: &Config{
-			ConduitArgs: &conduit.Args{
-				ConduitDataDir:    t.TempDir(),
-				NextRoundOverride: 0,
-			},
-			Importer: NameConfigPair{
-				Name:   "",
-				Config: map[string]interface{}{},
-			},
-			Processors: []NameConfigPair{
-				{
-					Name:   "",
-					Config: map[string]interface{}{},
-				},
-			},
-			Exporter: NameConfigPair{
-				Name:   "unknown",
-				Config: map[string]interface{}{},
-			},
-		},
-		logger:       l,
-		initProvider: nil,
-		importer:     &pImporter,
-		processors:   []*processors.Processor{&pProcessor},
-		exporter:     &pExporter,
-		pipelineMetadata: state{
-			GenesisHash: "",
-			Network:     "",
-			NextRound:   3,
-		},
+func TestRoundOverrideValidConflict(t *testing.T) {
+	t.Run("processor_no_conflict", func(t *testing.T) {
+		pImpl, _, mImporter, mProcessor, _ := mockPipeline(t, "")
+		mImporter.rndOverride = 10
+		mProcessor.rndOverride = 10
+		err := pImpl.Init()
+		assert.NoError(t, err)
+	})
+
+	t.Run("exporter_no_conflict", func(t *testing.T) {
+		pImpl, _, _, mProcessor, mExporter := mockPipeline(t, "")
+		mProcessor.rndOverride = 10
+		mExporter.rndOverride = 10
+		err := pImpl.Init()
+		assert.NoError(t, err)
+	})
+
+	t.Run("cli_no_conflict", func(t *testing.T) {
+		pImpl, _, mImporter, _, _ := mockPipeline(t, "")
+		mImporter.rndOverride = 10
+		pImpl.cfg.ConduitArgs.NextRoundOverride = 10
+		err := pImpl.Init()
+		assert.NoError(t, err)
+	})
+}
+
+func TestRoundOverrideInvalidConflict(t *testing.T) {
+	t.Run("processor_no_conflict", func(t *testing.T) {
+		t.Parallel()
+		pImpl, _, mImporter, mProcessor, _ := mockPipeline(t, "")
+		mImporter.rndOverride = 1
+		mProcessor.rndOverride = 10
+		err := pImpl.Init()
+		assert.ErrorIs(t, err, makeErrOverrideConflict("mockImporter", 1, "mockProcessor", 10))
+	})
+
+	t.Run("exporter_no_conflict", func(t *testing.T) {
+		t.Parallel()
+		pImpl, _, mImporter, _, mExporter := mockPipeline(t, "")
+		mImporter.rndOverride = 1
+		mExporter.rndOverride = 10
+		err := pImpl.Init()
+		assert.ErrorIs(t, err, makeErrOverrideConflict("mockImporter", 1, "mockExporter", 10))
+	})
+
+	t.Run("cli_no_conflict", func(t *testing.T) {
+		t.Parallel()
+		pImpl, _, mImporter, _, _ := mockPipeline(t, "")
+		mImporter.rndOverride = 1
+		pImpl.cfg.ConduitArgs.NextRoundOverride = 10
+		err := pImpl.Init()
+		assert.ErrorIs(t, err, makeErrOverrideConflict("mockImporter", 1, "command line", 10))
+	})
+}
+
+func TestRoundRequestError(t *testing.T) {
+	t.Run("importer round request error", func(t *testing.T) {
+		t.Parallel()
+		pImpl, _, mImporter, _, _ := mockPipeline(t, "")
+		sentinelErr := errors.New("the error 1")
+		mImporter.rndReqErr = sentinelErr
+		err := pImpl.Init()
+		assert.ErrorIs(t, err, sentinelErr)
+	})
+
+	t.Run("processor round request error", func(t *testing.T) {
+		t.Parallel()
+		pImpl, _, _, mProcessor, _ := mockPipeline(t, "")
+		sentinelErr := errors.New("the error 2")
+		mProcessor.rndReqErr = sentinelErr
+		err := pImpl.Init()
+		assert.ErrorIs(t, err, sentinelErr)
+	})
+
+	t.Run("exporter round request error", func(t *testing.T) {
+		t.Parallel()
+		pImpl, _, _, _, mExporter := mockPipeline(t, "")
+		sentinelErr := errors.New("the error 3")
+		mExporter.rndReqErr = sentinelErr
+		err := pImpl.Init()
+		assert.ErrorIs(t, err, sentinelErr)
+	})
+}
+
+func TestRoundOverride(t *testing.T) {
+	// cli override NextRound, 0 is a test for no override.
+	for i := 0; i < 10; i++ {
+		t.Run(fmt.Sprintf("cli round override %d", i), func(t *testing.T) {
+			t.Parallel()
+			pImpl, _, _, _, _ := mockPipeline(t, "")
+			pImpl.cfg.ConduitArgs.NextRoundOverride = uint64(i)
+			err := pImpl.Init()
+			assert.Nil(t, err)
+			assert.Equal(t, uint64(i), pImpl.pipelineMetadata.NextRound)
+		})
 	}
 
-	// pipeline should initialize if NextRoundOverride is not set
-	err := pImpl.Init()
-	assert.Nil(t, err)
-
-	// override NextRound
-	for i := 1; i < 10; i++ {
-		pImpl.cfg.ConduitArgs.NextRoundOverride = uint64(i)
-		err = pImpl.Init()
+	t.Run("importer round override", func(t *testing.T) {
+		t.Parallel()
+		pImpl, _, mImporter, _, _ := mockPipeline(t, "")
+		mImporter.rndOverride = 10
+		err := pImpl.Init()
 		assert.Nil(t, err)
-		assert.Equal(t, uint64(i), pImpl.pipelineMetadata.NextRound)
-	}
+		assert.Equal(t, uint64(10), pImpl.pipelineMetadata.NextRound)
+	})
+
+	t.Run("processor round override", func(t *testing.T) {
+		t.Parallel()
+		pImpl, _, _, mProcessor, _ := mockPipeline(t, "")
+		mProcessor.rndOverride = 10
+		err := pImpl.Init()
+		assert.Nil(t, err)
+		assert.Equal(t, uint64(10), pImpl.pipelineMetadata.NextRound)
+	})
+
+	t.Run("exporter round override", func(t *testing.T) {
+		t.Parallel()
+		pImpl, _, _, _, mExporter := mockPipeline(t, "")
+		mExporter.rndOverride = 10
+		err := pImpl.Init()
+		assert.Nil(t, err)
+		assert.Equal(t, uint64(10), pImpl.pipelineMetadata.NextRound)
+	})
 }
 
 // an importer that simply errors out when GetBlock() is called
@@ -934,30 +921,8 @@ func TestMetricPrefixApplied(t *testing.T) {
 	// Note: the default prefix is applied during `Init`, so no need to test that here.
 	prefix := "test_prefix"
 	tempDir := t.TempDir()
-	mImporter := mockImporter{}
-
-	var pImporter importers.Importer = &mImporter
-	var pExporter exporters.Exporter = &mockExporter{}
-
-	ctx, cf := context.WithCancel(context.Background())
-	l, _ := test.NewNullLogger()
-	pImpl := pipelineImpl{
-		ctx: ctx,
-		cf:  cf,
-		cfg: &Config{
-			ConduitArgs: &conduit.Args{
-				ConduitDataDir: tempDir,
-			},
-			Metrics: Metrics{
-				Prefix: prefix,
-			},
-		},
-		logger:       l,
-		initProvider: nil,
-		importer:     &pImporter,
-		exporter:     &pExporter,
-	}
-
+	pImpl, _, mImporter, _, _ := mockPipeline(t, tempDir)
+	pImpl.cfg.Metrics.Prefix = prefix
 	pImpl.registerPluginMetricsCallbacks()
 	assert.Equal(t, prefix, mImporter.subsystem)
 }
