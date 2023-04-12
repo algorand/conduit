@@ -30,15 +30,15 @@ plugins and how to include these plugins in your pipeline's configuration file s
 
 # Tutorials
 
-## Migrate from Indexer to Conduit
-[Information about converting from Indexer writer configurations to Conduit.](./tutorials/IndexerMigration.md)
+## Migrate from the Legacy Indexer Architecture to a Conduit-backed Indexer
+[How to migrate from a legacy Indexer architecture to a Conduit-backed Indexer deployment. .](./tutorials/IndexerMigration.md)
 
-## Setup Conduit for the Indexer API
+## Set up Conduit for the Indexer API
 [How to configure algod, PostgreSQL and Conduit as an Indexer API backend.](./tutorials/IndexerWriter.md)
 
-## Transaction Filtering Plugin
+## Using the Transaction Filter Plugin
 
 [A deep dive into the transaction filter plugin.](./tutorials/FilterDeepDive.md)
 
-## Writing block data to the filesystem
+## Writing Block Data to the Filesystem
 [Use the file exporter to write data to files.](./tutorials/WritingBlocksToFile.md)

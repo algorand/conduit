@@ -268,13 +268,13 @@ exporter:
     "connection-string": $PGSQL_CONNECTION_STRING,
 ```
 
-If your algod node needs to run fast catchup, you can fill in the catchup-config sections. You'll need to first lookup your Indexer round from the postgres database. The Indexer stores the latest round in the database, and you can read it via the `/health` endpoint. The result is formatted in json
+If your algod node needs to run fast catchup, you can fill in the catchup-config section. You'll need to first look up your Indexer round from the postgres database. The Indexer stores the latest round in the database, and you can read it via the `/health` endpoint. The result is formatted in json
 so you can use jq to more easily see your Indexer's round (if your Indexer is listening locally on port 8980).
 ```bash
 curl http://localhost:8980/health | jq '.round'
 ```
 
-Now you can look up a catchpoint, conduit will run fast catchup on your node if a catchpoint is provided. Lookup the closest catchpoint prior to the desired sync round. 
+Now that you can look up a catchpoint, conduit will run fast catchup on your node if a catchpoint is provided. Look up the closest catchpoint prior to the desired sync round. 
 For a list of catchpoints, you can reference the following:
 * [Mainnet](https://algorand-catchpoints.s3.us-east-2.amazonaws.com/consolidated/mainnet_catchpoints.txt)
 * [Testnet](https://algorand-catchpoints.s3.us-east-2.amazonaws.com/consolidated/testnet_catchpoints.txt)

@@ -8,9 +8,9 @@ requirements for managing deployments, upgrades, scaling, and high
 availability.
 
 The components you will configure and deploy are:
-* Algod configured as a blockchain follower.
-* PostgreSQL database.
-* Conduit configured to pull data from algod and push it to PostgreSQL
+* an algod node configured with follow mode.
+* a PostgreSQL database.
+* a Conduit pipeline configured to pull data from algod and push it to the PostgreSQL database.
 
 ```mermaid
 graph LR;
@@ -46,18 +46,18 @@ information refer to the developer portal.](node-install-doc)
 # download update.sh
 wget https://raw.githubusercontent.com/algorand/go-algorand/rel/stable/cmd/updater/update.sh
 
-# Select mainnet genesis file.
+# Define which network to run on. This selects the correct genesis file. 
 # Options: mainnet, testnet, betanet, devnet
 NETWORK=mainnet
 
-# download binaries and initialize data directory.
+# download algod binaries and initialize data directory.
 update.sh -n -i -c stable -p bin -d algod_data -g $NETWORK
 
 # configure node to work with conduit
 ./bin/algocfg profile set conduit -d algod_data
 ```
 
-At this stage you have all of the algod tools in `bin` and a `algod_data`
+At this stage you have all of the algod tools in `bin` and an `algod_data`
 directory configured for Conduit with the desired network.
 
 Start the node:
@@ -68,8 +68,8 @@ Start the node:
 ## PostgreSQL
 
 This document cannot go into the complete details for configuring your
-database. PostgreSQL or compatible database like Amazon Aurora are suitable
-for the Indexer API. The [Indexer](indexer-readme) documentation more details.
+database. PostgreSQL or a compatible database like Amazon Aurora are suitable
+for the Indexer API. See the [Indexer](indexer-readme) documentation more details.
 
 For this tutorial we'll simplify things with a local docker image. This will
 launch a container:
@@ -103,9 +103,9 @@ Create conduit data directory:
 ./conduit  init --importer algod --exporter postgresql --data conduit_data
 ```
 
-This will setup a new Conduit data directory with a configuration template.
-To finish the process, edit `conduit.yml` with the following changes, we'll
-use dot notation to indicate a path in the config file. For example
+This will set up a new Conduit data directory with a configuration template.
+To finish the process, edit `conduit.yml` with the following changes. We'll
+use dot notation to indicate a path in the config file. For example,
 `importer.config.netaddr` refers to:
 ```yaml
 importer:
