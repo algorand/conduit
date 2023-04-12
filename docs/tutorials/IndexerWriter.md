@@ -71,13 +71,13 @@ This document cannot go into the complete details for configuring your
 database. PostgreSQL or a compatible database like Amazon Aurora are suitable
 for the Indexer API. See the [Indexer](indexer-readme) documentation more details.
 
-For this tutorial we'll simplify things with a local docker image. This will
+For this tutorial the process is simplified by using a local docker image. This will
 launch a container:
 ```bash
 docker run -d --name local-database -p 5555:5432 -e POSTGRES_PASSWORD=pgpass -e POSTGRES_USER=algorand -e POSTGRES_DB=conduit postgres
 ```
 
-The credentials used are all required for the next step when we configure
+The credentials used are all required for the next step when configuring
 Conduit:
 * `PORT`: 5555
 * `USER`: algorand
@@ -127,6 +127,27 @@ other settings you would like to update.
 
 At this point you may start conduit with `./conduit -d conduit_data`
 
+## Indexer API
+
+With data in the PostgreSQL DB, you are now able to start an Indexer API.
+
+Download the `algorand-indexer` command [from the releases page](indexer-release). Put
+the binary in the current working directory, or install it to your path and use
+normally.
+
+```bash
+./algorand-indexer daemon -S ":8980" --data-dir /tmp --no-algod --postgres "host=localhost port=5555 user=algorand password=pgpass dbname=conduit"
+```
+
+And use it:
+```bash
+curl http://localhost:8980/v2/accounts
+```
+
+For details see the [Indexer README](indexer-readme) and the [Indexer API documentation](indexer-rest-api).
+
 [node-install-doc]: https://developer.algorand.org/docs/run-a-node/setup/install/
-[indexer-readme]: https://github.com/algorand/indexer/#readme
 [conduit-release]: https://github.com/algorand/conduit/releases
+[indexer-readme]: https://github.com/algorand/indexer/#readme
+[indexer-release]: https://github.com/algorand/indexer/releases
+[indexer-rest-api]: https://developer.algorand.org/docs/rest-apis/indexer/
