@@ -46,12 +46,12 @@ information refer to the developer portal.](node-install-doc)
 # download update.sh
 wget https://raw.githubusercontent.com/algorand/go-algorand/rel/stable/cmd/updater/update.sh
 
-# Define which network to run on. This selects the correct genesis file. 
+# Define which network to run on. This selects the correct genesis file.
 # Options: mainnet, testnet, betanet, devnet
 NETWORK=mainnet
 
 # download algod binaries and initialize data directory.
-update.sh -n -i -c stable -p bin -d algod_data -g $NETWORK
+./update.sh -n -i -c stable -p bin -d algod_data -g $NETWORK
 
 # configure node to work with conduit
 ./bin/algocfg profile set conduit -d algod_data
@@ -125,7 +125,10 @@ initialize the node using fast catchup.
 Review the inline documentation in `conduit.yml` and decide if there are any
 other settings you would like to update.
 
-At this point you may start conduit with `./conduit -d conduit_data`
+At this point you may start conduit with:
+```bash
+./conduit -d conduit_data
+```
 
 ## Indexer API
 
