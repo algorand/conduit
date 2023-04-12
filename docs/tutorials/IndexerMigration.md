@@ -291,5 +291,4 @@ Then run Conduit, `conduit -d $CONDUIT_DATA_DIR`!
 
 You can separately run your Indexer with `--no-algod` to connect your API to the database.
 
-If you configured a catchpoint, Conduit will facilitate that process during initialization. Once the catchpoint has been reached the node will resume normal catchup until it reaches the target round defined in postgres. If your catchpoint is not exactly the round your database is on,
-you will need to wait for normal catchup to get your node to the desired point in time.
+If you configured a catchpoint, Conduit will facilitate a fast catchup during initialization. Once the catchpoint has been reached the node will resume normal catchup to advance from the catchpoint round to target round defined in postgres. The fast-catchup and catchup process may take anywhere from 30 minutes to over an hour depending on hardware and disk configurations.

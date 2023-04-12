@@ -1,9 +1,11 @@
 # Conduit Indexer Writer
 
 This document explains how to configure and deploy Conduit to populate a
-PostgreSLQ DB suitable to serve as a backend for the Indexer API.
-
-Note: Windows is not currently supported by algod.
+PostgreSLQ DB suitable to serve as a backend for the [Indexer](indexer-readme) API.  This is
+not a production deployment. Treat this tutorial as an example configuration
+or a development environment. Each of these components have their own
+requirements for managing deployments, upgrades, scaling, and high
+availability.
 
 The components you will configure and deploy are:
 * Algod configured as a blockchain follower.
@@ -25,11 +27,17 @@ graph LR;
     db-->indexer
 ```
 
+## Pre-requisites
+
+* Linux or Mac Operating System. At this time Windows is not supported by algod, so the bare metal installation described below will not work.
+* Docker is used for the database, so the `docker` command is required.
+
 ## Algod
 
-To source data from the blockchain algod is used. It will be controlled by
-Conduit in order to run synchronously. In this way it is able to store a
-minimal subset of data required for streaming data through Conduit.
+The blockchain data source. Algod is controlled by Conduit to ensure the two
+services are always operating on the same block. In this way algod is able to
+store a minimal subset of blockchain data required for streaming data through
+Conduit.
 
 We will cover a basic installation using `update.sh`, for [additional
 information refer to the developer portal.](node-install-doc)
@@ -37,11 +45,14 @@ information refer to the developer portal.](node-install-doc)
 ```bash
 # download update.sh
 wget https://raw.githubusercontent.com/algorand/go-algorand/rel/stable/cmd/updater/update.sh
+
 # Select mainnet genesis file.
 # Options: mainnet, testnet, betanet, devnet
 NETWORK=mainnet
+
 # download binaries and initialize data directory.
 update.sh -n -i -c stable -p bin -d algod_data -g $NETWORK
+
 # configure node to work with conduit
 ./bin/algocfg profile set conduit -d algod_data
 ```
@@ -49,7 +60,10 @@ update.sh -n -i -c stable -p bin -d algod_data -g $NETWORK
 At this stage you have all of the algod tools in `bin` and a `algod_data`
 directory configured for Conduit with the desired network.
 
-Start the node with `./bin/goal node start -d algod_data`
+Start the node:
+```bash
+~$ ./bin/goal node start -d algod_data
+```
 
 ## PostgreSQL
 
@@ -69,6 +83,12 @@ Conduit:
 * `USER`: algorand
 * `PASS`: pgpass
 * `DB`: conduit
+
+Note: shutdown and remove the database with the following commands:
+```bash
+~$ docker kill local-database
+~$ docker rm local-database
+```
 
 ## Conduit
 

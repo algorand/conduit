@@ -30,8 +30,6 @@ plugins and how to include these plugins in your pipeline's configuration file s
 
 # Tutorials
 
-Detailed tutorials for specific topics are available.
-
 ## Migrate from Indexer to Conduit
 [Information about converting from Indexer writer configurations to Conduit.](./tutorials/IndexerMigration.md)
 
