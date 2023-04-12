@@ -129,7 +129,7 @@ At this point you may start conduit with `./conduit -d conduit_data`
 
 ## Indexer API
 
-With data in the PostgreSQL DB, you are now able to start an Indexer API.
+With data in the PostgreSQL DB, you are now able to start a [read only Indexer API](indexer-read-only).
 
 Download the `algorand-indexer` command [from the releases page](indexer-release). Put
 the binary in the current working directory, or install it to your path and use
@@ -149,5 +149,6 @@ For details see the [Indexer README](indexer-readme) and the [Indexer API docume
 [node-install-doc]: https://developer.algorand.org/docs/run-a-node/setup/install/
 [conduit-release]: https://github.com/algorand/conduit/releases
 [indexer-readme]: https://github.com/algorand/indexer/#readme
+[indexer-read-only]: https://github.com/algorand/indexer#read-only
 [indexer-release]: https://github.com/algorand/indexer/releases
 [indexer-rest-api]: https://developer.algorand.org/docs/rest-apis/indexer/
