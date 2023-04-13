@@ -43,17 +43,17 @@ We will cover a basic installation using `update.sh`, for [additional
 information refer to the developer portal.](node-install-doc)
 
 ```bash
-# download update.sh
+# Download update.sh script.
 wget https://raw.githubusercontent.com/algorand/go-algorand/rel/stable/cmd/updater/update.sh
 
 # Define which network to run on. This selects the correct genesis file.
 # Options: mainnet, testnet, betanet, devnet
 NETWORK=mainnet
 
-# download algod binaries and initialize data directory.
+# Download algod binaries and initialize data directory.
 ./update.sh -n -i -c stable -p bin -d algod_data -g $NETWORK
 
-# configure node to work with conduit
+# Configure node to work with Conduit.
 ./bin/algocfg profile set conduit -d algod_data
 ```
 
@@ -98,7 +98,7 @@ Download the `conduit` command [from the releases page](conduit-release). Put
 the binary in the current working directory, or install it to your path and use
 normally.
 
-Create conduit data directory:
+Create Conduit data directory:
 ```bash
 ./conduit  init --importer algod --exporter postgresql --data conduit_data
 ```
@@ -125,7 +125,7 @@ initialize the node using fast catchup.
 Review the inline documentation in `conduit.yml` and decide if there are any
 other settings you would like to update.
 
-At this point you may start conduit with:
+At this point you may start Conduit with:
 ```bash
 ./conduit -d conduit_data
 ```
