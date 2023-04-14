@@ -9,13 +9,13 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/algorand/go-algorand-sdk/v2/client/v2/common/models"
 	"github.com/sirupsen/logrus"
 	"github.com/sirupsen/logrus/hooks/test"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v3"
 
+	"github.com/algorand/go-algorand-sdk/v2/client/v2/common/models"
 	sdk "github.com/algorand/go-algorand-sdk/v2/types"
 
 	"github.com/algorand/conduit/conduit"
@@ -65,19 +65,27 @@ netaddr: %s
 
 func TestInitSuccess(t *testing.T) {
 	tests := []struct {
-		name string
+		name      string
+		responder func(string, http.ResponseWriter) bool
 	}{
-		{"archival"},
-		{"follower"},
+		{
+			name:      "archival",
+			responder: MakeSyncRoundResponder(http.StatusNotFound),
+		},
+		{
+			name:      "follower",
+			responder: MakeSyncRoundResponder(http.StatusOK),
+		},
 	}
-	for _, ttest := range tests {
-		t.Run(ttest.name, func(t *testing.T) {
-			ts := NewAlgodServer(GenesisResponder, MakeSyncRoundResponder(http.StatusOK), BlockAfterResponder)
+	for _, tc := range tests {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			ts := NewAlgodServer(GenesisResponder, tc.responder, BlockAfterResponder)
 			testImporter := New()
 			cfgStr := fmt.Sprintf(`---
 mode: %s
 netaddr: %s
-`, ttest.name, ts.URL)
+`, tc.name, ts.URL)
 			_, err := testImporter.Init(ctx, conduit.MakePipelineInitProvider(&pRound, nil), plugins.MakePluginConfig(cfgStr), logger)
 			assert.NoError(t, err)
 			assert.NotEqual(t, testImporter, nil)
@@ -172,7 +180,9 @@ func TestInitCatchup(t *testing.T) {
 			[]string{}},
 	}
 	for _, ttest := range tests {
+		ttest := ttest
 		t.Run(ttest.name, func(t *testing.T) {
+			t.Parallel()
 			testLogger, hook := test.NewNullLogger()
 			testImporter := New()
 			cfgStr := fmt.Sprintf(`---
@@ -270,7 +280,7 @@ func TestConfigDefault(t *testing.T) {
 }
 
 func TestWaitForBlockBlockFailure(t *testing.T) {
-	ts := NewAlgodServer(GenesisResponder, MakeSyncRoundResponder(http.StatusOK), BlockAfterResponder)
+	ts := NewAlgodServer(GenesisResponder, MakeSyncRoundResponder(http.StatusNotFound), BlockAfterResponder)
 	testImporter := New()
 	cfgStr := fmt.Sprintf(`---
 mode: %s
@@ -298,7 +308,7 @@ func TestGetBlockSuccess(t *testing.T) {
 			algodServer: NewAlgodServer(GenesisResponder,
 				BlockResponder,
 				BlockAfterResponder,
-				MakeSyncRoundResponder(http.StatusOK))},
+				MakeSyncRoundResponder(http.StatusNotFound))},
 		{
 			name: "archival",
 			mode: "archival",
@@ -361,7 +371,7 @@ func TestGetBlockContextCancelled(t *testing.T) {
 		{"archival", NewAlgodServer(GenesisResponder,
 			BlockResponder,
 			BlockAfterResponder,
-			MakeSyncRoundResponder(http.StatusOK))},
+			MakeSyncRoundResponder(http.StatusNotFound))},
 		{"follower", NewAlgodServer(GenesisResponder,
 			BlockResponder,
 			BlockAfterResponder, LedgerStateDeltaResponder,
@@ -393,7 +403,7 @@ func TestGetBlockFailure(t *testing.T) {
 		algodServer *httptest.Server
 	}{
 		{"archival", NewAlgodServer(GenesisResponder,
-			BlockAfterResponder, MakeSyncRoundResponder(http.StatusOK))},
+			BlockAfterResponder, MakeSyncRoundResponder(http.StatusNotFound))},
 		{"follower", NewAlgodServer(GenesisResponder,
 			BlockAfterResponder, LedgerStateDeltaResponder, MakeSyncRoundResponder(http.StatusOK))},
 	}
