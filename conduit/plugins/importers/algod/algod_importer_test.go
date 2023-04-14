@@ -364,8 +364,10 @@ func TestGetBlockContextCancelled(t *testing.T) {
 	}
 
 	for _, ttest := range tests {
+		ttest := ttest
 		t.Run(ttest.name, func(t *testing.T) {
-			t.Parallel()
+			// this didn't work...
+			//t.Parallel()
 			ctx, cancel = context.WithCancel(context.Background())
 			testImporter := New()
 			cfgStr := fmt.Sprintf(`---
@@ -394,6 +396,7 @@ func TestGetBlockFailure(t *testing.T) {
 			BlockAfterResponder, LedgerStateDeltaResponder, MakeSyncRoundResponder(http.StatusOK))},
 	}
 	for _, ttest := range tests {
+		ttest := ttest
 		t.Run(ttest.name, func(t *testing.T) {
 			t.Parallel()
 			ctx, cancel = context.WithCancel(context.Background())
