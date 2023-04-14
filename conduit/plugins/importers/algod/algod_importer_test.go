@@ -289,30 +289,47 @@ netaddr: %s
 func TestGetBlockSuccess(t *testing.T) {
 	tests := []struct {
 		name        string
+		mode        string
 		algodServer *httptest.Server
 	}{
-		{"", NewAlgodServer(GenesisResponder,
-			BlockResponder,
-			BlockAfterResponder,
-			MakeSyncRoundResponder(http.StatusOK))},
-		{"archival", NewAlgodServer(GenesisResponder,
-			BlockResponder,
-			BlockAfterResponder,
-			MakeSyncRoundResponder(http.StatusOK))},
-		{"follower", NewAlgodServer(GenesisResponder,
-			BlockResponder,
-			BlockAfterResponder, LedgerStateDeltaResponder, MakeSyncRoundResponder(http.StatusOK))},
+		{
+			name: "default",
+			mode: "",
+			algodServer: NewAlgodServer(GenesisResponder,
+				BlockResponder,
+				BlockAfterResponder,
+				MakeSyncRoundResponder(http.StatusOK))},
+		{
+			name: "archival",
+			mode: "archival",
+			algodServer: NewAlgodServer(GenesisResponder,
+				BlockResponder,
+				BlockAfterResponder,
+				MakeSyncRoundResponder(http.StatusNotFound))},
+		{
+			name: "follower",
+			mode: "follower",
+			algodServer: NewAlgodServer(GenesisResponder,
+				BlockResponder,
+				BlockAfterResponder, LedgerStateDeltaResponder, MakeSyncRoundResponder(http.StatusOK)),
+		},
 	}
-	for _, ttest := range tests {
-		t.Run(ttest.name, func(t *testing.T) {
-			ctx, cancel = context.WithCancel(context.Background())
-			testImporter := New()
+	for _, tc := range tests {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			cfg := Config{
+				Mode:    tc.mode,
+				NetAddr: tc.algodServer.URL,
+			}
+			cfgStr, err := yaml.Marshal(cfg)
+			require.NoError(t, err)
 
-			cfgStr := fmt.Sprintf(`---
-mode: %s
-netaddr: %s
-`, ttest.name, ttest.algodServer.URL)
-			_, err := testImporter.Init(ctx, conduit.MakePipelineInitProvider(&pRound, nil), plugins.MakePluginConfig(cfgStr), logger)
+			ctx, cancel = context.WithCancel(context.Background())
+			defer cancel()
+			testImporter := &algodImporter{}
+
+			_, err = testImporter.Init(ctx, conduit.MakePipelineInitProvider(&pRound, nil), plugins.MakePluginConfig(string(cfgStr)), logger)
 			assert.NoError(t, err)
 			assert.NotEqual(t, testImporter, nil)
 
@@ -326,13 +343,12 @@ netaddr: %s
 			assert.NoError(t, err)
 			assert.Equal(t, downloadedBlk.Round(), uint64(10))
 			assert.True(t, downloadedBlk.Empty())
-			if ttest.name == followerModeStr {
-				// We're not setting the delta yet, but in the future we will
-				// assert.NotNil(t, downloadedBlk.Delta)
+			// Delta only set in follower mode
+			if tc.name == followerModeStr {
+				assert.NotNil(t, downloadedBlk.Delta)
 			} else {
 				assert.Nil(t, downloadedBlk.Delta)
 			}
-			cancel()
 		})
 	}
 }
