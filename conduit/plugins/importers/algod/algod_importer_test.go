@@ -80,6 +80,7 @@ func TestInitSuccess(t *testing.T) {
 	for _, tc := range tests {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			ts := NewAlgodServer(GenesisResponder, tc.responder, BlockAfterResponder)
 			testImporter := New()
 			cfgStr := fmt.Sprintf(`---
@@ -211,42 +212,26 @@ catchup-config:
 }
 
 func TestInitParseUrlFailure(t *testing.T) {
-	tests := []struct {
-		url string
-	}{
-		{".0.0.0.0.0.0.0:1234"},
-	}
-	for _, ttest := range tests {
-		t.Run(ttest.url, func(t *testing.T) {
-			testImporter := New()
-			cfgStr := fmt.Sprintf(`---
+	url := ".0.0.0.0.0.0.0:1234"
+	testImporter := New()
+	cfgStr := fmt.Sprintf(`---
 mode: %s
 netaddr: %s
-`, "follower", ttest.url)
-			_, err := testImporter.Init(ctx, conduit.MakePipelineInitProvider(&pRound, nil), plugins.MakePluginConfig(cfgStr), logger)
-			assert.ErrorContains(t, err, "parse")
-		})
-	}
+`, "follower", url)
+	_, err := testImporter.Init(ctx, conduit.MakePipelineInitProvider(&pRound, nil), plugins.MakePluginConfig(cfgStr), logger)
+	assert.ErrorContains(t, err, "parse")
 }
 
 func TestInitModeFailure(t *testing.T) {
-	tests := []struct {
-		name string
-	}{
-		{"foobar"},
-	}
-	for _, ttest := range tests {
-		t.Run(ttest.name, func(t *testing.T) {
-			ts := NewAlgodServer(GenesisResponder)
-			testImporter := New()
-			cfgStr := fmt.Sprintf(`---
+	name := "foobar"
+	ts := NewAlgodServer(GenesisResponder)
+	testImporter := New()
+	cfgStr := fmt.Sprintf(`---
 mode: %s
 netaddr: %s
-`, ttest.name, ts.URL)
-			_, err := testImporter.Init(ctx, conduit.MakePipelineInitProvider(&pRound, nil), plugins.MakePluginConfig(cfgStr), logger)
-			assert.EqualError(t, err, fmt.Sprintf("algod importer was set to a mode (%s) that wasn't supported", ttest.name))
-		})
-	}
+`, name, ts.URL)
+	_, err := testImporter.Init(ctx, conduit.MakePipelineInitProvider(&pRound, nil), plugins.MakePluginConfig(cfgStr), logger)
+	assert.EqualError(t, err, fmt.Sprintf("algod importer was set to a mode (%s) that wasn't supported", name))
 }
 
 func TestInitGenesisFailure(t *testing.T) {
@@ -380,6 +365,7 @@ func TestGetBlockContextCancelled(t *testing.T) {
 
 	for _, ttest := range tests {
 		t.Run(ttest.name, func(t *testing.T) {
+			t.Parallel()
 			ctx, cancel = context.WithCancel(context.Background())
 			testImporter := New()
 			cfgStr := fmt.Sprintf(`---
@@ -409,6 +395,7 @@ func TestGetBlockFailure(t *testing.T) {
 	}
 	for _, ttest := range tests {
 		t.Run(ttest.name, func(t *testing.T) {
+			t.Parallel()
 			ctx, cancel = context.WithCancel(context.Background())
 			testImporter := New()
 
