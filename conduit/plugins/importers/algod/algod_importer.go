@@ -63,11 +63,12 @@ var algodImporterMetadata = plugins.Metadata{
 }
 
 func (algodImp *algodImporter) OnComplete(input data.BlockData) error {
-	if algodImp.mode != followerMode {
-		return nil
+	if algodImp.mode == followerMode {
+		_, err := algodImp.aclient.SetSyncRound(input.Round() + 1).Do(algodImp.ctx)
+		return err
 	}
-	_, err := algodImp.aclient.SetSyncRound(input.Round() + 1).Do(algodImp.ctx)
-	return err
+
+	return nil
 }
 
 func (algodImp *algodImporter) Metadata() plugins.Metadata {
@@ -154,11 +155,14 @@ func (algodImp *algodImporter) monitorCatchpointCatchup() error {
 }
 
 func (algodImp *algodImporter) catchupNode(initProvider data.InitProvider) error {
-	// Set the sync round to the round provided by initProvider
-	_, err := algodImp.aclient.SetSyncRound(uint64(initProvider.NextDBRound())).Do(algodImp.ctx)
-	if err != nil {
-		return fmt.Errorf("received unexpected error setting sync round (%d): %w", initProvider.NextDBRound(), err)
+	if algodImp.mode == followerMode {
+		// Set the sync round to the round provided by initProvider
+		_, err := algodImp.aclient.SetSyncRound(uint64(initProvider.NextDBRound())).Do(algodImp.ctx)
+		if err != nil {
+			return fmt.Errorf("received unexpected error setting sync round (%d): %w", initProvider.NextDBRound(), err)
+		}
 	}
+
 	// Run Catchpoint Catchup
 	if algodImp.cfg.CatchupConfig.Catchpoint != "" {
 		cpRound, err := parseCatchpointRound(algodImp.cfg.CatchupConfig.Catchpoint)
@@ -187,7 +191,8 @@ func (algodImp *algodImporter) catchupNode(initProvider data.InitProvider) error
 			return err
 		}
 	}
-	_, err = algodImp.aclient.StatusAfterBlock(uint64(initProvider.NextDBRound())).Do(algodImp.ctx)
+
+	_, err := algodImp.aclient.StatusAfterBlock(uint64(initProvider.NextDBRound())).Do(algodImp.ctx)
 	if err != nil {
 		err = fmt.Errorf("received unexpected error (StatusAfterBlock) waiting for node to catchup: %w", err)
 	}
