@@ -34,7 +34,7 @@ const (
 )
 
 const (
-	archivalMode = iota + 1
+	archivalMode = iota
 	followerMode
 )
 
