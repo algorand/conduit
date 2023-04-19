@@ -4,7 +4,12 @@ FROM debian:bullseye-slim
 RUN groupadd --gid=999 --system conduit && \
     useradd --uid=999 --no-log-init --create-home --system --gid conduit conduit && \
     mkdir -p /data && \
-    chown -R conduit.conduit /data
+    chown -R conduit.conduit /data && \
+    apt-get update && \
+    apt-get install -y ca-certificates && \
+    update-ca-certificates && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
 
 # binary is passed into the build
 COPY conduit /usr/local/bin/
