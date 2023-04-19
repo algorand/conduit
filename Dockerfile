@@ -6,14 +6,14 @@ RUN groupadd --gid=999 --system conduit && \
     mkdir -p /data && \
     chown -R conduit.conduit /data && \
     apt-get update && \
-    apt-get install -y ca-certificates && \
+    apt-get install -y gosu ca-certificates && \
     update-ca-certificates && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
 # binary is passed into the build
-COPY conduit /usr/local/bin/
-COPY docker/docker-entrypoint.sh /usr/local/bin/
+COPY conduit /usr/local/bin/conduit
+COPY docker/docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 
 ENV CONDUIT_DATA_DIR /data
 WORKDIR /data

@@ -45,5 +45,5 @@ docker run algorand/conduit init --importer algod --processors filter_processor 
 With `conduit.yml` in your current working directory,
 launch the container:
 ```
-docker run -it -v $(pwd)/conduit.yml:/conduit/data/conduit.yml algorand/conduit
+docker run -it -v $(pwd)/conduit.yml:/data/conduit.yml algorand/conduit
 ```
