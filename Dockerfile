@@ -1,10 +1,10 @@
 # This dockerfile is used by goreleaser
 FROM debian:bullseye-slim
 
-RUN groupadd --gid=999 --system conduit && \
-    useradd --uid=999 --no-log-init --create-home --system --gid conduit conduit && \
+RUN groupadd --gid=999 --system algorand && \
+    useradd --uid=999 --no-log-init --create-home --system --gid algorand algorand && \
     mkdir -p /data && \
-    chown -R conduit.conduit /data && \
+    chown -R algorand.algorand /data && \
     apt-get update && \
     apt-get install -y gosu ca-certificates && \
     update-ca-certificates && \

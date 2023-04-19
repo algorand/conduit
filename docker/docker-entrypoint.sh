@@ -6,8 +6,8 @@ set -e
 # in order to change permissions, afterwards the script is re-launched
 # as the algorand user.
 if [ "$(id -u)" = '0' ]; then
-  chown -R conduit:conduit $CONDUIT_DATA_DIR
-  exec gosu conduit conduit "$@"
+  chown -R algorand:algorand $CONDUIT_DATA_DIR
+  exec gosu algorand "$0" "$@"
 fi
 
-exec "$@"
+exec conduit "$@"

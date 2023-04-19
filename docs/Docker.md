@@ -1,5 +1,3 @@
-**This container is a work in progress and not yet deployed to docker hub.**
-
 # Docker Image
 
 Algorand's Conduit data pipeline packaged for docker.
@@ -47,3 +45,15 @@ launch the container:
 ```
 docker run -it -v $(pwd)/conduit.yml:/data/conduit.yml algorand/conduit
 ```
+
+# Mounting the Data Directory
+
+The data directory is located at `/algod/data`. Mounting a volume at that location will allow you to resume the deployment from another container.
+
+## Volume Permissions
+
+The container executes in the context of the `algorand` user with UID=999 and GID=999 which is handled differently depending on your operating system or deployment platform. During startup the container temporarily runs as root in order to modify the permissions of /data. It then changes to the `algorand` user. This can sometimes cause problems, for example if your deployment platform doesn't allow containers to run as the root user.
+
+### Use specific UID and GID
+
+On the host system, ensure the directory being mounted uses UID=999 and GID=999. If the directory already has these permissions you may override the default user with `-u 999:999`.
