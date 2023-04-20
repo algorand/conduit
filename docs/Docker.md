@@ -61,4 +61,4 @@ The container executes in the context of the `algorand` user with UID=999 and GI
 
 ### Use specific UID and GID
 
-On the host system, ensure the directory being mounted uses UID=999 and GID=999. If the directory already has these permissions you may override the default user with `-u 999:999`.
+If you do not want the container to start as the root user you can specify a UID and GID. On the host system, ensure the directory being mounted uses UID=999 and GID=999. If the directory already has these permissions you may override the default user with `-u 999:999`.
