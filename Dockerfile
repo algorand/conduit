@@ -1,14 +1,27 @@
-# This dockerfile is used by goreleaser
+# Build this Dockerfile with goreleaser.
+# The binary must be present at /conduit
 FROM debian:bullseye-slim
 
-RUN useradd conduit
-RUN mkdir -p /conduit/data && \
-    chown -R conduit.conduit /conduit
+# Hard code UID/GID to 999 for consistency in advanced deployments.
+# Install ca-certificates to enable using infra providers.
+# Install gosu for fancy data directory management.
+RUN groupadd --gid=999 --system algorand && \
+    useradd --uid=999 --no-log-init --create-home --system --gid algorand algorand && \
+    mkdir -p /data && \
+    chown -R algorand.algorand /data && \
+    apt-get update && \
+    apt-get install -y gosu ca-certificates && \
+    update-ca-certificates && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
 
-# binary is passed into the build
-COPY conduit /conduit/conduit
+COPY conduit /usr/local/bin/conduit
+COPY docker/docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 
-USER conduit
-WORKDIR /conduit
-ENTRYPOINT ["./conduit"]
-CMD ["-d", "data"]
+ENV CONDUIT_DATA_DIR /data
+WORKDIR /data
+# Note: docker-entrypoint.sh calls 'conduit'. Similar entrypoint scripts
+# accept the binary as the first argument in order to surface a suite of
+# tools (i.e. algod, goal, algocfg, ...). Maybe this will change in the
+# future, but for now this approach seemed simpler.
+ENTRYPOINT ["docker-entrypoint.sh"]
