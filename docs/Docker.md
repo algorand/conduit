@@ -40,8 +40,9 @@ docker run algorand/conduit init --importer algod --processors filter_processor 
 
 ## Run with conduit.yml
 
-With `conduit.yml` in your current working directory,
-launch the container:
+With `conduit.yml` in your current working directory, it can be mounted directoy to `/data/conduit.yml`. This is good for testing and some deployments which override the starting round. For a more complete deployment see the next section for how to mount the entire data directory.
+
+Mount `conduit.yml` with the following command:
 ```
 docker run -it -v $(pwd)/conduit.yml:/data/conduit.yml algorand/conduit
 ```
