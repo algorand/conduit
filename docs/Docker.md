@@ -48,7 +48,11 @@ docker run -it -v $(pwd)/conduit.yml:/data/conduit.yml algorand/conduit
 
 # Mounting the Data Directory
 
-The data directory is located at `/algod/data`. Mounting a volume at that location will allow you to resume the deployment from another container.
+For production deployments, you should consider mounting the entire data directory. This way you can persist state across images during an upgrade, or for backups. The data directory is located at `/data`. When mounting a data directory, it must contain the `conduit.yml` file.
+
+```
+docker run -it -v $(pwd)/local_data_dir:/data algorand/conduit
+```
 
 ## Volume Permissions
 
