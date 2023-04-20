@@ -52,7 +52,7 @@ The data directory is located at `/algod/data`. Mounting a volume at that locati
 
 ## Volume Permissions
 
-The container executes in the context of the `algorand` user with UID=999 and GID=999 which is handled differently depending on your operating system or deployment platform. During startup the container temporarily runs as root in order to modify the permissions of /data. It then changes to the `algorand` user. This can sometimes cause problems, for example if your deployment platform doesn't allow containers to run as the root user.
+The container executes in the context of the `algorand` user with UID=999 and GID=999 which is handled differently depending on your operating system or deployment platform. During startup the container temporarily runs as root in order to modify the permissions of `/data`. It then changes to the `algorand` user. This can sometimes cause problems, for example if your deployment platform doesn't allow containers to run as the root user.
 
 ### Use specific UID and GID
 
