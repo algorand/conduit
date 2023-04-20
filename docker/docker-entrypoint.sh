@@ -10,4 +10,5 @@ if [ "$(id -u)" = '0' ]; then
   exec gosu algorand "$0" "$@"
 fi
 
+# always run the conduit command
 exec conduit "$@"

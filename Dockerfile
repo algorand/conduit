@@ -18,4 +18,3 @@ COPY docker/docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 ENV CONDUIT_DATA_DIR /data
 WORKDIR /data
 ENTRYPOINT ["docker-entrypoint.sh"]
-CMD ["conduit"]
