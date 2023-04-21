@@ -10,7 +10,7 @@ RUN groupadd --gid=999 --system algorand && \
     mkdir -p /data && \
     chown -R algorand.algorand /data && \
     apt-get update && \
-    apt-get install -y gosu ca-certificates && \
+    apt-get install -y --no-install-recommends gosu ca-certificates && \
     update-ca-certificates && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*

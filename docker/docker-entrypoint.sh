@@ -10,5 +10,10 @@ if [ "$(id -u)" = '0' ]; then
   exec gosu algorand "$0" "$@"
 fi
 
+# copy config.yml override to data directory
+if [[ -f /etc/algorand/conduit.yml ]]; then
+  cp /etc/algorand/conduit.yml /data/conduit.yml
+fi
+
 # always run the conduit command
 exec conduit "$@"
