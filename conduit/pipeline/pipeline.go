@@ -17,7 +17,6 @@ import (
 	"gopkg.in/yaml.v3"
 
 	sdk "github.com/algorand/go-algorand-sdk/v2/types"
-	"github.com/algorand/indexer/util"
 
 	"github.com/algorand/conduit/conduit"
 	"github.com/algorand/conduit/conduit/data"
@@ -220,7 +219,7 @@ func (p *pipelineImpl) Init() error {
 	}
 
 	if p.cfg.PIDFilePath != "" {
-		err := util.CreateIndexerPidFile(p.logger, p.cfg.PIDFilePath)
+		err := createPidFile(p.logger, p.cfg.PIDFilePath)
 		if err != nil {
 			return err
 		}
@@ -548,4 +547,30 @@ func MakePipeline(ctx context.Context, cfg *data.Config, logger *log.Logger) (Pi
 	logger.Infof("Found Exporter: %s", exporterName)
 
 	return pipeline, nil
+}
+
+// createPidFile creates the pid file at the specified location. Copied from Indexer util.CreateIndexerPidFile.
+func createPidFile(logger *log.Logger, pidFilePath string) error {
+	var err error
+	logger.Infof("Creating PID file at: %s", pidFilePath)
+	fout, err := os.Create(pidFilePath)
+	if err != nil {
+		err = fmt.Errorf("%s: could not create pid file, %v", pidFilePath, err)
+		logger.Error(err)
+		return err
+	}
+
+	if _, err = fmt.Fprintf(fout, "%d", os.Getpid()); err != nil {
+		err = fmt.Errorf("%s: could not write pid file, %v", pidFilePath, err)
+		logger.Error(err)
+		return err
+	}
+
+	err = fout.Close()
+	if err != nil {
+		err = fmt.Errorf("%s: could not close pid file, %v", pidFilePath, err)
+		logger.Error(err)
+		return err
+	}
+	return err
 }
