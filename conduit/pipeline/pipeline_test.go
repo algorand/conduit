@@ -30,166 +30,6 @@ import (
 	"github.com/algorand/conduit/conduit/plugins/processors"
 )
 
-// TestPipelineConfigValidity tests the Valid() function for the Config
-func TestPipelineConfigValidity(t *testing.T) {
-	tests := []struct {
-		name        string
-		toTest      Config
-		errContains string
-	}{
-		{"valid", Config{
-			ConduitArgs: &conduit.Args{ConduitDataDir: ""},
-			LogLevel:    "info",
-			Importer:    NameConfigPair{"test", map[string]interface{}{"a": "a"}},
-			Processors:  nil,
-			Exporter:    NameConfigPair{"test", map[string]interface{}{"a": "a"}},
-		}, ""},
-
-		{"valid 2", Config{
-			ConduitArgs: &conduit.Args{ConduitDataDir: ""},
-			LogLevel:    "info",
-			Importer:    NameConfigPair{"test", map[string]interface{}{"a": "a"}},
-			Processors:  []NameConfigPair{{"test", map[string]interface{}{"a": "a"}}},
-			Exporter:    NameConfigPair{"test", map[string]interface{}{"a": "a"}},
-		}, ""},
-
-		{"empty config", Config{ConduitArgs: nil}, "Args.Valid(): conduit args were nil"},
-	}
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			err := test.toTest.Valid()
-
-			if test.errContains == "" {
-				assert.Nil(t, err)
-				return
-			}
-
-			assert.Contains(t, err.Error(), test.errContains)
-		})
-	}
-}
-
-// TestMakePipelineConfigError tests that making the pipeline configuration with unknown fields causes an error
-func TestMakePipelineConfigErrors(t *testing.T) {
-	tests := []struct {
-		name             string
-		invalidConfigStr string
-		errorContains    string
-	}{
-		{"processors not processor", `---
-log-level: info
-importer:
-  name: "algod"
-  config:
-    netaddr: "http://127.0.0.1:8080"
-    token: "e36c01fc77e490f23e61899c0c22c6390d0fff1443af2c95d056dc5ce4e61302"
-processor:
-  - name: "noop"
-    config:
-      catchpoint: "7560000#3OUX3TLXZNOK6YJXGETKRRV2MHMILF5CCIVZUOJCT6SLY5H2WWTQ"
-exporter:
-  name: "noop"
-  config:
-    connectionstring: ""`, "field processor not found"},
-		{"exporter not exporters", `---
-log-level: info
-importer:
-  name: "algod"
-  config:
-    netaddr: "http://127.0.0.1:8080"
-    token: "e36c01fc77e490f23e61899c0c22c6390d0fff1443af2c95d056dc5ce4e61302"
-processors:
-  - name: "noop"
-    config:
-      catchpoint: "7560000#3OUX3TLXZNOK6YJXGETKRRV2MHMILF5CCIVZUOJCT6SLY5H2WWTQ"
-exporters:
-  name: "noop"
-  config:
-    connectionstring: ""`, "field exporters not found"},
-
-		{"config not configs", `---
-log-level: info
-importer:
-  name: "algod"
-  config:
-    netaddr: "http://127.0.0.1:8080"
-    token: "e36c01fc77e490f23e61899c0c22c6390d0fff1443af2c95d056dc5ce4e61302"
-processors:
-  - name: "noop"
-    config:
-      catchpoint: "7560000#3OUX3TLXZNOK6YJXGETKRRV2MHMILF5CCIVZUOJCT6SLY5H2WWTQ"
-exporter:
-  name: "noop"
-  configs:
-    connectionstring: ""`, "field configs not found"},
-	}
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-
-			dataDir := t.TempDir()
-
-			err := os.WriteFile(filepath.Join(dataDir, conduit.DefaultConfigName), []byte(test.invalidConfigStr), 0777)
-			assert.Nil(t, err)
-
-			cfg := &conduit.Args{ConduitDataDir: dataDir}
-
-			_, err = MakePipelineConfig(cfg)
-			assert.ErrorContains(t, err, test.errorContains)
-		})
-	}
-}
-
-// TestMakePipelineConfig tests making the pipeline configuration
-func TestMakePipelineConfig(t *testing.T) {
-
-	_, err := MakePipelineConfig(nil)
-	assert.Equal(t, fmt.Errorf("MakePipelineConfig(): empty conduit config"), err)
-
-	dataDir := t.TempDir()
-
-	validConfigFile := `---
-log-level: info
-importer:
-  name: "algod"
-  config:
-    netaddr: "http://127.0.0.1:8080"
-    token: "e36c01fc77e490f23e61899c0c22c6390d0fff1443af2c95d056dc5ce4e61302"
-processors:
-  - name: "noop"
-    config:
-      catchpoint: "7560000#3OUX3TLXZNOK6YJXGETKRRV2MHMILF5CCIVZUOJCT6SLY5H2WWTQ"
-exporter:
-  name: "noop"
-  config:
-    connectionstring: ""`
-
-	err = os.WriteFile(filepath.Join(dataDir, conduit.DefaultConfigName), []byte(validConfigFile), 0777)
-	assert.Nil(t, err)
-
-	cfg := &conduit.Args{ConduitDataDir: dataDir}
-
-	pCfg, err := MakePipelineConfig(cfg)
-	assert.Nil(t, err)
-	assert.Equal(t, pCfg.LogLevel, "info")
-	assert.Equal(t, pCfg.Valid(), nil)
-	assert.Equal(t, pCfg.Importer.Name, "algod")
-	assert.Equal(t, pCfg.Importer.Config["token"], "e36c01fc77e490f23e61899c0c22c6390d0fff1443af2c95d056dc5ce4e61302")
-	assert.Equal(t, pCfg.Processors[0].Name, "noop")
-	assert.Equal(t, pCfg.Processors[0].Config["catchpoint"], "7560000#3OUX3TLXZNOK6YJXGETKRRV2MHMILF5CCIVZUOJCT6SLY5H2WWTQ")
-	assert.Equal(t, pCfg.Exporter.Name, "noop")
-	assert.Equal(t, pCfg.Exporter.Config["connectionstring"], "")
-
-	// invalidDataDir has no auto load file
-	invalidDataDir := t.TempDir()
-	assert.Nil(t, err)
-
-	cfgBad := &conduit.Args{ConduitDataDir: invalidDataDir}
-	_, err = MakePipelineConfig(cfgBad)
-	assert.Equal(t, err,
-		fmt.Errorf("MakePipelineConfig(): could not find %s in data directory (%s)", conduit.DefaultConfigName, cfgBad.ConduitDataDir))
-
-}
-
 // a unique block data to validate with tests
 var uniqueBlockData = data.BlockData{
 	BlockHeader: sdk.BlockHeader{
@@ -364,22 +204,22 @@ func mockPipeline(t *testing.T, dataDir string) (*pipelineImpl, *test.Hook, *moc
 
 	l, hook := test.NewNullLogger()
 	pImpl := pipelineImpl{
-		cfg: &Config{
-			ConduitArgs: &conduit.Args{
+		cfg: &data.Config{
+			ConduitArgs: &data.Args{
 				ConduitDataDir:    dataDir,
 				NextRoundOverride: 0,
 			},
-			Importer: NameConfigPair{
+			Importer: data.NameConfigPair{
 				Name:   "mockImporter",
 				Config: map[string]interface{}{},
 			},
-			Processors: []NameConfigPair{
+			Processors: []data.NameConfigPair{
 				{
 					Name:   "mockProcessor",
 					Config: map[string]interface{}{},
 				},
 			},
-			Exporter: NameConfigPair{
+			Exporter: data.NameConfigPair{
 				Name:   "mockExporter",
 				Config: map[string]interface{}{},
 			},
@@ -432,10 +272,10 @@ func TestPipelineRun(t *testing.T) {
 			NextRound:   0,
 			GenesisHash: "",
 		},
-		cfg: &Config{
+		cfg: &data.Config{
 			RetryDelay: 0 * time.Second,
 			RetryCount: math.MaxUint64,
-			ConduitArgs: &conduit.Args{
+			ConduitArgs: &data.Args{
 				ConduitDataDir: t.TempDir(),
 			},
 		},
@@ -515,10 +355,10 @@ func TestPipelineErrors(t *testing.T) {
 	pImpl := pipelineImpl{
 		ctx: ctx,
 		cf:  cf,
-		cfg: &Config{
+		cfg: &data.Config{
 			RetryDelay: 0 * time.Second,
 			RetryCount: math.MaxUint64,
-			ConduitArgs: &conduit.Args{
+			ConduitArgs: &data.Args{
 				ConduitDataDir: tempDir,
 			},
 		},
@@ -590,7 +430,7 @@ func Test_pipelineImpl_registerLifecycleCallbacks(t *testing.T) {
 	pImpl := pipelineImpl{
 		ctx:          ctx,
 		cf:           cf,
-		cfg:          &Config{},
+		cfg:          &data.Config{},
 		logger:       l,
 		initProvider: nil,
 		importer:     &pImporter,
@@ -658,7 +498,7 @@ func TestPipelineMetricsConfigs(t *testing.T) {
 	assert.Error(t, err)
 
 	// metrics mode OFF, default prefix
-	pImpl.cfg.Metrics = Metrics{
+	pImpl.cfg.Metrics = data.Metrics{
 		Mode: "OFF",
 		Addr: ":8081",
 	}
@@ -670,7 +510,7 @@ func TestPipelineMetricsConfigs(t *testing.T) {
 
 	// metrics mode ON, override prefix
 	prefixOverride := "asdfasdf"
-	pImpl.cfg.Metrics = Metrics{
+	pImpl.cfg.Metrics = data.Metrics{
 		Mode:   "ON",
 		Addr:   ":8081",
 		Prefix: prefixOverride,
@@ -866,24 +706,24 @@ func TestPipelineRetryVariables(t *testing.T) {
 			l, _ := test.NewNullLogger()
 			pImpl := pipelineImpl{
 				ctx: context.Background(),
-				cfg: &Config{
+				cfg: &data.Config{
 					RetryCount: testCase.retryCount,
 					RetryDelay: testCase.retryDelay,
-					ConduitArgs: &conduit.Args{
+					ConduitArgs: &data.Args{
 						ConduitDataDir:    t.TempDir(),
 						NextRoundOverride: 0,
 					},
-					Importer: NameConfigPair{
+					Importer: data.NameConfigPair{
 						Name:   "",
 						Config: map[string]interface{}{},
 					},
-					Processors: []NameConfigPair{
+					Processors: []data.NameConfigPair{
 						{
 							Name:   "",
 							Config: map[string]interface{}{},
 						},
 					},
-					Exporter: NameConfigPair{
+					Exporter: data.NameConfigPair{
 						Name:   "unknown",
 						Config: map[string]interface{}{},
 					},

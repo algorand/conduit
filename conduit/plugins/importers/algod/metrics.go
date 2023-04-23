@@ -3,11 +3,11 @@ package algodimporter
 import (
 	"github.com/prometheus/client_golang/prometheus"
 
-	"github.com/algorand/conduit/conduit"
+	"github.com/algorand/conduit/conduit/data"
 )
 
 // getAlgodRawBlockTimeSeconds is used to record how long it took to fetch the block.
-var getAlgodRawBlockTimeSeconds = initGetAlgodRawBlockTimeSeconds(conduit.DefaultMetricsPrefix)
+var getAlgodRawBlockTimeSeconds = initGetAlgodRawBlockTimeSeconds(data.DefaultMetricsPrefix)
 
 func initGetAlgodRawBlockTimeSeconds(subsystem string) prometheus.Summary {
 	return prometheus.NewSummary(

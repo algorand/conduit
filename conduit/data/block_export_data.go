@@ -2,7 +2,6 @@ package data
 
 import (
 	sdk "github.com/algorand/go-algorand-sdk/v2/types"
-	"github.com/algorand/indexer/types"
 )
 
 // RoundProvider is the interface which all data types sent to Exporters should implement
@@ -33,70 +32,6 @@ type BlockData struct {
 
 	// Certificate contains voting data that certifies the block. The certificate is non deterministic, a node stops collecting votes once the voting threshold is reached.
 	Certificate *map[string]interface{} `json:"cert,omitempty"`
-}
-
-// MakeBlockDataFromValidatedBlock makes BlockData from agreement.ValidatedBlock
-func MakeBlockDataFromValidatedBlock(input types.ValidatedBlock) BlockData {
-	blockData := BlockData{}
-	blockData.UpdateFromValidatedBlock(input)
-	return blockData
-}
-
-// UpdateFromValidatedBlock updates BlockData from ValidatedBlock input
-func (blkData *BlockData) UpdateFromValidatedBlock(input types.ValidatedBlock) {
-	blkData.BlockHeader = input.Block.BlockHeader
-	blkData.Payset = input.Block.Payset
-	delta := input.Delta
-	blkData.Delta = &delta
-}
-
-// UpdateFromEncodedBlockCertificate updates BlockData from EncodedBlockCert info
-func (blkData *BlockData) UpdateFromEncodedBlockCertificate(input *types.EncodedBlockCert) {
-	if input == nil {
-		return
-	}
-
-	blkData.BlockHeader = input.Block.BlockHeader
-	blkData.Payset = input.Block.Payset
-
-	cert := input.Certificate
-	blkData.Certificate = &cert
-}
-
-// ValidatedBlock returns a validated block from the BlockData object
-func (blkData BlockData) ValidatedBlock() types.ValidatedBlock {
-	tmpBlock := sdk.Block{
-		BlockHeader: blkData.BlockHeader,
-		Payset:      blkData.Payset,
-	}
-
-	tmpDelta := sdk.LedgerStateDelta{}
-	if blkData.Delta != nil {
-		tmpDelta = *blkData.Delta
-	}
-	vb := types.ValidatedBlock{
-		Block: tmpBlock,
-		Delta: tmpDelta,
-	}
-	return vb
-}
-
-// EncodedBlockCertificate returns an encoded block certificate from the BlockData object
-func (blkData BlockData) EncodedBlockCertificate() types.EncodedBlockCert {
-
-	tmpBlock := sdk.Block{
-		BlockHeader: blkData.BlockHeader,
-		Payset:      blkData.Payset,
-	}
-
-	tmpCert := make(map[string]interface{})
-	if blkData.Certificate != nil {
-		tmpCert = *blkData.Certificate
-	}
-	return types.EncodedBlockCert{
-		Block:       tmpBlock,
-		Certificate: tmpCert,
-	}
 }
 
 // Round returns the round to which the BlockData corresponds

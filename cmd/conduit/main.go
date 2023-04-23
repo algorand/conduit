@@ -13,7 +13,7 @@ import (
 
 	"github.com/algorand/conduit/cmd/conduit/internal/initialize"
 	"github.com/algorand/conduit/cmd/conduit/internal/list"
-	"github.com/algorand/conduit/conduit"
+	"github.com/algorand/conduit/conduit/data"
 	"github.com/algorand/conduit/conduit/loggers"
 	"github.com/algorand/conduit/conduit/pipeline"
 	_ "github.com/algorand/conduit/conduit/plugins/exporters/all"
@@ -40,7 +40,7 @@ func init() {
 }
 
 // runConduitCmdWithConfig run the main logic with a supplied conduit config
-func runConduitCmdWithConfig(args *conduit.Args) error {
+func runConduitCmdWithConfig(args *data.Args) error {
 	defer pipeline.HandlePanic(logger)
 
 	if args.ConduitDataDir == "" {
@@ -51,7 +51,7 @@ func runConduitCmdWithConfig(args *conduit.Args) error {
 		return fmt.Errorf("the data directory is required and must be provided with a command line option or the '%s' environment variable", conduitEnvVar)
 	}
 
-	pCfg, err := pipeline.MakePipelineConfig(args)
+	pCfg, err := data.MakePipelineConfig(args)
 	if err != nil {
 		return err
 	}
@@ -113,7 +113,7 @@ func runConduitCmdWithConfig(args *conduit.Args) error {
 
 // makeConduitCmd creates the main cobra command, initializes flags
 func makeConduitCmd() *cobra.Command {
-	cfg := &conduit.Args{}
+	cfg := &data.Args{}
 	var vFlag bool
 	cmd := &cobra.Command{
 		Use:   "conduit",

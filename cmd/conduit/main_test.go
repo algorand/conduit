@@ -10,18 +10,17 @@ import (
 	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v3"
 
-	"github.com/algorand/conduit/conduit"
-	"github.com/algorand/conduit/conduit/pipeline"
+	"github.com/algorand/conduit/conduit/data"
 )
 
 // Fills in a temp data dir and creates files
 // TODO: Refactor the code so that testing can be done without creating files and directories.
-func setupDataDir(t *testing.T, cfg pipeline.Config) *conduit.Args {
-	conduitArgs := &conduit.Args{ConduitDataDir: t.TempDir()}
-	data, err := yaml.Marshal(&cfg)
+func setupDataDir(t *testing.T, cfg data.Config) *data.Args {
+	conduitArgs := &data.Args{ConduitDataDir: t.TempDir()}
+	ydata, err := yaml.Marshal(&cfg)
 	require.NoError(t, err)
-	configFile := path.Join(conduitArgs.ConduitDataDir, conduit.DefaultConfigName)
-	os.WriteFile(configFile, data, 0755)
+	configFile := path.Join(conduitArgs.ConduitDataDir, data.DefaultConfigName)
+	os.WriteFile(configFile, ydata, 0755)
 	require.FileExists(t, configFile)
 	return conduitArgs
 }
@@ -39,12 +38,12 @@ func TestBanner(t *testing.T) {
 		defer f.Close()
 		os.Stdout = f
 
-		cfg := pipeline.Config{
-			ConduitArgs: &conduit.Args{ConduitDataDir: t.TempDir()},
+		cfg := data.Config{
+			ConduitArgs: &data.Args{ConduitDataDir: t.TempDir()},
 			HideBanner:  hideBanner,
-			Importer:    pipeline.NameConfigPair{Name: "test", Config: map[string]interface{}{"a": "a"}},
+			Importer:    data.NameConfigPair{Name: "test", Config: map[string]interface{}{"a": "a"}},
 			Processors:  nil,
-			Exporter:    pipeline.NameConfigPair{Name: "test", Config: map[string]interface{}{"a": "a"}},
+			Exporter:    data.NameConfigPair{Name: "test", Config: map[string]interface{}{"a": "a"}},
 		}
 		args := setupDataDir(t, cfg)
 
@@ -69,13 +68,13 @@ func TestBanner(t *testing.T) {
 }
 
 func TestEmptyDataDir(t *testing.T) {
-	args := conduit.Args{}
+	args := data.Args{}
 	err := runConduitCmdWithConfig(&args)
 	require.ErrorContains(t, err, conduitEnvVar)
 }
 
 func TestInvalidLogLevel(t *testing.T) {
-	cfg := pipeline.Config{
+	cfg := data.Config{
 		LogLevel: "invalid",
 	}
 	args := setupDataDir(t, cfg)
@@ -97,11 +96,11 @@ func TestLogFile(t *testing.T) {
 		defer f.Close()
 		os.Stdout = f
 
-		cfg := pipeline.Config{
+		cfg := data.Config{
 			LogFile:    logfile,
-			Importer:   pipeline.NameConfigPair{Name: "test", Config: map[string]interface{}{"a": "a"}},
+			Importer:   data.NameConfigPair{Name: "test", Config: map[string]interface{}{"a": "a"}},
 			Processors: nil,
-			Exporter:   pipeline.NameConfigPair{Name: "test", Config: map[string]interface{}{"a": "a"}},
+			Exporter:   data.NameConfigPair{Name: "test", Config: map[string]interface{}{"a": "a"}},
 		}
 		args := setupDataDir(t, cfg)
 

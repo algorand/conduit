@@ -1,0 +1,128 @@
+package data
+
+import (
+	"fmt"
+	"os"
+	"time"
+
+	log "github.com/sirupsen/logrus"
+	"gopkg.in/yaml.v3"
+
+	"github.com/algorand/indexer/util"
+)
+
+// DefaultConfigBaseName is the default conduit configuration filename without the extension.
+var DefaultConfigBaseName = "conduit"
+
+// DefaultConfigName is the default conduit configuration filename.
+var DefaultConfigName = fmt.Sprintf("%s.yml", DefaultConfigBaseName)
+
+// DefaultLogLevel is the default conduit log level if none is provided.
+var DefaultLogLevel = log.InfoLevel
+
+// DefaultMetricsPrefix is the default prometheus subsystem if no Prefix option is provided.
+var DefaultMetricsPrefix = "conduit"
+
+// Args configuration for conduit running.
+type Args struct {
+	ConduitDataDir    string `yaml:"data-dir"`
+	NextRoundOverride uint64 `yaml:"next-round-override"`
+}
+
+// NameConfigPair is a generic structure used across plugin configuration ser/de
+type NameConfigPair struct {
+	Name   string                 `yaml:"name"`
+	Config map[string]interface{} `yaml:"config"`
+}
+
+// Metrics configs for turning on Prometheus endpoint /metrics
+type Metrics struct {
+	Mode   string `yaml:"mode"`
+	Addr   string `yaml:"addr"`
+	Prefix string `yaml:"prefix"`
+}
+
+// Config stores configuration specific to the conduit pipeline
+type Config struct {
+	// ConduitArgs are the program inputs. Should not be serialized for config.
+	ConduitArgs *Args `yaml:"-"`
+
+	CPUProfile  string `yaml:"cpu-profile"`
+	PIDFilePath string `yaml:"pid-filepath"`
+	HideBanner  bool   `yaml:"hide-banner"`
+
+	LogFile  string `yaml:"log-file"`
+	LogLevel string `yaml:"log-level"`
+	// Store a local copy to access parent variables
+	Importer   NameConfigPair   `yaml:"importer"`
+	Processors []NameConfigPair `yaml:"processors"`
+	Exporter   NameConfigPair   `yaml:"exporter"`
+	Metrics    Metrics          `yaml:"metrics"`
+	// RetryCount is the number of retries to perform for an error in the pipeline
+	RetryCount uint64 `yaml:"retry-count"`
+	// RetryDelay is a duration amount interpreted from a string
+	RetryDelay time.Duration `yaml:"retry-delay"`
+}
+
+// Valid validates pipeline config
+func (cfg *Config) Valid() error {
+	if cfg.ConduitArgs == nil {
+		return fmt.Errorf("Args.Valid(): conduit args were nil")
+	}
+
+	// If it is a negative time, it is an error
+	if cfg.RetryDelay < 0 {
+		return fmt.Errorf("Args.Valid(): invalid retry delay - time duration was negative (%s)", cfg.RetryDelay.String())
+	}
+
+	return nil
+}
+
+// MakePipelineConfig creates a pipeline configuration
+func MakePipelineConfig(args *Args) (*Config, error) {
+	if args == nil {
+		return nil, fmt.Errorf("MakePipelineConfig(): empty conduit config")
+	}
+
+	if !util.IsDir(args.ConduitDataDir) {
+		return nil, fmt.Errorf("MakePipelineConfig(): invalid data dir '%s'", args.ConduitDataDir)
+	}
+
+	// Search for pipeline configuration in data directory
+	autoloadParamConfigPath, err := util.GetConfigFromDataDir(args.ConduitDataDir, DefaultConfigBaseName, []string{"yml", "yaml"})
+	if err != nil || autoloadParamConfigPath == "" {
+		return nil, fmt.Errorf("MakePipelineConfig(): could not find %s in data directory (%s)", DefaultConfigName, args.ConduitDataDir)
+	}
+
+	file, err := os.Open(autoloadParamConfigPath)
+	if err != nil {
+		return nil, fmt.Errorf("MakePipelineConfig(): reading config error: %w", err)
+	}
+
+	pCfgDecoder := yaml.NewDecoder(file)
+	// Make sure we are strict about only unmarshalling known fields
+	pCfgDecoder.KnownFields(true)
+
+	var pCfg Config
+	// Set default value for retry variables
+	pCfg.RetryDelay = 1 * time.Second
+	pCfg.RetryCount = 10
+	err = pCfgDecoder.Decode(&pCfg)
+	if err != nil {
+		return nil, fmt.Errorf("MakePipelineConfig(): config file (%s) was mal-formed yaml: %w", autoloadParamConfigPath, err)
+	}
+
+	// For convenience, include the command line arguments.
+	pCfg.ConduitArgs = args
+
+	// Default log level.
+	if pCfg.LogLevel == "" {
+		pCfg.LogLevel = DefaultLogLevel.String()
+	}
+
+	if err := pCfg.Valid(); err != nil {
+		return nil, fmt.Errorf("MakePipelineConfig(): config file (%s) had mal-formed schema: %w", autoloadParamConfigPath, err)
+	}
+
+	return &pCfg, nil
+}
