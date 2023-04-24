@@ -2,7 +2,7 @@ version: 2.1
 
 orbs:
   go: circleci/go@1.7.0
-  codecov: codecov/codecov@3.1.1
+  codecov: codecov/codecov@3.2.4
 
 parameters:
   ubuntu_image:
