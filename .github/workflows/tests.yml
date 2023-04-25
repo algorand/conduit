@@ -36,15 +36,14 @@ jobs:
         uses: actions/setup-go@v3
         with:
           go-version-file: 'go.mod'
+
+      - name: Install python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
       
       - name: Build Conduit
         run: make
-
-      - name: Run golangci-lint
-        uses: golangci/golangci-lint-action@v3
-        with:
-          go_version_file: 'go.mod'
-          version: v1.47.3
 
       - name: Run tests
         run: make test
@@ -54,6 +53,9 @@ jobs:
             wget https://raw.githubusercontent.com/algorand/go-algorand/rel/stable/cmd/updater/update.sh && chmod 744 update.sh 
             ./update.sh -i -c ${{ github.event.inputs.ci_e2e_algod_channel }} -n -d ./ -p /usr/local/go/bin
             export GOPATH=/usr/local/go/
+
+      - name: Build e2e tests
+        run: pip3 install e2e_tests/
 
       - name: Run e2e tests
         run: |
