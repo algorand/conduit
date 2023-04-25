@@ -31,9 +31,8 @@ jobs:
         run: |
             CHANNEL="stable"
             wget https://raw.githubusercontent.com/algorand/go-algorand/rel/stable/cmd/updater/update.sh && chmod 744 update.sh 
-            ./update.sh -i -c "$CHANNEL" -n -d ./ -p bin
-            echo "::add-path::$RUNNER_WORKSPACE/$(basename $GITHUB_REPOSITORY)/bin" # Make it accessible from runner
-            which algod
+            ./update.sh -i -c "$CHANNEL" -n -d ./ -p "$RUNNER_WORKSPACE/algod_bin"
+            echo "$RUNNER_WORKSPACE/algod_bin" # Make it accessible from runner
 
       - name: Build e2e tests
         run: pip3 install e2e_tests/
