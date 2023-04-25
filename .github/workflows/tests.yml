@@ -1,6 +1,7 @@
 name: Tests
 on:
   push:
+  pull_request:
 
 inputs:
   ci_e2e_algod_channel:
