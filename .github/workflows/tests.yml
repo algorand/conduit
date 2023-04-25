@@ -1,14 +1,6 @@
 name: Tests
 on:
   pull_request:
-  workflow_dispatch:
-    inputs:
-      ci_e2e_algod_channel:
-        description: 'Release channel for algod installation.'
-        default: 'stable'
-      ci_e2e_filename:
-        description: 'Pattern to use when searching for the CI E2E File.'
-        default: 'fa6ad40d/rel-nightly'
 
 jobs:
   test:
@@ -37,9 +29,7 @@ jobs:
 
       - name: Install algod
         run: |
-            INPUT_CHANNEL="${{ github.events.inputs.ci_e2e_algod_channel }}"
-            CHANNEL="${INPUT_CHANNEL:stable}"
-            echo $CHANNEL
+            CHANNEL="stable"
             wget https://raw.githubusercontent.com/algorand/go-algorand/rel/stable/cmd/updater/update.sh && chmod 744 update.sh 
             ./update.sh -i -c "$CHANNEL" -n -d ./ -p /usr/local/go/bin
             export GOPATH=/usr/local/go/
@@ -49,10 +39,8 @@ jobs:
 
       - name: Run e2e tests
         run: |
-          INPUT_FILENAME="${{ github.events.inputs.ci_e2e_filename }}"
-          FILENAME="${INPUT_FILENAME:fa6ad40d/rel-nightly}"
-          echo $FILENAME"
-          export CI_E2E_FILENAME="${{ github.events.inputs.ci_e2e_filename }}"
+          FILENAME="fa6ad40d/rel-nightly"
+          export CI_E2E_FILENAME="$FILENAME"
           make e2e-conduit
 
       - name: Upload codecov report
