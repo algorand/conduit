@@ -32,6 +32,7 @@ jobs:
             CHANNEL="stable"
             wget https://raw.githubusercontent.com/algorand/go-algorand/rel/stable/cmd/updater/update.sh && chmod 744 update.sh 
             ./update.sh -i -c "$CHANNEL" -n -d ./ -p "$RUNNER_WORKSPACE/algod_bin"
+            ls "$RUNNER_WORKSPACE/algod_bin"
             echo "$RUNNER_WORKSPACE/algod_bin" # Make it accessible from runner
 
       - name: Build e2e tests
