@@ -6,23 +6,23 @@ import (
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
 
+	"github.com/algorand/conduit/conduit/data"
 	_ "github.com/algorand/conduit/conduit/plugins/exporters/all"
 	_ "github.com/algorand/conduit/conduit/plugins/exporters/example"
 	_ "github.com/algorand/conduit/conduit/plugins/importers/all"
 	_ "github.com/algorand/conduit/conduit/plugins/processors/all"
-	"github.com/algorand/indexer/conduit/pipeline"
 )
 
 // TestSamples ensures that all plugins contain a sample file with valid yaml.
 func TestSamples(t *testing.T) {
 	metadata := AllMetadata()
-	for _, data := range metadata {
-		data := data
-		t.Run(data.Name, func(t *testing.T) {
+	for _, mdata := range metadata {
+		mdata := mdata
+		t.Run(mdata.Name, func(t *testing.T) {
 			t.Parallel()
-			var config pipeline.NameConfigPair
-			assert.NoError(t, yaml.Unmarshal([]byte(data.SampleConfig), &config))
-			assert.Equal(t, data.Name, config.Name)
+			var config data.NameConfigPair
+			assert.NoError(t, yaml.Unmarshal([]byte(mdata.SampleConfig), &config))
+			assert.Equal(t, mdata.Name, config.Name)
 		})
 	}
 }

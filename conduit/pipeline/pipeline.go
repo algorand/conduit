@@ -17,7 +17,6 @@ import (
 	"gopkg.in/yaml.v3"
 
 	sdk "github.com/algorand/go-algorand-sdk/v2/types"
-	"github.com/algorand/indexer/util"
 
 	"github.com/algorand/conduit/conduit"
 	"github.com/algorand/conduit/conduit/data"
@@ -27,104 +26,6 @@ import (
 	"github.com/algorand/conduit/conduit/plugins/importers"
 	"github.com/algorand/conduit/conduit/plugins/processors"
 )
-
-// NameConfigPair is a generic structure used across plugin configuration ser/de
-type NameConfigPair struct {
-	Name   string                 `yaml:"name"`
-	Config map[string]interface{} `yaml:"config"`
-}
-
-// Metrics configs for turning on Prometheus endpoint /metrics
-type Metrics struct {
-	Mode   string `yaml:"mode"`
-	Addr   string `yaml:"addr"`
-	Prefix string `yaml:"prefix"`
-}
-
-// Config stores configuration specific to the conduit pipeline
-type Config struct {
-	// ConduitArgs are the program inputs. Should not be serialized for config.
-	ConduitArgs *conduit.Args `yaml:"-"`
-
-	CPUProfile  string `yaml:"cpu-profile"`
-	PIDFilePath string `yaml:"pid-filepath"`
-	HideBanner  bool   `yaml:"hide-banner"`
-
-	LogFile  string `yaml:"log-file"`
-	LogLevel string `yaml:"log-level"`
-	// Store a local copy to access parent variables
-	Importer   NameConfigPair   `yaml:"importer"`
-	Processors []NameConfigPair `yaml:"processors"`
-	Exporter   NameConfigPair   `yaml:"exporter"`
-	Metrics    Metrics          `yaml:"metrics"`
-	// RetryCount is the number of retries to perform for an error in the pipeline
-	RetryCount uint64 `yaml:"retry-count"`
-	// RetryDelay is a duration amount interpreted from a string
-	RetryDelay time.Duration `yaml:"retry-delay"`
-}
-
-// Valid validates pipeline config
-func (cfg *Config) Valid() error {
-	if cfg.ConduitArgs == nil {
-		return fmt.Errorf("Args.Valid(): conduit args were nil")
-	}
-
-	// If it is a negative time, it is an error
-	if cfg.RetryDelay < 0 {
-		return fmt.Errorf("Args.Valid(): invalid retry delay - time duration was negative (%s)", cfg.RetryDelay.String())
-	}
-
-	return nil
-}
-
-// MakePipelineConfig creates a pipeline configuration
-func MakePipelineConfig(args *conduit.Args) (*Config, error) {
-	if args == nil {
-		return nil, fmt.Errorf("MakePipelineConfig(): empty conduit config")
-	}
-
-	if !util.IsDir(args.ConduitDataDir) {
-		return nil, fmt.Errorf("MakePipelineConfig(): invalid data dir '%s'", args.ConduitDataDir)
-	}
-
-	// Search for pipeline configuration in data directory
-	autoloadParamConfigPath, err := util.GetConfigFromDataDir(args.ConduitDataDir, conduit.DefaultConfigBaseName, []string{"yml", "yaml"})
-	if err != nil || autoloadParamConfigPath == "" {
-		return nil, fmt.Errorf("MakePipelineConfig(): could not find %s in data directory (%s)", conduit.DefaultConfigName, args.ConduitDataDir)
-	}
-
-	file, err := os.Open(autoloadParamConfigPath)
-	if err != nil {
-		return nil, fmt.Errorf("MakePipelineConfig(): reading config error: %w", err)
-	}
-
-	pCfgDecoder := yaml.NewDecoder(file)
-	// Make sure we are strict about only unmarshalling known fields
-	pCfgDecoder.KnownFields(true)
-
-	var pCfg Config
-	// Set default value for retry variables
-	pCfg.RetryDelay = 1 * time.Second
-	pCfg.RetryCount = 10
-	err = pCfgDecoder.Decode(&pCfg)
-	if err != nil {
-		return nil, fmt.Errorf("MakePipelineConfig(): config file (%s) was mal-formed yaml: %w", autoloadParamConfigPath, err)
-	}
-
-	// For convenience, include the command line arguments.
-	pCfg.ConduitArgs = args
-
-	// Default log level.
-	if pCfg.LogLevel == "" {
-		pCfg.LogLevel = conduit.DefaultLogLevel.String()
-	}
-
-	if err := pCfg.Valid(); err != nil {
-		return nil, fmt.Errorf("MakePipelineConfig(): config file (%s) had mal-formed schema: %w", autoloadParamConfigPath, err)
-	}
-
-	return &pCfg, nil
-}
 
 // Pipeline is a struct that orchestrates the entire
 // sequence of events, taking in importers, processors and
@@ -141,7 +42,7 @@ type pipelineImpl struct {
 	ctx      context.Context
 	cf       context.CancelFunc
 	wg       sync.WaitGroup
-	cfg      *Config
+	cfg      *data.Config
 	logger   *log.Logger
 	profFile *os.File
 	err      error
@@ -201,7 +102,7 @@ func (p *pipelineImpl) registerPluginMetricsCallbacks() {
 	}
 }
 
-func (p *pipelineImpl) makeConfig(cfg NameConfigPair, pluginType plugins.PluginType) (*log.Logger, plugins.PluginConfig, error) {
+func (p *pipelineImpl) makeConfig(cfg data.NameConfigPair, pluginType plugins.PluginType) (*log.Logger, plugins.PluginConfig, error) {
 	configs, err := yaml.Marshal(cfg.Config)
 	if err != nil {
 		return nil, plugins.PluginConfig{}, fmt.Errorf("makeConfig(): could not serialize config: %w", err)
@@ -233,7 +134,7 @@ func (p *pipelineImpl) pluginRoundOverride() (uint64, error) {
 	type overrideFunc func(config plugins.PluginConfig) (uint64, error)
 	type overridePart struct {
 		RoundRequest overrideFunc
-		cfg          NameConfigPair
+		cfg          data.NameConfigPair
 		t            plugins.PluginType
 	}
 	var parts []overridePart
@@ -299,7 +200,7 @@ func (p *pipelineImpl) Init() error {
 	p.logger.Infof("Starting Pipeline Initialization")
 
 	if p.cfg.Metrics.Prefix == "" {
-		p.cfg.Metrics.Prefix = conduit.DefaultMetricsPrefix
+		p.cfg.Metrics.Prefix = data.DefaultMetricsPrefix
 	}
 	metrics.RegisterPrometheusMetrics(p.cfg.Metrics.Prefix)
 
@@ -318,7 +219,7 @@ func (p *pipelineImpl) Init() error {
 	}
 
 	if p.cfg.PIDFilePath != "" {
-		err := util.CreateIndexerPidFile(p.logger, p.cfg.PIDFilePath)
+		err := createPidFile(p.logger, p.cfg.PIDFilePath)
 		if err != nil {
 			return err
 		}
@@ -579,7 +480,7 @@ func (p *pipelineImpl) startMetricsServer() {
 }
 
 // MakePipeline creates a Pipeline
-func MakePipeline(ctx context.Context, cfg *Config, logger *log.Logger) (Pipeline, error) {
+func MakePipeline(ctx context.Context, cfg *data.Config, logger *log.Logger) (Pipeline, error) {
 
 	if cfg == nil {
 		return nil, fmt.Errorf("MakePipeline(): pipeline config was empty")
@@ -646,4 +547,30 @@ func MakePipeline(ctx context.Context, cfg *Config, logger *log.Logger) (Pipelin
 	logger.Infof("Found Exporter: %s", exporterName)
 
 	return pipeline, nil
+}
+
+// createPidFile creates the pid file at the specified location. Copied from Indexer util.CreateIndexerPidFile.
+func createPidFile(logger *log.Logger, pidFilePath string) error {
+	var err error
+	logger.Infof("Creating PID file at: %s", pidFilePath)
+	fout, err := os.Create(pidFilePath)
+	if err != nil {
+		err = fmt.Errorf("%s: could not create pid file, %v", pidFilePath, err)
+		logger.Error(err)
+		return err
+	}
+
+	if _, err = fmt.Fprintf(fout, "%d", os.Getpid()); err != nil {
+		err = fmt.Errorf("%s: could not write pid file, %v", pidFilePath, err)
+		logger.Error(err)
+		return err
+	}
+
+	err = fout.Close()
+	if err != nil {
+		err = fmt.Errorf("%s: could not close pid file, %v", pidFilePath, err)
+		logger.Error(err)
+		return err
+	}
+	return err
 }

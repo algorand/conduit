@@ -11,7 +11,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/algorand/conduit/conduit/pipeline"
+	"github.com/algorand/conduit/conduit/data"
 	"github.com/algorand/conduit/conduit/plugins/exporters/filewriter"
 	noopExporter "github.com/algorand/conduit/conduit/plugins/exporters/noop"
 	algodimporter "github.com/algorand/conduit/conduit/plugins/importers/algod"
@@ -25,9 +25,9 @@ var defaultYml string
 
 // TestInitDataDirectory tests the initialization of the data directory
 func TestInitDataDirectory(t *testing.T) {
-	verifyYaml := func(data []byte, importer string, exporter string, processors []string) {
-		var cfg pipeline.Config
-		require.NoError(t, yaml.Unmarshal(data, &cfg))
+	verifyYaml := func(ydata []byte, importer string, exporter string, processors []string) {
+		var cfg data.Config
+		require.NoError(t, yaml.Unmarshal(ydata, &cfg))
 		assert.Equal(t, importer, cfg.Importer.Name)
 		assert.Equal(t, exporter, cfg.Exporter.Name)
 		require.Equal(t, len(processors), len(cfg.Processors))
