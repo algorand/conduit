@@ -2,16 +2,15 @@ name: Tests
 on:
   push:
   pull_request:
-
-inputs:
-  ci_e2e_algod_channel:
-    description: 'Release channel for algod installation.'
-    required: true
-    default: 'stable'
-  ci_e2e_filename:
-    description: 'Pattern to use when searching for the CI E2E File.'
-    required: true
-    default: 'fa6ad40d/rel-nightly'
+    inputs:
+      ci_e2e_algod_channel:
+        description: 'Release channel for algod installation.'
+        required: true
+        default: 'stable'
+      ci_e2e_filename:
+        description: 'Pattern to use when searching for the CI E2E File.'
+        required: true
+        default: 'fa6ad40d/rel-nightly'
 
 jobs:
   test:
