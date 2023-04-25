@@ -1,6 +1,6 @@
 # File Import Plugin
 
-Read files from a directory and import them as blocks. This plugin works with the [file exporter](../fileexporter/README.md) to create a simple file-based pipeline.
+Read files from a directory and import them as blocks. This plugin works with the file exporter plugin to create a simple file-based pipeline.
 
 ## Configuration
 ```yml @sample.yaml
