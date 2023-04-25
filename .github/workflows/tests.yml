@@ -1,22 +1,27 @@
 name: Tests
 on:
   push:
+    branches:
+      - master
+    inputs:
+      ci_e2e_algod_channel:
+        description: 'Release channel for algod installation.'
+        required: true
+        default: 'stable'
+      ci_e2e_filename:
+        description: 'Pattern to use when searching for the CI E2E File.'
+        required: true
+        default: 'fa6ad40d/rel-nightly'
   pull_request:
-
-inputs:
-  ci_e2e_algod_channel:
-    description: 'Release channel for algod installation.'
-    required: true
-    default: 'stable'
-  ci_e2e_filename:
-    description: 'Pattern to use when searching for the CI E2E File.'
-    required: true
-    default: 'fa6ad40d/rel-nightly'
-  defaults:
-    run:
-      inputs:
-        ci_e2e_algod_channel: ${{ github.event.inputs.ci_e2e_algod_channel }}
-        ci_e2e_filename: ${{ github.event.inputs.ci_e2e_filename }}
+    inputs:
+      ci_e2e_algod_channel:
+        description: 'Release channel for algod installation.'
+        required: true
+        default: 'stable'
+      ci_e2e_filename:
+        description: 'Pattern to use when searching for the CI E2E File.'
+        required: true
+        default: 'fa6ad40d/rel-nightly'
 
 jobs:
   test:
@@ -38,7 +43,8 @@ jobs:
       - name: Run golangci-lint
         uses: golangci/golangci-lint-action@v3
         with:
-          version: latest
+          go_version_file: 'go.mod'
+          version: v1.47.3
 
       - name: Run tests
         run: make test
