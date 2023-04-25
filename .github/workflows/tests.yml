@@ -1,0 +1,53 @@
+name: Tests
+on:
+  pull_request:
+  push:
+inputs:
+  ci-e2e-algod-channel:
+    description: 'Release channel for algod installation.'
+    required: true
+    default: 'stable'
+  ci-e2e-filename:
+    description: 'Pattern to use when searching for the CI E2E File.'
+    required: true
+    default: 'fa6ad40d/rel-nightly'
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+      - run: git fetch --force --tags
+
+      - name: Install go
+        uses: actions/setup-go@v3
+        with:
+          go-version-file: 'go.mod'
+      
+      - name: Build Conduit
+        run: make
+
+      - name: Run golangci-lint
+        uses: golangci/golangci-lint-action@v3
+        with:
+          version: latest
+
+      - name: Run tests
+        run: make test
+
+      - name: Install algod
+        run: |
+            wget https://raw.githubusercontent.com/algorand/go-algorand/rel/stable/cmd/updater/update.sh && chmod 744 update.sh 
+            ./update.sh -i -c ${{ inputs.ci-e2e-algod-channel }} -n -d ./ -p /usr/local/go/bin
+            export GOPATH=/usr/local/go/
+
+      - name: Run e2e tests
+        run: |
+          export CI_E2E_FILENAME=${{ inputs.ci-e2e-filename }}
+          make e2e-conduit
+
+      - name: Upload codecov report
+        uses: codecov/codecov-action@v3
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
