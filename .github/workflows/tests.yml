@@ -51,7 +51,7 @@ jobs:
       - name: Install algod
         run: |
             wget https://raw.githubusercontent.com/algorand/go-algorand/rel/stable/cmd/updater/update.sh && chmod 744 update.sh 
-            ./update.sh -i -c ${{ github.event.inputs.ci_e2e_algod_channel }} -n -d ./ -p /usr/local/go/bin
+            ./update.sh -i -c ${{ inputs.ci_e2e_algod_channel }} -n -d ./ -p /usr/local/go/bin
             export GOPATH=/usr/local/go/
 
       - name: Build e2e tests
@@ -59,7 +59,7 @@ jobs:
 
       - name: Run e2e tests
         run: |
-          export CI_E2E_FILENAME=${{ github.event.inputs.ci_e2e_filename }}
+          export CI_E2E_FILENAME=${{ inputs.ci_e2e_filename }}
           make e2e-conduit
 
       - name: Upload codecov report
