@@ -39,6 +39,7 @@ jobs:
         run: |
             INPUT_CHANNEL="${{ github.events.inputs.ci_e2e_algod_channel }}"
             CHANNEL="${INPUT_CHANNEL:stable}"
+            echo $CHANNEL
             wget https://raw.githubusercontent.com/algorand/go-algorand/rel/stable/cmd/updater/update.sh && chmod 744 update.sh 
             ./update.sh -i -c "$CHANNEL" -n -d ./ -p /usr/local/go/bin
             export GOPATH=/usr/local/go/
@@ -50,6 +51,7 @@ jobs:
         run: |
           INPUT_FILENAME="${{ github.events.inputs.ci_e2e_filename }}"
           FILENAME="${INPUT_FILENAME:fa6ad40d/rel-nightly}"
+          echo $FILENAME"
           export CI_E2E_FILENAME="${{ github.events.inputs.ci_e2e_filename }}"
           make e2e-conduit
 
