@@ -11,6 +11,7 @@ inputs:
     description: 'Pattern to use when searching for the CI E2E File.'
     required: true
     default: 'fa6ad40d/rel-nightly'
+
 jobs:
   test:
     runs-on: ubuntu-latest
