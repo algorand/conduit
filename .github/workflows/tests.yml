@@ -1,0 +1,54 @@
+name: Tests
+on:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+      - run: git fetch --force --tags
+
+      - name: Install go
+        uses: actions/setup-go@v3
+        with:
+          go-version-file: 'go.mod'
+
+      - name: Install python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: Install algod
+        run: |
+            CHANNEL="stable"
+            wget https://raw.githubusercontent.com/algorand/go-algorand/rel/stable/cmd/updater/update.sh && chmod 744 update.sh 
+            ./update.sh -i -c "$CHANNEL" -n -d ./ -p "$RUNNER_WORKSPACE/algod_bin"
+            ls "$RUNNER_WORKSPACE/algod_bin"
+            # Make it accessible from runner
+            echo "$RUNNER_WORKSPACE/algod_bin" >> $GITHUB_PATH
+
+      - name: Test for algod on path
+        run: which algod
+      
+      - name: Build Conduit
+        run: make
+
+      - name: Run tests
+        run: make test
+
+      - name: Build e2e tests
+        run: pip3 install e2e_tests/
+
+      - name: Run e2e tests
+        run: |
+          FILENAME="fa6ad40d/rel-nightly"
+          export CI_E2E_FILENAME="$FILENAME"
+          make e2e-conduit
+
+      - name: Upload codecov report
+        uses: codecov/codecov-action@v3
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}

@@ -1,9 +1,8 @@
-name: "ReviewDog workflow"
+name: "Lint Checks"
 on:
   pull_request:
 jobs:
-  # Blocking Errors Section
-  reviewdog-errors:
+  lint:
     runs-on: ubuntu-latest
     steps:
       - name: Check out code into the Go module directory
@@ -14,6 +13,10 @@ jobs:
         uses: actions/setup-go@v2
         with:
           go-version: '1.17.13'
+      - name: Check format
+        run: test -z `go fmt ./...`
+      - name: Vet
+        run: go vet ./...
       - name: reviewdog-golangci-lint
         uses: reviewdog/action-golangci-lint@v2
         with:
