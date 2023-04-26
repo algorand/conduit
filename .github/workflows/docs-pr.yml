@@ -42,7 +42,7 @@ jobs:
 
           # Copy the plugin docs using this ChatGPT special.
           # Set the directory to search
-          search_dir="conduit/plugins"
+          search_dir="conduit/conduit/plugins"
           target_base_dir=docs/docs/get-details/conduit/plugins
 
           # Loop through each README.md file found
