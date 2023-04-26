@@ -16,14 +16,16 @@ sub-expression matches.
 If there are multiple top level filters defined in the configuration, the transaction match is combined with an AND operation. Meaning the transaction must be matched by all defined filters in order to pass through the filter.
 
 ## Sub-Expressions
+
 So, what defines a sub-expression?
 
 The sub-expression consists of 3 components.
-### `tag`
+
+### tag
+
 The tag identifies the field to attempt to match. The fields derive their tags according to the
 [official reference docs](https://developer.algorand.org/docs/get-details/transactions/transactions/).
 You can also attempt to match against the `ApplyData`. A complete list of supported tags can be found [here](Filter_tags.md).
-
 
 For now, we programmatically generate these fields into a map located in the
 [filter package](https://github.com/algorand/indexer/blob/develop/conduit/plugins/processors/filterprocessor/fields/generated_signed_txn_map.go),
@@ -37,7 +39,7 @@ Example:
 - tag: 'txn.amt' # Matches the amount of a payment transaction
 ```
 
-### `expression-type`
+### expression-type
 The expression type is a selection of one of the available methods for evaluating the expression. The current list of
 types is
 * `exact`: exact match for string values.
@@ -52,14 +54,15 @@ types is
 You must use the proper expression type for the field your tag identifies based on the type of data stored in that field.
 For example, do not use a numerical expression type on a string field such as address.
 
+### expression
 
-### `expression`
 The expression is the data against which each field will be compared. This must be compatible with the data type of
 the expected field. For string fields you can also use the `regex` expression type to interpret the input of the
 expression as a regex.
 
 
 ## Configuration
+
 ```yml @sample.yaml
 name: filter_processor
 config:
@@ -81,6 +84,7 @@ config:
 ## Examples
 
 Find transactions w/ fee greater than 1000 microalgos
+
 ```yaml
 filters:
   - any:
@@ -90,6 +94,7 @@ filters:
 ```
 
 Find state proof transactions
+
 ```yaml
 filters:
   - any:
@@ -99,6 +104,7 @@ filters:
 ```
 
 Find transactions calling app, "MYAPPID"
+
 ```yaml
 filters:
   - all:
@@ -111,6 +117,7 @@ filters:
 ```
 
 Find transactions, including inner transactions, sent by "FOO".
+
 ```yaml
 search-inner: true
 filters:
@@ -121,6 +128,7 @@ filters:
 ```
 
 Find transactions calling app, exclude grouped transactions
+
 ```yaml
 omit-group-transactions: true
 filters:

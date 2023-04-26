@@ -148,8 +148,10 @@ conduit data directory. In this example I've chosen to override the default and 
 to a temporary directory, `block-dir: "/tmp/conduit-blocks/"`. 
 
 ## Running the pipeline
+
 Now we should have a fully valid config, so let's try it out. Here's the full config I ended up with
 (with comments removed)
+
 ```yaml
 log-level: "INFO"
 importer:
@@ -172,11 +174,11 @@ exporter:
 ```
 
 There are two things to address before our example becomes useful.
-1. We need to get a payment transaction to our account.
 
-For me, it's easiest to use the testnet dispenser, so I've done that. You can look at my transaction for yourself,
-block #26141781 on testnet.
+1. We need to get a payment transaction to our account.
 2. Skip rounds
+
+> For me, it's easiest to use the testnet dispenser, so I've done that. You can look at my transaction for yourself, block #26141781 on testnet.
 
 To avoid having to run algod all the way from genesis to the most recent round, you can use catchpoint catchup to
 fast-forward to a more recent block. Similarly, we want to be able to run Conduit pipelines from whichever round is
@@ -184,6 +186,7 @@ most relevant and useful for us.
 To run conduit from a round other than 0, use the `--next-round-override` or `-r` flag. 
 
 Now let's run the command!
+
 ```bash
 > conduit -d /tmp/conduit-tmp/ --next-round-override 26141781
 ```
