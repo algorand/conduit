@@ -39,6 +39,36 @@ jobs:
           # Update hand-written documentation
           rm -rf docs/docs/get-details/conduit/
           cp -r conduit/docs docs/docs/get-details/conduit
+
+          # Copy the plugin docs using this ChatGPT special.
+          # Set the directory to search
+          search_dir="conduit/plugins"
+          target_base_dir=docs/docs/get-details/conduit/plugins
+
+          # Loop through each README.md file found
+          find "$search_dir" -name "README.md" | while read readme_file; do
+            # Get the directory path of the README file
+            dir_path=$(dirname "$readme_file")
+
+            # Get the path relative to search_dir
+            relative_path=${dir_path#$search_dir/}
+
+            # Remove the last directory name from relative_path
+            output_dir=${relative_path%/*}
+
+            # Create the output directory path
+            output_dir="$target_base_dir/$output_dir"
+
+            # Create the output file path
+            output_file="$output_dir/$(basename "$dir_path" .md).md"
+
+            # Create the output directory if it doesn't exist
+            mkdir -p "$output_dir"
+
+            # Copy the README file to the output file path
+            cp "$readme_file" "$output_file"
+          done
+
           # TODO: check if there are any changes before creating a PR?
       - name: Create algorand/docs Pull Request
         uses: peter-evans/create-pull-request@v4

@@ -2,6 +2,7 @@
 package filterprocessor
 
 //go:generate go run ../../../../cmd/conduit-docs/main.go ../../../../conduit-docs/
+//go:generate go run ../../../../cmd/readme_config_includer/generator.go
 
 import (
 	"github.com/algorand/conduit/conduit/plugins/processors/filterprocessor/expression"

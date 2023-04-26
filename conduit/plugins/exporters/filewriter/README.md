@@ -1,3 +1,9 @@
+# File Export Plugin
+
+Write block data to files. This plugin works with the file rerader plugin to create a simple file-based pipeine.
+
+## Configuration
+```yml @sample.yaml
   name: "file_writer"
   config:
     # BlocksDir is the path to a directory where block data should be stored.
@@ -13,3 +19,4 @@
 
     # DropCertificate is used to remove the vote certificate from the block data before writing files.
     drop-certificate: true
+```
