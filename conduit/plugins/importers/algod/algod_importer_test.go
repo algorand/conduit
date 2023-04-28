@@ -551,7 +551,7 @@ func TestGetBlockErrors(t *testing.T) {
 	}
 }
 
-func TestMissingCatchpointLabel(t *testing.T) {
+func TestGetMissingCatchpointLabel(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintln(w, "1000#abcd\n1100#abcd\n1200#abcd")
 	}))
@@ -560,4 +560,13 @@ func TestMissingCatchpointLabel(t *testing.T) {
 	require.NoError(t, err)
 	// closest without going over
 	require.Equal(t, "1100#abcd", label)
+}
+
+func TestGetMissingCatchpointLabelError(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprintln(w, "")
+	}))
+	defer ts.Close()
+	_, err := getMissingCatchpointLabel(ts.URL, 1100)
+	require.ErrorContains(t, err, "no catchpoint label found for round 1100 at:")
 }

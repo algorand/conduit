@@ -177,7 +177,7 @@ func getMissingCatchpointLabel(URL string, nextRound uint64) (string, error) {
 	var label string
 	labels := string(body)
 	scanner := bufio.NewScanner(strings.NewReader(labels))
-	for scanner.Scan() {
+	for scanner.Scan() && scanner.Text() != "" {
 		line := scanner.Text()
 		round, err := parseCatchpointRound(line)
 		if err != nil {
@@ -189,11 +189,10 @@ func getMissingCatchpointLabel(URL string, nextRound uint64) (string, error) {
 		label = line
 	}
 
-	// check if label is a valid catchpoint label
-	_, err = parseCatchpointRound(label)
-	if err != nil {
-		return "", fmt.Errorf("invalid catchpoint label: %s", label)
+	if label == "" {
+		return "", fmt.Errorf("no catchpoint label found for round %d at: %s", nextRound, URL)
 	}
+
 	return label, nil
 }
 
