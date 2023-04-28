@@ -206,7 +206,8 @@ func (algodImp *algodImporter) catchupNode(catchpoint string, nextRound uint64) 
 	}
 
 	if catchpoint != "" {
-		cpRound, err := parseCatchpointRound(algodImp.cfg.CatchupConfig.Catchpoint)
+		algodImp.logger.Infof("Starting catchpoint catchup with label %s", catchpoint)
+		cpRound, err := parseCatchpointRound(catchpoint)
 		if err != nil {
 			return err
 		}
@@ -217,11 +218,11 @@ func (algodImp *algodImporter) catchupNode(catchpoint string, nextRound uint64) 
 		if cpRound <= sdk.Round(nStatus.LastRound) {
 			algodImp.logger.Infof(
 				"Skipping catchpoint catchup for %s, since it's before node round %d",
-				algodImp.cfg.CatchupConfig.Catchpoint,
+				catchpoint,
 				nStatus.LastRound,
 			)
 		} else {
-			err = algodImp.startCatchpointCatchup(algodImp.cfg.CatchupConfig.Catchpoint)
+			err = algodImp.startCatchpointCatchup(catchpoint)
 			if err != nil {
 				return err
 			}
@@ -303,11 +304,13 @@ func (algodImp *algodImporter) Init(ctx context.Context, initProvider data.InitP
 		URL := fmt.Sprintf(catchpointsURL, genesis.Network)
 		catchpoint, err = getMissingCatchpointLabel(URL, uint64(initProvider.NextDBRound()))
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("unable to lookup catchpoint: %w", err)
 		}
 	}
 
-	err = algodImp.catchupNode(catchpoint, uint64(initProvider.NextDBRound()))
+	if catchpoint != "" {
+		err = algodImp.catchupNode(catchpoint, uint64(initProvider.NextDBRound()))
+	}
 
 	return &genesis, err
 }
