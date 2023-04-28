@@ -6,7 +6,7 @@ This plugin imports block data from an algod node. Fetch blocks data from the [a
 
 ### Automatic Fast Catchup
 
-If an admin API token and catchpoint are set, the plugin will automatically run fast catchup on startup if the node is behind the current pipeline round.
+If an admin API token and Auto (or a catchpoint label) are set, the plugin will automatically run fast catchup on startup if the node is behind the current pipeline round.
 
 ### Follower Node Orchestration
 
@@ -34,11 +34,15 @@ When using a follower node, ledger state delta objects are provided to the proce
 
     # Algod catchpoint catchup arguments
     catchup-config:
-        # The catchpoint to use when running fast catchup. Select an appropriate catchpoint for your deployment.
-        # They are published in the following locations:
-        # mainnet: https://algorand-catchpoints.s3.us-east-2.amazonaws.com/consolidated/mainnet_catchpoints.txt
-        # betanet: https://algorand-catchpoints.s3.us-east-2.amazonaws.com/consolidated/betanet_catchpoints.txt
-        # testnet: https://algorand-catchpoints.s3.us-east-2.amazonaws.com/consolidated/testnet_catchpoints.txt
+        # Automatically download an appropriate catchpoint label. If false, you
+        # must specify a catchpoint to use fast catchup.
+        auto: false
+        # The catchpoint to use when running fast catchup. If this is set it
+        # overrides 'auto: true'. To select an appropriate catchpoint for your
+        # deployment, see the list of available catchpoints for each network:
+        #   mainnet: https://algorand-catchpoints.s3.us-east-2.amazonaws.com/consolidated/mainnet_catchpoints.txt
+        #   betanet: https://algorand-catchpoints.s3.us-east-2.amazonaws.com/consolidated/betanet_catchpoints.txt
+        #   testnet: https://algorand-catchpoints.s3.us-east-2.amazonaws.com/consolidated/testnet_catchpoints.txt
         catchpoint: ""
         # Algod Admin API Token
         admin-token: ""

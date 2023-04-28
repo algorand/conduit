@@ -119,8 +119,9 @@ Configuration:
 * `exporter.config.connection-string`: `host=localhost port=5555 user=algorand password=pgpass dbname=conduit`
 
 If you are connecting to an existing PostgreSQL database, you can also set a
-catchpoint and the admin token. If those are set Conduit will automatically
-initialize the node using fast catchup.
+catchpoint and the admin token and enable `auto` catchup.  You can optionally
+specify the catchup label directly. If those are configured, Conduit will
+automatically initialize the node using fast catchup.
 
 Review the inline documentation in `conduit.yml` and decide if there are any
 other settings you would like to update.
