@@ -308,9 +308,7 @@ func (algodImp *algodImporter) Init(ctx context.Context, initProvider data.InitP
 		}
 	}
 
-	if catchpoint != "" {
-		err = algodImp.catchupNode(catchpoint, uint64(initProvider.NextDBRound()))
-	}
+	err = algodImp.catchupNode(catchpoint, uint64(initProvider.NextDBRound()))
 
 	return &genesis, err
 }
