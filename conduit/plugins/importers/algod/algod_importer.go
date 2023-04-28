@@ -1,9 +1,12 @@
 package algodimporter
 
 import (
+	"bufio"
 	"context"
 	_ "embed" // used to embed config
 	"fmt"
+	"io"
+	"net/http"
 	"net/url"
 	"reflect"
 	"strconv"
@@ -42,6 +45,8 @@ const (
 const (
 	retries = 5
 )
+
+const catchpointsURL = "https://algorand-catchpoints.s3.us-east-2.amazonaws.com/consolidated/%s_catchpoints.txt"
 
 type algodImporter struct {
 	aclient *algod.Client
@@ -96,7 +101,7 @@ func parseCatchpointRound(catchpoint string) (round sdk.Round, err error) {
 	return
 }
 
-func (algodImp *algodImporter) startCatchpointCatchup() error {
+func (algodImp *algodImporter) startCatchpointCatchup(catchpoint string) error {
 	// Run catchpoint catchup
 	client, err := common.MakeClient(algodImp.cfg.NetAddr, "X-Algo-API-Token", algodImp.cfg.CatchupConfig.AdminToken)
 	if err != nil {
@@ -106,13 +111,13 @@ func (algodImp *algodImporter) startCatchpointCatchup() error {
 	err = client.Post(
 		algodImp.ctx,
 		&resp,
-		fmt.Sprintf("/v2/catchup/%s", common.EscapeParams(algodImp.cfg.CatchupConfig.Catchpoint)...),
+		fmt.Sprintf("/v2/catchup/%s", common.EscapeParams(catchpoint)...),
 		nil,
 		nil,
 		nil,
 	)
 	if err != nil {
-		return fmt.Errorf("POST /v2/catchup/%s received unexpected error: %w", algodImp.cfg.CatchupConfig.Catchpoint, err)
+		return fmt.Errorf("POST /v2/catchup/%s received unexpected error: %w", catchpoint, err)
 	}
 	return nil
 }
@@ -154,17 +159,54 @@ func (algodImp *algodImporter) monitorCatchpointCatchup() error {
 	return nil
 }
 
-func (algodImp *algodImporter) catchupNode(initProvider data.InitProvider) error {
+func getMissingCatchpointLabel(URL string, nextRound uint64) (string, error) {
+	resp, err := http.Get(URL)
+	if err != nil {
+		return "", err
+	}
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", fmt.Errorf("failed to read catchpoint label response: %w", err)
+	}
+
+	if resp.StatusCode != 200 {
+		return "", fmt.Errorf("failed to lookup catchpoint label list (%d): %s", resp.StatusCode, string(body))
+	}
+
+	// look for best match without going over
+	var label string
+	labels := string(body)
+	scanner := bufio.NewScanner(strings.NewReader(labels))
+	for scanner.Scan() {
+		line := scanner.Text()
+		round, err := parseCatchpointRound(line)
+		if err != nil {
+			return "", err
+		}
+		if uint64(round) > nextRound {
+			break
+		}
+		label = line
+	}
+
+	// check if label is a valid catchpoint label
+	_, err = parseCatchpointRound(label)
+	if err != nil {
+		return "", fmt.Errorf("invalid catchpoint label: %s", label)
+	}
+	return label, nil
+}
+
+func (algodImp *algodImporter) catchupNode(catchpoint string, nextRound uint64) error {
 	if algodImp.mode == followerMode {
 		// Set the sync round to the round provided by initProvider
-		_, err := algodImp.aclient.SetSyncRound(uint64(initProvider.NextDBRound())).Do(algodImp.ctx)
+		_, err := algodImp.aclient.SetSyncRound(nextRound).Do(algodImp.ctx)
 		if err != nil {
-			return fmt.Errorf("received unexpected error setting sync round (%d): %w", initProvider.NextDBRound(), err)
+			return fmt.Errorf("received unexpected error setting sync round (%d): %w", nextRound, err)
 		}
 	}
 
-	// Run Catchpoint Catchup
-	if algodImp.cfg.CatchupConfig.Catchpoint != "" {
+	if catchpoint != "" {
 		cpRound, err := parseCatchpointRound(algodImp.cfg.CatchupConfig.Catchpoint)
 		if err != nil {
 			return err
@@ -180,7 +222,7 @@ func (algodImp *algodImporter) catchupNode(initProvider data.InitProvider) error
 				nStatus.LastRound,
 			)
 		} else {
-			err = algodImp.startCatchpointCatchup()
+			err = algodImp.startCatchpointCatchup(algodImp.cfg.CatchupConfig.Catchpoint)
 			if err != nil {
 				return err
 			}
@@ -192,7 +234,7 @@ func (algodImp *algodImporter) catchupNode(initProvider data.InitProvider) error
 		}
 	}
 
-	_, err := algodImp.aclient.StatusAfterBlock(uint64(initProvider.NextDBRound())).Do(algodImp.ctx)
+	_, err := algodImp.aclient.StatusAfterBlock(nextRound).Do(algodImp.ctx)
 	if err != nil {
 		err = fmt.Errorf("received unexpected error (StatusAfterBlock) waiting for node to catchup: %w", err)
 	}
@@ -253,7 +295,20 @@ func (algodImp *algodImporter) Init(ctx context.Context, initProvider data.InitP
 		return nil, fmt.Errorf("unable to fetch genesis file from API at %s", algodImp.cfg.NetAddr)
 	}
 
-	err = algodImp.catchupNode(initProvider)
+	catchpoint := ""
+
+	// check for catchpoint to use.
+	if algodImp.cfg.CatchupConfig.Catchpoint != "" {
+		catchpoint = algodImp.cfg.CatchupConfig.Catchpoint
+	} else if algodImp.cfg.CatchupConfig.Auto {
+		URL := fmt.Sprintf(catchpointsURL, genesis.Network)
+		catchpoint, err = getMissingCatchpointLabel(URL, uint64(initProvider.NextDBRound()))
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	err = algodImp.catchupNode(catchpoint, uint64(initProvider.NextDBRound()))
 
 	return &genesis, err
 }
