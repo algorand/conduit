@@ -226,11 +226,12 @@ func (algodImp *algodImporter) catchupNode(catchpoint string, nextRound uint64) 
 			if err != nil {
 				return err
 			}
-		}
-		// Wait for algod to catchup
-		err = algodImp.monitorCatchpointCatchup()
-		if err != nil {
-			return err
+
+			// Wait for algod to catchup
+			err = algodImp.monitorCatchpointCatchup()
+			if err != nil {
+				return err
+			}
 		}
 	}
 
