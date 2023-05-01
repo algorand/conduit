@@ -181,7 +181,7 @@ processors:
       filters:
         - any:
           - tag: txn.rcv
-            expression-type: exact
+            expression-type: equal
             expression: "NVCAFYNKJL2NGAIZHWLIKI6HGMTLYXL7BXPBO7NXX4A7GMMWKNFKFKDKP4"
 
 exporter:
