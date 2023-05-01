@@ -1,4 +1,4 @@
-## Writing Blocks to Files Using Conduit
+# Writing Blocks to Files Using Conduit
 
 This guide will take you step by step through a specific application of some
 Conduit plugins. We will detail each of the steps necessary to solve our problem, and point out documentation and tools
@@ -174,14 +174,16 @@ importer:
     config:
       netaddr: "http://127.0.0.1:8080"
       token: "e36c01fc77e490f23e61899c0c22c6390d0fff1443af2c95d056dc5ce4e61302"
+
 processors:
-  name: filter_processor
-  config:
-    filters:
-      - any:
-       - tag: txn.rcv
-         expression-type: exact
-         expression: "NVCAFYNKJL2NGAIZHWLIKI6HGMTLYXL7BXPBO7NXX4A7GMMWKNFKFKDKP4"
+  - name: filter_processor
+    config:
+      filters:
+        - any:
+          - tag: txn.rcv
+            expression-type: exact
+            expression: "NVCAFYNKJL2NGAIZHWLIKI6HGMTLYXL7BXPBO7NXX4A7GMMWKNFKFKDKP4"
+
 exporter:
     name: file_writer
     config:
