@@ -8,6 +8,7 @@ Use `./conduit -h` for command options.
 There are several top level configurations for configuring behavior of the conduit process. Most detailed configuration is made on a per-plugin basis. These are split between `Importer`, `Processor` and `Exporter` plugins.
 
 Here is an example configuration which shows the general format:
+
 ```yaml
 # optional: hide the startup banner.
 hide-banner: true|false
