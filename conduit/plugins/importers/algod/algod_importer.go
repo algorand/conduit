@@ -196,15 +196,35 @@ func getMissingCatchpointLabel(URL string, nextRound uint64) (string, error) {
 	return label, nil
 }
 
-func (algodImp *algodImporter) catchupNode(catchpoint string, nextRound uint64) error {
-	if algodImp.mode == followerMode {
-		// Set the sync round to the round provided by initProvider
-		_, err := algodImp.aclient.SetSyncRound(nextRound).Do(algodImp.ctx)
-		if err != nil {
-			return fmt.Errorf("received unexpected error setting sync round (%d): %w", nextRound, err)
-		}
+// checkRounds to see if catchup is needed, an error is returned if a bad state
+// is detected.
+func checkRounds(logger *logrus.Logger, catchpointRound, nodeRound, targetRound uint64) (bool, error) {
+	// Make sure catchpoint round is not in the future
+	canCatchup := catchpointRound <= targetRound
+	mustCatchup := targetRound < nodeRound
+	shouldCatchup := nodeRound < catchpointRound
+
+	if canCatchup && mustCatchup {
+		logger.Infof("Catchup required. Node round %d is ahead of target round %d", nodeRound, targetRound)
+		return true, nil
 	}
 
+	if canCatchup && shouldCatchup {
+		logger.Infof("Catchup required. Node round %d and target round %d are behind catchpoint round %d", nodeRound, targetRound, catchpointRound)
+
+	}
+
+	if !canCatchup && mustCatchup {
+		err := fmt.Errorf("node round %d is ahead of target round %d", nodeRound, targetRound)
+		logger.Errorf("Catchup required but no valid catchpoint available: %s.", err.Error())
+		return false, err
+	}
+
+	logger.Infof("No catchup required. Node round %d is behind target round %d.", nodeRound, targetRound)
+	return false, nil
+}
+
+func (algodImp *algodImporter) catchupNode(catchpoint string, targetRound uint64) error {
 	if catchpoint != "" {
 		algodImp.logger.Infof("Starting catchpoint catchup with label %s", catchpoint)
 		cpRound, err := parseCatchpointRound(catchpoint)
@@ -215,12 +235,9 @@ func (algodImp *algodImporter) catchupNode(catchpoint string, nextRound uint64) 
 		if err != nil {
 			return fmt.Errorf("received unexpected error failed to get node status: %w", err)
 		}
-		if cpRound <= sdk.Round(nStatus.LastRound) {
-			algodImp.logger.Infof(
-				"Skipping catchpoint catchup for %s, since it's before node round %d",
-				catchpoint,
-				nStatus.LastRound,
-			)
+
+		if runCatchup, err := checkRounds(algodImp.logger, uint64(cpRound), nStatus.LastRound, targetRound); !runCatchup || err != nil {
+			return err
 		} else {
 			err = algodImp.startCatchpointCatchup(catchpoint)
 			if err != nil {
@@ -235,7 +252,16 @@ func (algodImp *algodImporter) catchupNode(catchpoint string, nextRound uint64) 
 		}
 	}
 
-	_, err := algodImp.aclient.StatusAfterBlock(nextRound).Do(algodImp.ctx)
+	// It is possible for the round to go backwards after a catchup. So sync must be called after fast catchup.
+	if algodImp.mode == followerMode {
+		// Set the sync round to the round provided by initProvider
+		_, err := algodImp.aclient.SetSyncRound(targetRound).Do(algodImp.ctx)
+		if err != nil {
+			return fmt.Errorf("received unexpected error setting sync round (%d): %w", targetRound, err)
+		}
+	}
+
+	_, err := algodImp.aclient.StatusAfterBlock(targetRound).Do(algodImp.ctx)
 	if err != nil {
 		err = fmt.Errorf("received unexpected error (StatusAfterBlock) waiting for node to catchup: %w", err)
 	}
