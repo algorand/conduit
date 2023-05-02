@@ -211,7 +211,7 @@ func checkRounds(logger *logrus.Logger, catchpointRound, nodeRound, targetRound 
 
 	if canCatchup && shouldCatchup {
 		logger.Infof("Catchup required. Node round %d and target round %d are behind catchpoint round %d", nodeRound, targetRound, catchpointRound)
-
+		return true, nil
 	}
 
 	if !canCatchup && mustCatchup {
@@ -220,7 +220,7 @@ func checkRounds(logger *logrus.Logger, catchpointRound, nodeRound, targetRound 
 		return false, err
 	}
 
-	logger.Infof("No catchup required. Node round %d is behind target round %d.", nodeRound, targetRound)
+	logger.Infof("No catchup required. Node round %d, target round %d, catchpoint round %d.", nodeRound, targetRound, catchpointRound)
 	return false, nil
 }
 

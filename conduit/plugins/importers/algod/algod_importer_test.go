@@ -99,13 +99,15 @@ func TestInitCatchup(t *testing.T) {
 	tests := []struct {
 		name        string
 		catchpoint  string
+		targetRound sdk.Round
 		auto        bool
 		algodServer *httptest.Server
 		err         string
 		logs        []string
 	}{
 		{
-			name: "sync round failure",
+			name:        "sync round failure",
+			targetRound: 1,
 			algodServer: NewAlgodServer(
 				GenesisResponder,
 				MakeSyncRoundResponder(http.StatusBadRequest)),
@@ -137,37 +139,42 @@ func TestInitCatchup(t *testing.T) {
 			err:  "received unexpected error failed to get node status: HTTP 400",
 			logs: []string{}},
 		{
-			name:       "catchpoint round before node round skips fast catchup",
-			catchpoint: "1234#abcd",
+			name:        "catchpoint round before node round skips fast catchup",
+			catchpoint:  "1234#abcd",
+			targetRound: 1235,
 			algodServer: NewAlgodServer(
 				GenesisResponder,
 				MakeSyncRoundResponder(http.StatusOK),
 				MakeNodeStatusResponder(models.NodeStatus{LastRound: 1235})),
-			logs: []string{"Skipping catchpoint catchup for 1234#abcd, since it's before node round 1235"}},
-		{
-			name:       "start catchpoint catchup failure",
-			catchpoint: "1236#abcd",
+			logs: []string{"No catchup required. Node round 1235, target round 1235, catchpoint round 1234."},
+		}, {
+			name:        "start catchpoint catchup failure",
+			catchpoint:  "1236#abcd",
+			targetRound: 1240,
 			algodServer: NewAlgodServer(
 				GenesisResponder,
 				MakeSyncRoundResponder(http.StatusOK),
 				MakeNodeStatusResponder(models.NodeStatus{LastRound: 1235}),
 				MakeStatusResponder("/v2/catchup/", http.StatusBadRequest, "")),
 			err:  "POST /v2/catchup/1236#abcd received unexpected error: HTTP 400",
-			logs: []string{}},
+			logs: []string{},
+		},
 		{
-			name:       "monitor catchup node status failure",
-			catchpoint: "1236#abcd",
+			name:        "monitor catchup node status failure",
+			catchpoint:  "1236#abcd",
+			targetRound: 1239,
 			algodServer: NewAlgodServer(
 				GenesisResponder,
 				MakeSyncRoundResponder(http.StatusOK),
 				MakeJsonResponderSeries("/v2/status", []int{http.StatusOK, http.StatusBadRequest}, []interface{}{models.NodeStatus{LastRound: 1235}}),
 				MakeStatusResponder("/v2/catchup/", http.StatusOK, "")),
 			err:  "received unexpected error getting node status: HTTP 400",
-			logs: []string{}},
-		{
-			name:       "monitor catchup success",
-			catchpoint: "1236#abcd",
-			auto:       true, // ignored
+			logs: []string{},
+		}, {
+			name:        "monitor catchup success",
+			catchpoint:  "1236#abcd",
+			targetRound: 1240,
+			auto:        true, // ignored
 			algodServer: NewAlgodServer(
 				GenesisResponder,
 				MakeSyncRoundResponder(http.StatusOK),
@@ -185,8 +192,8 @@ func TestInitCatchup(t *testing.T) {
 				"catchup phase Verified Accounts: 1 / 1",
 				"catchup phase Acquired Blocks: 1 / 1",
 				"catchup phase Verified Blocks",
-			}},
-		{
+			},
+		}, {
 			name:       "auto catchup used (even if the mocking isn't setup for it)",
 			catchpoint: "",
 			auto:       true,
@@ -194,17 +201,18 @@ func TestInitCatchup(t *testing.T) {
 				GenesisResponder,
 			),
 			err: "failed to lookup catchpoint label list",
-		},
-		{
-			name:       "wait for node to catchup error",
-			catchpoint: "1236#abcd",
+		}, {
+			name:        "wait for node to catchup error",
+			targetRound: 1240,
+			catchpoint:  "1236#abcd",
 			algodServer: NewAlgodServer(
 				GenesisResponder,
 				MakeSyncRoundResponder(http.StatusOK),
 				MakeJsonResponderSeries("/v2/status", []int{http.StatusOK, http.StatusOK, http.StatusBadRequest}, []interface{}{models.NodeStatus{LastRound: 1235}}),
 				MakeStatusResponder("/v2/catchup/", http.StatusOK, "")),
 			err:  "received unexpected error (StatusAfterBlock) waiting for node to catchup: HTTP 400",
-			logs: []string{}},
+			logs: []string{},
+		},
 	}
 	for _, ttest := range tests {
 		ttest := ttest
@@ -222,7 +230,7 @@ func TestInitCatchup(t *testing.T) {
 			}
 			cfgStr, err := yaml.Marshal(cfg)
 			require.NoError(t, err)
-			_, err = testImporter.Init(ctx, conduit.MakePipelineInitProvider(&pRound, nil), plugins.MakePluginConfig(string(cfgStr)), testLogger)
+			_, err = testImporter.Init(ctx, conduit.MakePipelineInitProvider(&ttest.targetRound, nil), plugins.MakePluginConfig(string(cfgStr)), testLogger)
 			if ttest.err != "" {
 				require.ErrorContains(t, err, ttest.err)
 			} else {
