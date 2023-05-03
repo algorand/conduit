@@ -6,7 +6,7 @@ This plugin imports block data from an algod node. Fetch blocks data from the [a
 
 ### Automatic Fast Catchup
 
-If an admin API token and Auto (or a catchpoint label) are set, the plugin will automatically run fast catchup on startup if the node is behind the current pipeline round.
+If an admin API token and Auto (or a catchpoint label) are set, the plugin will automatically run fast catchup on startup if the node is behind the current pipeline round. If a catchpoint label is set, that takes precedent over auto being set to true.
 
 ### Follower Node Orchestration
 
