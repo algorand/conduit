@@ -257,7 +257,8 @@ func (algodImp *algodImporter) catchupNode(catchpoint string, targetRound uint64
 		}
 	}
 
-	// It is possible for the round to go backwards after a catchup. So sync must be called after fast catchup.
+	// Set the sync round after fast-catchup in case the node round is ahead of the target round.
+	// Trying to set it before would cause an error.
 	if algodImp.mode == followerMode {
 		// Set the sync round to the round provided by initProvider
 		_, err := algodImp.aclient.SetSyncRound(targetRound).Do(algodImp.ctx)
