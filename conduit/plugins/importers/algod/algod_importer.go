@@ -228,7 +228,6 @@ func checkRounds(logger *logrus.Logger, catchpointRound, nodeRound, targetRound 
 
 func (algodImp *algodImporter) catchupNode(catchpoint string, targetRound uint64) error {
 	if catchpoint != "" {
-		algodImp.logger.Infof("Starting catchpoint catchup with label %s", catchpoint)
 		cpRound, err := parseCatchpointRound(catchpoint)
 		if err != nil {
 			return err
@@ -241,6 +240,8 @@ func (algodImp *algodImporter) catchupNode(catchpoint string, targetRound uint64
 		if runCatchup, err := checkRounds(algodImp.logger, uint64(cpRound), nStatus.LastRound, targetRound); !runCatchup || err != nil {
 			return err
 		} else {
+			algodImp.logger.Infof("Starting catchpoint catchup with label %s", catchpoint)
+
 			err = algodImp.startCatchpointCatchup(catchpoint)
 			if err != nil {
 				return err
