@@ -649,7 +649,7 @@ func TestGetMissingCatchpointLabel(t *testing.T) {
 		fmt.Fprintln(w, "1000#abcd\n1100#abcd\n1200#abcd")
 	}))
 	defer ts.Close()
-	label, err := getMissingCatchpointLabel(ts.URL, 1100)
+	label, err := getMissingCatchpointLabel(ts.URL, 1101)
 	require.NoError(t, err)
 	// closest without going over
 	require.Equal(t, "1100#abcd", label)
