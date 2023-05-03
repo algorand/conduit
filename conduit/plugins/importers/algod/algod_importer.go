@@ -183,7 +183,8 @@ func getMissingCatchpointLabel(URL string, nextRound uint64) (string, error) {
 		if err != nil {
 			return "", err
 		}
-		if uint64(round) > nextRound {
+		// TODO: Change >= to > after go-algorand#5352 is fixed.
+		if uint64(round) >= nextRound {
 			break
 		}
 		label = line
@@ -200,7 +201,8 @@ func getMissingCatchpointLabel(URL string, nextRound uint64) (string, error) {
 // is detected.
 func checkRounds(logger *logrus.Logger, catchpointRound, nodeRound, targetRound uint64) (bool, error) {
 	// Make sure catchpoint round is not in the future
-	canCatchup := catchpointRound <= targetRound
+	// TODO: Change < to <= after go-algorand#5352 is fixed.
+	canCatchup := catchpointRound < targetRound
 	mustCatchup := targetRound < nodeRound
 	shouldCatchup := nodeRound < catchpointRound
 
