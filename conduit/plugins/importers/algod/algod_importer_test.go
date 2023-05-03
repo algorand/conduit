@@ -126,12 +126,12 @@ func Test_checkRounds(t *testing.T) {
 			args: args{
 				catchpointRound: 1002,
 				nodeRound:       1001,
-				targetRound:     1002,
+				targetRound:     1003,
 			},
 			want:         true,
 			wantErr:      assert.NoError,
 			wantLogLevel: logrus.InfoLevel,
-			wantLogMsg:   "Catchup requested. Node round 1001, target round 1002, catchpoint round 1002.",
+			wantLogMsg:   "Catchup requested. Node round 1001, target round 1003, catchpoint round 1002.",
 		},
 		{
 			name: "Catchup required. Success.",
