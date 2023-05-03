@@ -95,6 +95,91 @@ netaddr: %s
 	}
 }
 
+func Test_checkRounds(t *testing.T) {
+	type args struct {
+		catchpointRound uint64
+		nodeRound       uint64
+		targetRound     uint64
+	}
+	tests := []struct {
+		name         string
+		args         args
+		want         bool
+		wantErr      assert.ErrorAssertionFunc
+		wantLogLevel logrus.Level
+		wantLogMsg   string
+	}{
+		{
+			name: "Skip catchpoint",
+			args: args{
+				catchpointRound: 1000,
+				nodeRound:       1001,
+				targetRound:     1002,
+			},
+			want:         false,
+			wantErr:      assert.NoError,
+			wantLogLevel: logrus.InfoLevel,
+			wantLogMsg:   "No catchup required. Node round 1001, target round 1002, catchpoint round 1000.",
+		},
+		{
+			name: "Catchup requested.",
+			args: args{
+				catchpointRound: 1002,
+				nodeRound:       1001,
+				targetRound:     1002,
+			},
+			want:         true,
+			wantErr:      assert.NoError,
+			wantLogLevel: logrus.InfoLevel,
+			wantLogMsg:   "Catchup requested. Node round 1001, target round 1002, catchpoint round 1002.",
+		},
+		{
+			name: "Catchup required. Success.",
+			args: args{
+				catchpointRound: 1000,
+				nodeRound:       5000,
+				targetRound:     1002,
+			},
+			want:         true,
+			wantErr:      assert.NoError,
+			wantLogLevel: logrus.InfoLevel,
+			wantLogMsg:   "Catchup required, node round ahead of target round. Node round 5000, target round 1002, catchpoint round 1000.",
+		},
+		{
+			name: "Catchup required. Error.",
+			args: args{
+				catchpointRound: 6000,
+				nodeRound:       5000,
+				targetRound:     1002,
+			},
+			want:         false,
+			wantErr:      assert.Error,
+			wantLogLevel: logrus.ErrorLevel,
+			wantLogMsg:   "Catchup required but no valid catchpoint available, node round 5000 and catchpoint round 6000 are ahead of target round 1002.",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			testLogger, hook := test.NewNullLogger()
+			got, err := checkRounds(testLogger, tt.args.catchpointRound, tt.args.nodeRound, tt.args.targetRound)
+
+			// Write 1 line to the log.
+			require.Len(t, hook.Entries, 1)
+			require.Equal(t, tt.wantLogLevel, hook.Entries[0].Level)
+			require.Equal(t, tt.wantLogMsg, hook.Entries[0].Message)
+
+			// Check the error
+			if !tt.wantErr(t, err, fmt.Sprintf("checkRounds(-, %v, %v, %v)", tt.args.catchpointRound, tt.args.nodeRound, tt.args.targetRound)) {
+				return
+			}
+
+			// Check return values
+			assert.Equalf(t, tt.want, got, "checkRounds(-, %v, %v, %v)", tt.args.catchpointRound, tt.args.nodeRound, tt.args.targetRound)
+
+		})
+	}
+}
+
 func TestInitCatchup(t *testing.T) {
 	tests := []struct {
 		name        string

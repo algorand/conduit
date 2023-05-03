@@ -204,23 +204,25 @@ func checkRounds(logger *logrus.Logger, catchpointRound, nodeRound, targetRound 
 	mustCatchup := targetRound < nodeRound
 	shouldCatchup := nodeRound < catchpointRound
 
+	msg := fmt.Sprintf("Node round %d, target round %d, catchpoint round %d", nodeRound, targetRound, catchpointRound)
+
 	if canCatchup && mustCatchup {
-		logger.Infof("Catchup required. Node round %d is ahead of target round %d", nodeRound, targetRound)
+		logger.Infof("Catchup required, node round ahead of target round. %s.", msg)
 		return true, nil
 	}
 
 	if canCatchup && shouldCatchup {
-		logger.Infof("Catchup required. Node round %d and target round %d are behind catchpoint round %d", nodeRound, targetRound, catchpointRound)
+		logger.Infof("Catchup requested. %s.", msg)
 		return true, nil
 	}
 
 	if !canCatchup && mustCatchup {
-		err := fmt.Errorf("node round %d is ahead of target round %d", nodeRound, targetRound)
-		logger.Errorf("Catchup required but no valid catchpoint available: %s.", err.Error())
+		err := fmt.Errorf("node round %d and catchpoint round %d are ahead of target round %d", nodeRound, catchpointRound, targetRound)
+		logger.Errorf("Catchup required but no valid catchpoint available, %s.", err.Error())
 		return false, err
 	}
 
-	logger.Infof("No catchup required. Node round %d, target round %d, catchpoint round %d.", nodeRound, targetRound, catchpointRound)
+	logger.Infof("No catchup required. %s.", msg)
 	return false, nil
 }
 
