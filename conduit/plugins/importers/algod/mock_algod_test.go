@@ -7,7 +7,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/algorand/go-algorand-sdk/v2/client/v2/algod"
 	"github.com/algorand/go-algorand-sdk/v2/client/v2/common/models"
 	"github.com/algorand/go-algorand-sdk/v2/encoding/json"
 	"github.com/algorand/go-algorand-sdk/v2/encoding/msgpack"
@@ -40,34 +39,6 @@ func (handler *AlgodHandler) ServeHTTP(w http.ResponseWriter, req *http.Request)
 		}
 	}
 	w.WriteHeader(http.StatusBadRequest)
-}
-
-// MockAClient creates an algod client using an AlgodHandler based server
-func MockAClient(handler *AlgodHandler) (*algod.Client, error) {
-	mockServer := httptest.NewServer(handler)
-	return algod.MakeClient(mockServer.URL, "")
-}
-
-func MakeCatchupReadyResponder(blockStatus int, syncRound uint64) algodCustomHandler {
-	blockCount := 0
-	syncCount := 0
-	return func(r *http.Request, w http.ResponseWriter) bool {
-		if blockCount == 0 && strings.Contains(r.URL.Path, "v2/blocks/") {
-			blockCount++
-			if blockStatus == 200 {
-				return BlockResponder(r, w)
-			}
-			w.WriteHeader(blockStatus)
-			_, _ = w.Write([]byte("{}"))
-			return true
-			//return MakeMsgpStatusResponder("get", "/v2/blocks/", int(blockStatus), "")(r, w)
-		}
-		if syncCount == 0 && strings.Contains(r.URL.Path, "v2/ledger/sync") {
-			MakeGetSyncRoundResponder(http.StatusOK, syncRound)(r, w)
-			return true
-		}
-		return false
-	}
 }
 
 // BlockResponder handles /v2/blocks requests and returns an empty Block object
@@ -161,16 +132,6 @@ func MakeJsonStatusResponder(method, url string, status int, object interface{})
 
 func MakeMsgpResponder(url string, object interface{}) algodCustomHandler {
 	return MakeMsgpStatusResponder("get", url, http.StatusOK, object)
-	/*
-		return func(r *http.Request, w http.ResponseWriter) bool {
-			if strings.Contains(r.URL.Path, url) {
-				w.WriteHeader(http.StatusOK)
-				_, _ = w.Write(msgpack.Encode(object))
-				return true
-			}
-			return false
-		}
-	*/
 }
 
 func MakeMsgpStatusResponder(method, url string, status int, object interface{}) algodCustomHandler {

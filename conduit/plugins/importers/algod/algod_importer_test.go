@@ -27,6 +27,7 @@ func New() *algodImporter {
 }
 
 func TestImporterMetadata(t *testing.T) {
+	t.Parallel()
 	testImporter := New()
 	metadata := testImporter.Metadata()
 	assert.Equal(t, metadata.Name, algodImporterMetadata.Name)
@@ -35,6 +36,7 @@ func TestImporterMetadata(t *testing.T) {
 }
 
 func TestCloseSuccess(t *testing.T) {
+	t.Parallel()
 	logger := logrus.New()
 	ctx := context.Background()
 	pRound := sdk.Round(1)
@@ -116,6 +118,7 @@ func Test_checkRounds(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			testLogger, hook := test.NewNullLogger()
 			got, err := checkRounds(testLogger, tt.args.catchpointRound, tt.args.nodeRound, tt.args.targetRound)
 
@@ -298,6 +301,7 @@ func TestInitCatchup(t *testing.T) {
 }
 
 func TestInitParseUrlFailure(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	pRound := sdk.Round(1)
 	logger := logrus.New()
@@ -313,6 +317,7 @@ netaddr: %s
 }
 
 func TestInitModeFailure(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	pRound := sdk.Round(1)
 	logger := logrus.New()
@@ -329,6 +334,7 @@ netaddr: %s
 }
 
 func TestInitGenesisFailure(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	pRound := sdk.Round(1)
 	logger := logrus.New()
@@ -346,6 +352,7 @@ netaddr: %s
 }
 
 func TestInitUnmarshalFailure(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	pRound := sdk.Round(1)
 	logger := logrus.New()
@@ -358,6 +365,7 @@ func TestInitUnmarshalFailure(t *testing.T) {
 }
 
 func TestConfigDefault(t *testing.T) {
+	t.Parallel()
 	testImporter := New()
 	expected, err := yaml.Marshal(&Config{})
 	if err != nil {
@@ -367,6 +375,7 @@ func TestConfigDefault(t *testing.T) {
 }
 
 func TestWaitForBlockBlockFailure(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	pRound := sdk.Round(1)
 	logger := logrus.New()
@@ -547,6 +556,7 @@ netaddr: %s
 }
 
 func TestAlgodImporter_ProvideMetrics(t *testing.T) {
+	t.Parallel()
 	testImporter := &algodImporter{}
 	assert.Len(t, testImporter.ProvideMetrics("blah"), 1)
 }
@@ -654,6 +664,7 @@ func TestGetBlockErrors(t *testing.T) {
 }
 
 func TestGetMissingCatchpointLabel(t *testing.T) {
+	t.Parallel()
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintln(w, "1000#abcd\n1100#abcd\n1200#abcd")
 	}))
@@ -665,6 +676,7 @@ func TestGetMissingCatchpointLabel(t *testing.T) {
 }
 
 func TestGetMissingCatchpointLabelError(t *testing.T) {
+	t.Parallel()
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintln(w, "")
 	}))
