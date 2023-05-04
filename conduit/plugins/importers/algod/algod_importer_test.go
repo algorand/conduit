@@ -213,8 +213,9 @@ func TestInitCatchup(t *testing.T) {
 			algodServer: NewAlgodServer(
 				GenesisResponder,
 				MakePostSyncRoundResponder(http.StatusOK),
+				// OK in 'catchupNode', fail in 'monitorCatchup'
 				MakeJsonResponderSeries("/v2/status", []int{http.StatusOK, http.StatusBadRequest}, []interface{}{models.NodeStatus{LastRound: 1235}}),
-				MakeMsgpStatusResponder("get", "/v2/catchup/", http.StatusOK, "")),
+				MakeMsgpStatusResponder("post", "/v2/catchup/", http.StatusOK, "")),
 			err:  "received unexpected error getting node status: HTTP 400",
 			logs: []string{},
 		}, {
@@ -234,7 +235,7 @@ func TestInitCatchup(t *testing.T) {
 				GenesisResponder,
 				MakePostSyncRoundResponder(http.StatusOK),
 				MakeJsonResponderSeries("/v2/status", []int{http.StatusOK, http.StatusOK, http.StatusBadRequest}, []interface{}{models.NodeStatus{LastRound: 1235}}),
-				MakeMsgpStatusResponder("post", "/v2/catchup/", http.StatusOK, "")),
+				MakeMsgpStatusResponder("post", "/v2/catchup/", http.StatusOK, nil)),
 			err:  "received unexpected error (StatusAfterBlock) waiting for node to catchup: HTTP 400",
 			logs: []string{},
 		},
