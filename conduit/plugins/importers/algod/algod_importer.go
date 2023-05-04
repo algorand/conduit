@@ -228,12 +228,32 @@ func checkRounds(logger *logrus.Logger, catchpointRound, nodeRound, targetRound 
 	return false, nil
 }
 
+func (algodImp *algodImporter) needsCatchup(targetRound uint64) (bool, error) {
+	if algodImp.mode == followerMode {
+		// If we are in follower mode, use the sync round as a proxy for the node round
+		_, err := algodImp.aclient.GetSyncRound().Do(algodImp.ctx)
+		if err != nil {
+			return false, fmt.Errorf("received unexpected error setting sync round (%d): %w", targetRound, err)
+		}
+		return true, nil
+	} else {
+		// Otherwise just check if the block is available.
+		_, err := algodImp.aclient.Block(targetRound).Do(algodImp.ctx)
+		// If the block is not available, we must catchup.
+		return err != nil, nil
+	}
+}
+
+// catchupNode facilitates catching up via fast catchup, or waiting for the
+// node to slow catchup.
 func (algodImp *algodImporter) catchupNode(catchpoint string, targetRound uint64) error {
 	if catchpoint != "" {
 		cpRound, err := parseCatchpointRound(catchpoint)
 		if err != nil {
 			return err
 		}
+
+		// Get the node status.
 		nStatus, err := algodImp.aclient.Status().Do(algodImp.ctx)
 		if err != nil {
 			return fmt.Errorf("received unexpected error failed to get node status: %w", err)
@@ -327,22 +347,29 @@ func (algodImp *algodImporter) Init(ctx context.Context, initProvider data.InitP
 		return nil, fmt.Errorf("unable to fetch genesis file from API at %s", algodImp.cfg.NetAddr)
 	}
 
-	catchpoint := ""
-
-	// If there is an admin token, look for a catchpoint to use.
-	if algodImp.cfg.CatchupConfig.AdminToken != "" {
-		if algodImp.cfg.CatchupConfig.Catchpoint != "" {
-			catchpoint = algodImp.cfg.CatchupConfig.Catchpoint
-		} else {
-			URL := fmt.Sprintf(catchpointsURL, genesis.Network)
-			catchpoint, err = getMissingCatchpointLabel(URL, uint64(initProvider.NextDBRound()))
-			if err != nil {
-				return nil, fmt.Errorf("unable to lookup catchpoint: %w", err)
-			}
-		}
+	needsCatchup, err := algodImp.needsCatchup(uint64(initProvider.NextDBRound()))
+	if err != nil {
+		return nil, fmt.Errorf("unable to determine if catchup is needed: %w", err)
 	}
 
-	err = algodImp.catchupNode(catchpoint, uint64(initProvider.NextDBRound()))
+	if needsCatchup {
+		catchpoint := ""
+
+		// If there is an admin token, look for a catchpoint to use.
+		if algodImp.cfg.CatchupConfig.AdminToken != "" {
+			if algodImp.cfg.CatchupConfig.Catchpoint != "" {
+				catchpoint = algodImp.cfg.CatchupConfig.Catchpoint
+			} else {
+				URL := fmt.Sprintf(catchpointsURL, genesis.Network)
+				catchpoint, err = getMissingCatchpointLabel(URL, uint64(initProvider.NextDBRound()))
+				if err != nil {
+					return nil, fmt.Errorf("unable to lookup catchpoint: %w", err)
+				}
+			}
+		}
+
+		err = algodImp.catchupNode(catchpoint, uint64(initProvider.NextDBRound()))
+	}
 
 	return &genesis, err
 }
