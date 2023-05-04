@@ -70,6 +70,7 @@ func MakeGenesisResponder(genesis types.Genesis) func(reqPath string, w http.Res
 // GenesisResponder handles /v2/genesis requests and returns an empty Genesis object
 var GenesisResponder = MakeGenesisResponder(types.Genesis{
 	Comment: "",
+	Network: "FAKE",
 	DevMode: true,
 })
 

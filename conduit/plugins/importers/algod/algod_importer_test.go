@@ -95,104 +95,211 @@ netaddr: %s
 	}
 }
 
+func Test_checkRounds(t *testing.T) {
+	type args struct {
+		catchpointRound uint64
+		nodeRound       uint64
+		targetRound     uint64
+	}
+	tests := []struct {
+		name         string
+		args         args
+		want         bool
+		wantErr      assert.ErrorAssertionFunc
+		wantLogLevel logrus.Level
+		wantLogMsg   string
+	}{
+		{
+			name: "Skip catchpoint",
+			args: args{
+				catchpointRound: 1000,
+				nodeRound:       1001,
+				targetRound:     1002,
+			},
+			want:         false,
+			wantErr:      assert.NoError,
+			wantLogLevel: logrus.InfoLevel,
+			wantLogMsg:   "No catchup required. Node round 1001, target round 1002, catchpoint round 1000.",
+		},
+		{
+			name: "Catchup requested.",
+			args: args{
+				catchpointRound: 1002,
+				nodeRound:       1001,
+				targetRound:     1003,
+			},
+			want:         true,
+			wantErr:      assert.NoError,
+			wantLogLevel: logrus.InfoLevel,
+			wantLogMsg:   "Catchup requested. Node round 1001, target round 1003, catchpoint round 1002.",
+		},
+		{
+			name: "Catchup required. Success.",
+			args: args{
+				catchpointRound: 1000,
+				nodeRound:       5000,
+				targetRound:     1002,
+			},
+			want:         true,
+			wantErr:      assert.NoError,
+			wantLogLevel: logrus.InfoLevel,
+			wantLogMsg:   "Catchup required, node round ahead of target round. Node round 5000, target round 1002, catchpoint round 1000.",
+		},
+		{
+			name: "Catchup required. Error.",
+			args: args{
+				catchpointRound: 6000,
+				nodeRound:       5000,
+				targetRound:     1002,
+			},
+			want:         false,
+			wantErr:      assert.Error,
+			wantLogLevel: logrus.ErrorLevel,
+			wantLogMsg:   "Catchup required but no valid catchpoint available, node round 5000 and catchpoint round 6000 are ahead of target round 1002.",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			testLogger, hook := test.NewNullLogger()
+			got, err := checkRounds(testLogger, tt.args.catchpointRound, tt.args.nodeRound, tt.args.targetRound)
+
+			// Write 1 line to the log.
+			require.Len(t, hook.Entries, 1)
+			require.Equal(t, tt.wantLogLevel, hook.Entries[0].Level)
+			require.Equal(t, tt.wantLogMsg, hook.Entries[0].Message)
+
+			// Check the error
+			if !tt.wantErr(t, err, fmt.Sprintf("checkRounds(-, %v, %v, %v)", tt.args.catchpointRound, tt.args.nodeRound, tt.args.targetRound)) {
+				return
+			}
+
+			// Check return values
+			assert.Equalf(t, tt.want, got, "checkRounds(-, %v, %v, %v)", tt.args.catchpointRound, tt.args.nodeRound, tt.args.targetRound)
+
+		})
+	}
+}
+
 func TestInitCatchup(t *testing.T) {
 	tests := []struct {
 		name        string
 		catchpoint  string
+		targetRound sdk.Round
+		adminToken  string // to trigger fast-catchup
 		algodServer *httptest.Server
 		err         string
 		logs        []string
 	}{
-		{"sync round failure", "",
-			NewAlgodServer(
+		{
+			name:        "sync round failure",
+			targetRound: 1,
+			algodServer: NewAlgodServer(
 				GenesisResponder,
 				MakeSyncRoundResponder(http.StatusBadRequest)),
-			"received unexpected error setting sync round (1): HTTP 400",
-			[]string{}},
-		{"catchpoint parse failure", "notvalid",
-			NewAlgodServer(
+			err:  "received unexpected error setting sync round (1): HTTP 400",
+			logs: []string{}},
+		{
+			name:       "catchpoint parse failure",
+			adminToken: "admin",
+			catchpoint: "notvalid",
+			algodServer: NewAlgodServer(
 				GenesisResponder,
 				MakeSyncRoundResponder(http.StatusOK)),
-			"unable to parse catchpoint, invalid format",
-			[]string{}},
-		{"invalid catchpoint round uint parsing error", "abcd#abcd",
-			NewAlgodServer(
+			err:  "unable to parse catchpoint, invalid format",
+			logs: []string{}},
+		{
+			name:       "invalid catchpoint round uint parsing error",
+			adminToken: "admin",
+			catchpoint: "abcd#abcd",
+			algodServer: NewAlgodServer(
 				GenesisResponder,
 				MakeSyncRoundResponder(http.StatusOK)),
-			"invalid syntax",
-			[]string{}},
-		{"node status failure", "1234#abcd",
-			NewAlgodServer(
+			err:  "invalid syntax",
+			logs: []string{}},
+		{
+			name:       "node status failure",
+			adminToken: "admin",
+			catchpoint: "1234#abcd",
+			algodServer: NewAlgodServer(
 				GenesisResponder,
 				MakeSyncRoundResponder(http.StatusOK),
 				MakeStatusResponder("/v2/status", http.StatusBadRequest, "")),
-			"received unexpected error failed to get node status: HTTP 400",
-			[]string{}},
-		{"catchpoint round before node round skips fast catchup", "1234#abcd",
-			NewAlgodServer(
+			err:  "received unexpected error failed to get node status: HTTP 400",
+			logs: []string{}},
+		{
+			name:        "catchpoint round before node round skips fast catchup",
+			adminToken:  "admin",
+			catchpoint:  "1234#abcd",
+			targetRound: 1235,
+			algodServer: NewAlgodServer(
 				GenesisResponder,
 				MakeSyncRoundResponder(http.StatusOK),
 				MakeNodeStatusResponder(models.NodeStatus{LastRound: 1235})),
-			"",
-			[]string{"Skipping catchpoint catchup for 1234#abcd, since it's before node round 1235"}},
-		{"start catchpoint catchup failure", "1236#abcd",
-			NewAlgodServer(
+			logs: []string{"No catchup required. Node round 1235, target round 1235, catchpoint round 1234."},
+		}, {
+			name:        "start catchpoint catchup failure",
+			adminToken:  "admin",
+			catchpoint:  "1236#abcd",
+			targetRound: 1240,
+			algodServer: NewAlgodServer(
 				GenesisResponder,
 				MakeSyncRoundResponder(http.StatusOK),
 				MakeNodeStatusResponder(models.NodeStatus{LastRound: 1235}),
 				MakeStatusResponder("/v2/catchup/", http.StatusBadRequest, "")),
-			"POST /v2/catchup/1236#abcd received unexpected error: HTTP 400",
-			[]string{}},
-		{"monitor catchup node status failure", "1236#abcd",
-			NewAlgodServer(
+			err:  "POST /v2/catchup/1236#abcd received unexpected error: HTTP 400",
+			logs: []string{},
+		},
+		{
+			name:        "monitor catchup node status failure",
+			adminToken:  "admin",
+			catchpoint:  "1236#abcd",
+			targetRound: 1239,
+			algodServer: NewAlgodServer(
 				GenesisResponder,
 				MakeSyncRoundResponder(http.StatusOK),
 				MakeJsonResponderSeries("/v2/status", []int{http.StatusOK, http.StatusBadRequest}, []interface{}{models.NodeStatus{LastRound: 1235}}),
 				MakeStatusResponder("/v2/catchup/", http.StatusOK, "")),
-			"received unexpected error getting node status: HTTP 400",
-			[]string{}},
-		{"monitor catchup success", "1236#abcd",
-			NewAlgodServer(
+			err:  "received unexpected error getting node status: HTTP 400",
+			logs: []string{},
+		}, {
+			name:       "auto catchup used (even if the mocking isn't setup for it)",
+			adminToken: "admin",
+			catchpoint: "",
+			algodServer: NewAlgodServer(
 				GenesisResponder,
-				MakeSyncRoundResponder(http.StatusOK),
-				MakeJsonResponderSeries("/v2/status", []int{http.StatusOK}, []interface{}{
-					models.NodeStatus{LastRound: 1235},
-					models.NodeStatus{Catchpoint: "1236#abcd", CatchpointProcessedAccounts: 1, CatchpointTotalAccounts: 1},
-					models.NodeStatus{Catchpoint: "1236#abcd", CatchpointVerifiedAccounts: 1, CatchpointTotalAccounts: 1},
-					models.NodeStatus{Catchpoint: "1236#abcd", CatchpointAcquiredBlocks: 1, CatchpointTotalBlocks: 1},
-					models.NodeStatus{Catchpoint: "1236#abcd"},
-					models.NodeStatus{LastRound: 1236},
-				}),
-				MakeStatusResponder("/v2/catchup/", http.StatusOK, "")),
-			"",
-			[]string{
-				"catchup phase Processed Accounts: 1 / 1",
-				"catchup phase Verified Accounts: 1 / 1",
-				"catchup phase Acquired Blocks: 1 / 1",
-				"catchup phase Verified Blocks",
-			}},
-		{"wait for node to catchup error", "1236#abcd",
-			NewAlgodServer(
+			),
+			err: "failed to lookup catchpoint label list",
+		}, {
+			name:        "wait for node to catchup error",
+			adminToken:  "admin",
+			targetRound: 1240,
+			catchpoint:  "1236#abcd",
+			algodServer: NewAlgodServer(
 				GenesisResponder,
 				MakeSyncRoundResponder(http.StatusOK),
 				MakeJsonResponderSeries("/v2/status", []int{http.StatusOK, http.StatusOK, http.StatusBadRequest}, []interface{}{models.NodeStatus{LastRound: 1235}}),
 				MakeStatusResponder("/v2/catchup/", http.StatusOK, "")),
-			"received unexpected error (StatusAfterBlock) waiting for node to catchup: HTTP 400",
-			[]string{}},
+			err:  "received unexpected error (StatusAfterBlock) waiting for node to catchup: HTTP 400",
+			logs: []string{},
+		},
 	}
 	for _, ttest := range tests {
 		ttest := ttest
 		t.Run(ttest.name, func(t *testing.T) {
 			t.Parallel()
 			testLogger, hook := test.NewNullLogger()
-			testImporter := New()
-			cfgStr := fmt.Sprintf(`---
-mode: %s
-netaddr: %s
-catchup-config:
-  catchpoint: %s
-`, "follower", ttest.algodServer.URL, ttest.catchpoint)
-			_, err := testImporter.Init(ctx, conduit.MakePipelineInitProvider(&pRound, nil), plugins.MakePluginConfig(cfgStr), testLogger)
+			testImporter := &algodImporter{}
+			cfg := Config{
+				Mode:    "follower",
+				NetAddr: ttest.algodServer.URL,
+				CatchupConfig: CatchupParams{
+					Catchpoint: ttest.catchpoint,
+					AdminToken: ttest.adminToken,
+				},
+			}
+			cfgStr, err := yaml.Marshal(cfg)
+			require.NoError(t, err)
+			_, err = testImporter.Init(ctx, conduit.MakePipelineInitProvider(&ttest.targetRound, nil), plugins.MakePluginConfig(string(cfgStr)), testLogger)
 			if ttest.err != "" {
 				require.ErrorContains(t, err, ttest.err)
 			} else {
@@ -519,4 +626,24 @@ func TestGetBlockErrors(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestGetMissingCatchpointLabel(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprintln(w, "1000#abcd\n1100#abcd\n1200#abcd")
+	}))
+	defer ts.Close()
+	label, err := getMissingCatchpointLabel(ts.URL, 1101)
+	require.NoError(t, err)
+	// closest without going over
+	require.Equal(t, "1100#abcd", label)
+}
+
+func TestGetMissingCatchpointLabelError(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprintln(w, "")
+	}))
+	defer ts.Close()
+	_, err := getMissingCatchpointLabel(ts.URL, 1100)
+	require.ErrorContains(t, err, "no catchpoint label found for round 1100 at:")
 }
