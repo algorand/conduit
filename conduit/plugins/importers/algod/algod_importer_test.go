@@ -51,7 +51,7 @@ func TestImporterMetadata(t *testing.T) {
 }
 
 func TestCloseSuccess(t *testing.T) {
-	ts := NewAlgodServer(GenesisResponder, MakeSyncRoundResponder(http.StatusOK), BlockAfterResponder)
+	ts := NewAlgodServer(GenesisResponder, MakePostSyncRoundResponder(http.StatusOK), BlockAfterResponder)
 	testImporter := New()
 	cfgStr := fmt.Sprintf(`---
 mode: %s
@@ -61,38 +61,6 @@ netaddr: %s
 	assert.NoError(t, err)
 	err = testImporter.Close()
 	assert.NoError(t, err)
-}
-
-func TestInitSuccess(t *testing.T) {
-	tests := []struct {
-		name      string
-		responder algodCustomHandler
-	}{
-		{
-			name:      "archival",
-			responder: MakeSyncRoundResponder(http.StatusNotFound),
-		},
-		{
-			name:      "follower",
-			responder: MakeSyncRoundResponder(http.StatusOK),
-		},
-	}
-	for _, tc := range tests {
-		tc := tc
-		t.Run(tc.name, func(t *testing.T) {
-			t.Parallel()
-			ts := NewAlgodServer(GenesisResponder, tc.responder, BlockAfterResponder)
-			testImporter := New()
-			cfgStr := fmt.Sprintf(`---
-mode: %s
-netaddr: %s
-`, tc.name, ts.URL)
-			_, err := testImporter.Init(ctx, conduit.MakePipelineInitProvider(&pRound, nil), plugins.MakePluginConfig(cfgStr), logger)
-			assert.NoError(t, err)
-			assert.NotEqual(t, testImporter, nil)
-			testImporter.Close()
-		})
-	}
 }
 
 func Test_checkRounds(t *testing.T) {
@@ -195,7 +163,7 @@ func TestInitCatchup(t *testing.T) {
 			targetRound: 1,
 			algodServer: NewAlgodServer(
 				GenesisResponder,
-				MakeSyncRoundResponder(http.StatusBadRequest)),
+				MakePostSyncRoundResponder(http.StatusBadRequest)),
 			err:  "received unexpected error setting sync round (1): HTTP 400",
 			logs: []string{}},
 		{
@@ -204,7 +172,7 @@ func TestInitCatchup(t *testing.T) {
 			catchpoint: "notvalid",
 			algodServer: NewAlgodServer(
 				GenesisResponder,
-				MakeSyncRoundResponder(http.StatusOK)),
+				MakePostSyncRoundResponder(http.StatusOK)),
 			err:  "unable to parse catchpoint, invalid format",
 			logs: []string{}},
 		{
@@ -213,7 +181,7 @@ func TestInitCatchup(t *testing.T) {
 			catchpoint: "abcd#abcd",
 			algodServer: NewAlgodServer(
 				GenesisResponder,
-				MakeSyncRoundResponder(http.StatusOK)),
+				MakePostSyncRoundResponder(http.StatusOK)),
 			err:  "invalid syntax",
 			logs: []string{}},
 		{
@@ -222,8 +190,8 @@ func TestInitCatchup(t *testing.T) {
 			catchpoint: "1234#abcd",
 			algodServer: NewAlgodServer(
 				GenesisResponder,
-				MakeSyncRoundResponder(http.StatusOK),
-				MakeStatusResponder("/v2/status", http.StatusBadRequest, "")),
+				MakePostSyncRoundResponder(http.StatusOK),
+				MakeMsgpStatusResponder("get", "/v2/status", http.StatusBadRequest, "")),
 			err:  "received unexpected error failed to get node status: HTTP 400",
 			logs: []string{}},
 		{
@@ -233,7 +201,7 @@ func TestInitCatchup(t *testing.T) {
 			targetRound: 1235,
 			algodServer: NewAlgodServer(
 				GenesisResponder,
-				MakeSyncRoundResponder(http.StatusOK),
+				MakePostSyncRoundResponder(http.StatusOK),
 				MakeNodeStatusResponder(models.NodeStatus{LastRound: 1235})),
 			logs: []string{"No catchup required. Node round 1235, target round 1235, catchpoint round 1234."},
 		}, {
@@ -243,9 +211,9 @@ func TestInitCatchup(t *testing.T) {
 			targetRound: 1240,
 			algodServer: NewAlgodServer(
 				GenesisResponder,
-				MakeSyncRoundResponder(http.StatusOK),
+				MakePostSyncRoundResponder(http.StatusOK),
 				MakeNodeStatusResponder(models.NodeStatus{LastRound: 1235}),
-				MakeStatusResponder("/v2/catchup/", http.StatusBadRequest, "")),
+				MakeMsgpStatusResponder("get", "/v2/catchup/", http.StatusBadRequest, "")),
 			err:  "POST /v2/catchup/1236#abcd received unexpected error: HTTP 400",
 			logs: []string{},
 		},
@@ -256,9 +224,9 @@ func TestInitCatchup(t *testing.T) {
 			targetRound: 1239,
 			algodServer: NewAlgodServer(
 				GenesisResponder,
-				MakeSyncRoundResponder(http.StatusOK),
+				MakePostSyncRoundResponder(http.StatusOK),
 				MakeJsonResponderSeries("/v2/status", []int{http.StatusOK, http.StatusBadRequest}, []interface{}{models.NodeStatus{LastRound: 1235}}),
-				MakeStatusResponder("/v2/catchup/", http.StatusOK, "")),
+				MakeMsgpStatusResponder("get", "/v2/catchup/", http.StatusOK, "")),
 			err:  "received unexpected error getting node status: HTTP 400",
 			logs: []string{},
 		}, {
@@ -276,9 +244,9 @@ func TestInitCatchup(t *testing.T) {
 			catchpoint:  "1236#abcd",
 			algodServer: NewAlgodServer(
 				GenesisResponder,
-				MakeSyncRoundResponder(http.StatusOK),
+				MakePostSyncRoundResponder(http.StatusOK),
 				MakeJsonResponderSeries("/v2/status", []int{http.StatusOK, http.StatusOK, http.StatusBadRequest}, []interface{}{models.NodeStatus{LastRound: 1235}}),
-				MakeStatusResponder("/v2/catchup/", http.StatusOK, "")),
+				MakeMsgpStatusResponder("post", "/v2/catchup/", http.StatusOK, "")),
 			err:  "received unexpected error (StatusAfterBlock) waiting for node to catchup: HTTP 400",
 			logs: []string{},
 		},
@@ -372,7 +340,7 @@ func TestConfigDefault(t *testing.T) {
 }
 
 func TestWaitForBlockBlockFailure(t *testing.T) {
-	ts := NewAlgodServer(GenesisResponder, MakeSyncRoundResponder(http.StatusNotFound), BlockAfterResponder)
+	ts := NewAlgodServer(GenesisResponder, MakePostSyncRoundResponder(http.StatusNotFound), BlockAfterResponder)
 	testImporter := New()
 	cfgStr := fmt.Sprintf(`---
 mode: %s
@@ -400,20 +368,21 @@ func TestGetBlockSuccess(t *testing.T) {
 			algodServer: NewAlgodServer(GenesisResponder,
 				BlockResponder,
 				BlockAfterResponder,
-				MakeSyncRoundResponder(http.StatusNotFound))},
+				MakePostSyncRoundResponder(http.StatusNotFound))},
 		{
 			name: "archival",
 			mode: "archival",
 			algodServer: NewAlgodServer(GenesisResponder,
 				BlockResponder,
 				BlockAfterResponder,
-				MakeSyncRoundResponder(http.StatusNotFound))},
+				MakePostSyncRoundResponder(http.StatusNotFound))},
 		{
 			name: "follower",
 			mode: "follower",
 			algodServer: NewAlgodServer(GenesisResponder,
+				MakeGetSyncRoundResponder(http.StatusOK, 1234),
 				BlockResponder,
-				BlockAfterResponder, LedgerStateDeltaResponder, MakeSyncRoundResponder(http.StatusOK)),
+				BlockAfterResponder, LedgerStateDeltaResponder, MakePostSyncRoundResponder(http.StatusOK)),
 		},
 	}
 	for _, tc := range tests {
@@ -460,14 +429,21 @@ func TestGetBlockContextCancelled(t *testing.T) {
 		name        string
 		algodServer *httptest.Server
 	}{
-		{"archival", NewAlgodServer(GenesisResponder,
-			BlockResponder,
-			BlockAfterResponder,
-			MakeSyncRoundResponder(http.StatusNotFound))},
-		{"follower", NewAlgodServer(GenesisResponder,
-			BlockResponder,
-			BlockAfterResponder, LedgerStateDeltaResponder,
-			MakeSyncRoundResponder(http.StatusOK))},
+		{
+			name: "archival",
+			algodServer: NewAlgodServer(GenesisResponder,
+				BlockResponder,
+				BlockAfterResponder,
+				MakePostSyncRoundResponder(http.StatusNotFound)),
+		}, {
+			name: "follower",
+			algodServer: NewAlgodServer(GenesisResponder,
+				MakeGetSyncRoundResponder(http.StatusOK, 1234),
+				BlockResponder,
+				BlockAfterResponder,
+				LedgerStateDeltaResponder,
+				MakePostSyncRoundResponder(http.StatusOK)),
+		},
 	}
 
 	for _, ttest := range tests {
@@ -497,10 +473,21 @@ func TestGetBlockFailure(t *testing.T) {
 		name        string
 		algodServer *httptest.Server
 	}{
-		{"archival", NewAlgodServer(GenesisResponder,
-			BlockAfterResponder, MakeSyncRoundResponder(http.StatusNotFound))},
-		{"follower", NewAlgodServer(GenesisResponder,
-			BlockAfterResponder, LedgerStateDeltaResponder, MakeSyncRoundResponder(http.StatusOK))},
+		{
+			name: "archival",
+			algodServer: NewAlgodServer(
+				GenesisResponder,
+				BlockAfterResponder,
+				MakePostSyncRoundResponder(http.StatusNotFound)),
+		}, {
+			name: "follower",
+			algodServer: NewAlgodServer(
+				GenesisResponder,
+				BlockAfterResponder,
+				LedgerStateDeltaResponder,
+				MakeGetSyncRoundResponder(http.StatusOK, 1234),
+				MakePostSyncRoundResponder(http.StatusOK)),
+		},
 	}
 	for _, ttest := range tests {
 		ttest := ttest
@@ -550,7 +537,7 @@ func TestGetBlockErrors(t *testing.T) {
 			name:                "Cannot get block",
 			rnd:                 123,
 			blockAfterResponder: BlockAfterResponder,
-			blockResponder:      MakeStatusResponder("/v2/blocks/", http.StatusNotFound, ""),
+			blockResponder:      MakeMsgpStatusResponder("get", "/v2/blocks/", http.StatusNotFound, ""),
 			err:                 fmt.Sprintf("failed to get block"),
 			logs:                []string{"error getting block for round 123", "failed to get block for round 123 "},
 		},
@@ -559,7 +546,7 @@ func TestGetBlockErrors(t *testing.T) {
 			rnd:                 200,
 			blockAfterResponder: MakeBlockAfterResponder(models.NodeStatus{LastRound: 50}),
 			blockResponder:      BlockResponder,
-			deltaResponder:      MakeStatusResponder("/v2/deltas/", http.StatusNotFound, ""),
+			deltaResponder:      MakeMsgpStatusResponder("get", "/v2/deltas/", http.StatusNotFound, ""),
 			err:                 fmt.Sprintf("ledger state delta not found: node round (50) is behind required round (200)"),
 			logs:                []string{"ledger state delta not found: node round (50) is behind required round (200)"},
 		},
@@ -568,7 +555,7 @@ func TestGetBlockErrors(t *testing.T) {
 			rnd:                 200,
 			blockAfterResponder: MakeBlockAfterResponder(models.NodeStatus{LastRound: 200}),
 			blockResponder:      BlockResponder,
-			deltaResponder:      MakeStatusResponder("/v2/deltas/", http.StatusNotFound, ""),
+			deltaResponder:      MakeMsgpStatusResponder("get", "/v2/deltas/", http.StatusNotFound, ""),
 			err:                 fmt.Sprintf("ledger state delta not found: node round (200), required round (200)"),
 			logs:                []string{"ledger state delta not found: node round (200), required round (200)"},
 		},
@@ -583,7 +570,8 @@ func TestGetBlockErrors(t *testing.T) {
 			// Setup mock algod
 			handler := NewAlgodHandler(
 				GenesisResponder,
-				MakeSyncRoundResponder(http.StatusOK),
+				MakeGetSyncRoundResponder(http.StatusOK, tc.rnd),
+				MakePostSyncRoundResponder(http.StatusOK),
 				tc.blockAfterResponder,
 				tc.blockResponder,
 				tc.deltaResponder)

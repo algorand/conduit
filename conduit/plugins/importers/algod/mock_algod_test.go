@@ -48,6 +48,28 @@ func MockAClient(handler *AlgodHandler) (*algod.Client, error) {
 	return algod.MakeClient(mockServer.URL, "")
 }
 
+func MakeCatchupReadyResponder(blockStatus int, syncRound uint64) algodCustomHandler {
+	blockCount := 0
+	syncCount := 0
+	return func(r *http.Request, w http.ResponseWriter) bool {
+		if blockCount == 0 && strings.Contains(r.URL.Path, "v2/blocks/") {
+			blockCount++
+			if blockStatus == 200 {
+				return BlockResponder(r, w)
+			}
+			w.WriteHeader(blockStatus)
+			_, _ = w.Write([]byte("{}"))
+			return true
+			//return MakeMsgpStatusResponder("get", "/v2/blocks/", int(blockStatus), "")(r, w)
+		}
+		if syncCount == 0 && strings.Contains(r.URL.Path, "v2/ledger/sync") {
+			MakeGetSyncRoundResponder(http.StatusOK, syncRound)(r, w)
+			return true
+		}
+		return false
+	}
+}
+
 // BlockResponder handles /v2/blocks requests and returns an empty Block object
 func BlockResponder(r *http.Request, w http.ResponseWriter) bool {
 	if strings.Contains(r.URL.Path, "v2/blocks/") {
@@ -100,8 +122,14 @@ func MakeJsonResponderSeries(url string, responseSeries []int, responseObjects [
 	}
 }
 
-func MakeSyncRoundResponder(httpStatus int) algodCustomHandler {
-	return MakeStatusResponder("/v2/ledger/sync", httpStatus, "")
+func MakeGetSyncRoundResponder(httpStatus int, round uint64) algodCustomHandler {
+	return MakeJsonStatusResponder("get", "/v2/ledger/sync", httpStatus, models.GetSyncRoundResponse{
+		Round: round,
+	})
+}
+
+func MakePostSyncRoundResponder(httpStatus int) algodCustomHandler {
+	return MakeMsgpStatusResponder("post", "/v2/ledger/sync", httpStatus, "")
 }
 
 func MakeNodeStatusResponder(status models.NodeStatus) algodCustomHandler {
@@ -117,9 +145,13 @@ func MakeLedgerStateDeltaResponder(delta types.LedgerStateDelta) algodCustomHand
 var LedgerStateDeltaResponder = MakeLedgerStateDeltaResponder(types.LedgerStateDelta{})
 
 func MakeJsonResponder(url string, object interface{}) algodCustomHandler {
+	return MakeJsonStatusResponder("get", url, http.StatusOK, object)
+}
+
+func MakeJsonStatusResponder(method, url string, status int, object interface{}) algodCustomHandler {
 	return func(r *http.Request, w http.ResponseWriter) bool {
-		if strings.Contains(r.URL.Path, url) {
-			w.WriteHeader(http.StatusOK)
+		if strings.EqualFold(method, r.Method) && strings.Contains(r.URL.Path, url) {
+			w.WriteHeader(status)
 			_, _ = w.Write(json.Encode(object))
 			return true
 		}
@@ -128,19 +160,22 @@ func MakeJsonResponder(url string, object interface{}) algodCustomHandler {
 }
 
 func MakeMsgpResponder(url string, object interface{}) algodCustomHandler {
-	return func(r *http.Request, w http.ResponseWriter) bool {
-		if strings.Contains(r.URL.Path, url) {
-			w.WriteHeader(http.StatusOK)
-			_, _ = w.Write(msgpack.Encode(object))
-			return true
+	return MakeMsgpStatusResponder("get", url, http.StatusOK, object)
+	/*
+		return func(r *http.Request, w http.ResponseWriter) bool {
+			if strings.Contains(r.URL.Path, url) {
+				w.WriteHeader(http.StatusOK)
+				_, _ = w.Write(msgpack.Encode(object))
+				return true
+			}
+			return false
 		}
-		return false
-	}
+	*/
 }
 
-func MakeStatusResponder(url string, status int, object interface{}) algodCustomHandler {
+func MakeMsgpStatusResponder(method, url string, status int, object interface{}) algodCustomHandler {
 	return func(r *http.Request, w http.ResponseWriter) bool {
-		if strings.Contains(r.URL.Path, url) {
+		if strings.EqualFold(method, r.Method) && strings.Contains(r.URL.Path, url) {
 			w.WriteHeader(status)
 			_, _ = w.Write(msgpack.Encode(object))
 			return true
