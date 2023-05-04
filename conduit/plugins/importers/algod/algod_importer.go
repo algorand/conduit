@@ -228,19 +228,16 @@ func checkRounds(logger *logrus.Logger, catchpointRound, nodeRound, targetRound 
 	return false, nil
 }
 
-func (algodImp *algodImporter) needsCatchup(targetRound uint64) (bool, error) {
+func (algodImp *algodImporter) needsCatchup(targetRound uint64) bool {
 	if algodImp.mode == followerMode {
 		// If we are in follower mode, use the sync round as a proxy for the node round
-		_, err := algodImp.aclient.GetSyncRound().Do(algodImp.ctx)
-		if err != nil {
-			return false, fmt.Errorf("received unexpected error setting sync round (%d): %w", targetRound, err)
-		}
-		return true, nil
+		_, err := algodImp.getDelta(targetRound)
+		return err != nil
 	} else {
 		// Otherwise just check if the block is available.
 		_, err := algodImp.aclient.Block(targetRound).Do(algodImp.ctx)
 		// If the block is not available, we must catchup.
-		return err != nil, nil
+		return err != nil
 	}
 }
 
@@ -347,12 +344,7 @@ func (algodImp *algodImporter) Init(ctx context.Context, initProvider data.InitP
 		return nil, fmt.Errorf("unable to fetch genesis file from API at %s", algodImp.cfg.NetAddr)
 	}
 
-	needsCatchup, err := algodImp.needsCatchup(uint64(initProvider.NextDBRound()))
-	if err != nil {
-		return nil, fmt.Errorf("unable to determine if catchup is needed: %w", err)
-	}
-
-	if needsCatchup {
+	if algodImp.needsCatchup(uint64(initProvider.NextDBRound())) {
 		catchpoint := ""
 
 		// If there is an admin token, look for a catchpoint to use.

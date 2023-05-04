@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"strings"
 	"testing"
 
@@ -22,21 +21,6 @@ import (
 	"github.com/algorand/conduit/conduit/plugins"
 )
 
-var (
-	logger *logrus.Logger
-	ctx    context.Context
-	cancel context.CancelFunc
-	pRound sdk.Round
-)
-
-func init() {
-	logger = logrus.New()
-	logger.SetOutput(os.Stdout)
-	logger.SetLevel(logrus.InfoLevel)
-	ctx, cancel = context.WithCancel(context.Background())
-	pRound = sdk.Round(1)
-}
-
 // New initializes an algod importer
 func New() *algodImporter {
 	return &algodImporter{}
@@ -51,6 +35,10 @@ func TestImporterMetadata(t *testing.T) {
 }
 
 func TestCloseSuccess(t *testing.T) {
+	logger := logrus.New()
+	ctx := context.Background()
+	pRound := sdk.Round(1)
+
 	ts := NewAlgodServer(GenesisResponder, MakePostSyncRoundResponder(http.StatusOK), BlockAfterResponder)
 	testImporter := New()
 	cfgStr := fmt.Sprintf(`---
@@ -267,7 +255,7 @@ func TestInitCatchup(t *testing.T) {
 			}
 			cfgStr, err := yaml.Marshal(cfg)
 			require.NoError(t, err)
-			_, err = testImporter.Init(ctx, conduit.MakePipelineInitProvider(&ttest.targetRound, nil), plugins.MakePluginConfig(string(cfgStr)), testLogger)
+			_, err = testImporter.Init(context.Background(), conduit.MakePipelineInitProvider(&ttest.targetRound, nil), plugins.MakePluginConfig(string(cfgStr)), testLogger)
 			if ttest.err != "" {
 				require.ErrorContains(t, err, ttest.err)
 			} else {
@@ -287,6 +275,10 @@ func TestInitCatchup(t *testing.T) {
 }
 
 func TestInitParseUrlFailure(t *testing.T) {
+	ctx := context.Background()
+	pRound := sdk.Round(1)
+	logger := logrus.New()
+
 	url := ".0.0.0.0.0.0.0:1234"
 	testImporter := New()
 	cfgStr := fmt.Sprintf(`---
@@ -298,6 +290,10 @@ netaddr: %s
 }
 
 func TestInitModeFailure(t *testing.T) {
+	ctx := context.Background()
+	pRound := sdk.Round(1)
+	logger := logrus.New()
+
 	name := "foobar"
 	ts := NewAlgodServer(GenesisResponder)
 	testImporter := New()
@@ -310,6 +306,10 @@ netaddr: %s
 }
 
 func TestInitGenesisFailure(t *testing.T) {
+	ctx := context.Background()
+	pRound := sdk.Round(1)
+	logger := logrus.New()
+
 	ts := NewAlgodServer(MakeGenesisResponder(sdk.Genesis{}))
 	testImporter := New()
 	cfgStr := fmt.Sprintf(`---
@@ -323,6 +323,10 @@ netaddr: %s
 }
 
 func TestInitUnmarshalFailure(t *testing.T) {
+	ctx := context.Background()
+	pRound := sdk.Round(1)
+	logger := logrus.New()
+
 	testImporter := New()
 	_, err := testImporter.Init(ctx, conduit.MakePipelineInitProvider(&pRound, nil), plugins.MakePluginConfig("`"), logger)
 	assert.Error(t, err)
@@ -340,6 +344,10 @@ func TestConfigDefault(t *testing.T) {
 }
 
 func TestWaitForBlockBlockFailure(t *testing.T) {
+	ctx := context.Background()
+	pRound := sdk.Round(1)
+	logger := logrus.New()
+
 	ts := NewAlgodServer(GenesisResponder, MakePostSyncRoundResponder(http.StatusNotFound), BlockAfterResponder)
 	testImporter := New()
 	cfgStr := fmt.Sprintf(`---
@@ -380,7 +388,6 @@ func TestGetBlockSuccess(t *testing.T) {
 			name: "follower",
 			mode: "follower",
 			algodServer: NewAlgodServer(GenesisResponder,
-				MakeGetSyncRoundResponder(http.StatusOK, 1234),
 				BlockResponder,
 				BlockAfterResponder, LedgerStateDeltaResponder, MakePostSyncRoundResponder(http.StatusOK)),
 		},
@@ -396,7 +403,9 @@ func TestGetBlockSuccess(t *testing.T) {
 			cfgStr, err := yaml.Marshal(cfg)
 			require.NoError(t, err)
 
-			ctx, cancel = context.WithCancel(context.Background())
+			logger := logrus.New()
+			pRound := sdk.Round(1)
+			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
 			testImporter := &algodImporter{}
 
@@ -438,7 +447,6 @@ func TestGetBlockContextCancelled(t *testing.T) {
 		}, {
 			name: "follower",
 			algodServer: NewAlgodServer(GenesisResponder,
-				MakeGetSyncRoundResponder(http.StatusOK, 1234),
 				BlockResponder,
 				BlockAfterResponder,
 				LedgerStateDeltaResponder,
@@ -449,9 +457,12 @@ func TestGetBlockContextCancelled(t *testing.T) {
 	for _, ttest := range tests {
 		ttest := ttest
 		t.Run(ttest.name, func(t *testing.T) {
-			// this didn't work...
-			//t.Parallel()
-			ctx, cancel = context.WithCancel(context.Background())
+			t.Parallel()
+
+			logger := logrus.New()
+			pRound := sdk.Round(1)
+			ctx, cancel := context.WithCancel(context.Background())
+
 			testImporter := New()
 			cfgStr := fmt.Sprintf(`---
 mode: %s
@@ -485,7 +496,6 @@ func TestGetBlockFailure(t *testing.T) {
 				GenesisResponder,
 				BlockAfterResponder,
 				LedgerStateDeltaResponder,
-				MakeGetSyncRoundResponder(http.StatusOK, 1234),
 				MakePostSyncRoundResponder(http.StatusOK)),
 		},
 	}
@@ -493,9 +503,11 @@ func TestGetBlockFailure(t *testing.T) {
 		ttest := ttest
 		t.Run(ttest.name, func(t *testing.T) {
 			t.Parallel()
-			ctx, cancel = context.WithCancel(context.Background())
-			testImporter := New()
+			logger := logrus.New()
+			pRound := sdk.Round(1)
+			ctx, cancel := context.WithCancel(context.Background())
 
+			testImporter := New()
 			cfgStr := fmt.Sprintf(`---
 mode: %s
 netaddr: %s
@@ -570,7 +582,6 @@ func TestGetBlockErrors(t *testing.T) {
 			// Setup mock algod
 			handler := NewAlgodHandler(
 				GenesisResponder,
-				MakeGetSyncRoundResponder(http.StatusOK, tc.rnd),
 				MakePostSyncRoundResponder(http.StatusOK),
 				tc.blockAfterResponder,
 				tc.blockResponder,
@@ -585,7 +596,10 @@ func TestGetBlockErrors(t *testing.T) {
 			cfgStr, err := yaml.Marshal(cfg)
 			require.NoError(t, err)
 			pcfg := plugins.MakePluginConfig(string(cfgStr))
-			ctx, cancel = context.WithCancel(context.Background())
+
+			ctx := context.Background()
+			pRound := sdk.Round(1)
+
 			testImporter := &algodImporter{}
 			_, err = testImporter.Init(ctx, conduit.MakePipelineInitProvider(&pRound, nil), pcfg, testLogger)
 			require.NoError(t, err)
