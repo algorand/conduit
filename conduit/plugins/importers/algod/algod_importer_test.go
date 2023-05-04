@@ -66,7 +66,7 @@ netaddr: %s
 func TestInitSuccess(t *testing.T) {
 	tests := []struct {
 		name      string
-		responder func(string, http.ResponseWriter) bool
+		responder algodCustomHandler
 	}{
 		{
 			name:      "archival",
@@ -533,9 +533,9 @@ func TestGetBlockErrors(t *testing.T) {
 	testcases := []struct {
 		name                string
 		rnd                 uint64
-		blockAfterResponder func(string, http.ResponseWriter) bool
-		blockResponder      func(string, http.ResponseWriter) bool
-		deltaResponder      func(string, http.ResponseWriter) bool
+		blockAfterResponder algodCustomHandler
+		blockResponder      algodCustomHandler
+		deltaResponder      algodCustomHandler
 		logs                []string
 		err                 string
 	}{

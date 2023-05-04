@@ -14,25 +14,28 @@ import (
 	"github.com/algorand/go-algorand-sdk/v2/types"
 )
 
+// algodCustomHandler is used by a silly muxer we created which brute forces the path and returns true if it handles the request.
+type algodCustomHandler = func(r *http.Request, w http.ResponseWriter) bool
+
 // AlgodHandler is used to handle http requests to a mock algod server
 type AlgodHandler struct {
-	responders []func(path string, w http.ResponseWriter) bool
+	responders []algodCustomHandler
 }
 
 // NewAlgodServer creates an httptest server with an algodHandler using the provided responders
-func NewAlgodServer(responders ...func(path string, w http.ResponseWriter) bool) *httptest.Server {
+func NewAlgodServer(responders ...algodCustomHandler) *httptest.Server {
 	return httptest.NewServer(&AlgodHandler{responders})
 }
 
 // NewAlgodHandler creates an AlgodHandler using the provided responders
-func NewAlgodHandler(responders ...func(path string, w http.ResponseWriter) bool) *AlgodHandler {
+func NewAlgodHandler(responders ...algodCustomHandler) *AlgodHandler {
 	return &AlgodHandler{responders}
 }
 
 // ServeHTTP implements the http.Handler interface for AlgodHandler
 func (handler *AlgodHandler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	for _, responder := range handler.responders {
-		if responder(req.URL.Path, w) {
+		if responder(req, w) {
 			return
 		}
 	}
@@ -46,9 +49,9 @@ func MockAClient(handler *AlgodHandler) (*algod.Client, error) {
 }
 
 // BlockResponder handles /v2/blocks requests and returns an empty Block object
-func BlockResponder(reqPath string, w http.ResponseWriter) bool {
-	if strings.Contains(reqPath, "v2/blocks/") {
-		rnd, _ := strconv.Atoi(path.Base(reqPath))
+func BlockResponder(r *http.Request, w http.ResponseWriter) bool {
+	if strings.Contains(r.URL.Path, "v2/blocks/") {
+		rnd, _ := strconv.Atoi(path.Base(r.URL.Path))
 		type EncodedBlock struct {
 			_struct struct{}    `codec:""`
 			Block   types.Block `codec:"block"`
@@ -63,7 +66,7 @@ func BlockResponder(reqPath string, w http.ResponseWriter) bool {
 }
 
 // MakeGenesisResponder returns a responder that will provide a specific genesis response.
-func MakeGenesisResponder(genesis types.Genesis) func(reqPath string, w http.ResponseWriter) bool {
+func MakeGenesisResponder(genesis types.Genesis) algodCustomHandler {
 	return MakeJsonResponder("/genesis", genesis)
 }
 
@@ -74,15 +77,15 @@ var GenesisResponder = MakeGenesisResponder(types.Genesis{
 	DevMode: true,
 })
 
-func MakeBlockAfterResponder(status models.NodeStatus) func(string, http.ResponseWriter) bool {
+func MakeBlockAfterResponder(status models.NodeStatus) algodCustomHandler {
 	return MakeJsonResponder("/wait-for-block-after", status)
 }
 
 // MakeJsonResponderSeries creates a series of responses with the provided http statuses and objects
-func MakeJsonResponderSeries(url string, responseSeries []int, responseObjects []interface{}) func(string, http.ResponseWriter) bool {
+func MakeJsonResponderSeries(url string, responseSeries []int, responseObjects []interface{}) algodCustomHandler {
 	var i, j = 0, 0
-	return func(reqPath string, w http.ResponseWriter) bool {
-		if strings.Contains(reqPath, url) {
+	return func(r *http.Request, w http.ResponseWriter) bool {
+		if strings.Contains(r.URL.Path, url) {
 			w.WriteHeader(responseSeries[i])
 			_, _ = w.Write(json.Encode(responseObjects[j]))
 			if i < len(responseSeries)-1 {
@@ -97,25 +100,25 @@ func MakeJsonResponderSeries(url string, responseSeries []int, responseObjects [
 	}
 }
 
-func MakeSyncRoundResponder(httpStatus int) func(string, http.ResponseWriter) bool {
+func MakeSyncRoundResponder(httpStatus int) algodCustomHandler {
 	return MakeStatusResponder("/v2/ledger/sync", httpStatus, "")
 }
 
-func MakeNodeStatusResponder(status models.NodeStatus) func(string, http.ResponseWriter) bool {
+func MakeNodeStatusResponder(status models.NodeStatus) algodCustomHandler {
 	return MakeJsonResponder("/v2/status", status)
 }
 
 var BlockAfterResponder = MakeBlockAfterResponder(models.NodeStatus{})
 
-func MakeLedgerStateDeltaResponder(delta types.LedgerStateDelta) func(string, http.ResponseWriter) bool {
+func MakeLedgerStateDeltaResponder(delta types.LedgerStateDelta) algodCustomHandler {
 	return MakeMsgpResponder("/v2/deltas/", delta)
 }
 
 var LedgerStateDeltaResponder = MakeLedgerStateDeltaResponder(types.LedgerStateDelta{})
 
-func MakeJsonResponder(url string, object interface{}) func(string, http.ResponseWriter) bool {
-	return func(reqPath string, w http.ResponseWriter) bool {
-		if strings.Contains(reqPath, url) {
+func MakeJsonResponder(url string, object interface{}) algodCustomHandler {
+	return func(r *http.Request, w http.ResponseWriter) bool {
+		if strings.Contains(r.URL.Path, url) {
 			w.WriteHeader(http.StatusOK)
 			_, _ = w.Write(json.Encode(object))
 			return true
@@ -124,9 +127,9 @@ func MakeJsonResponder(url string, object interface{}) func(string, http.Respons
 	}
 }
 
-func MakeMsgpResponder(url string, object interface{}) func(string, http.ResponseWriter) bool {
-	return func(reqPath string, w http.ResponseWriter) bool {
-		if strings.Contains(reqPath, url) {
+func MakeMsgpResponder(url string, object interface{}) algodCustomHandler {
+	return func(r *http.Request, w http.ResponseWriter) bool {
+		if strings.Contains(r.URL.Path, url) {
 			w.WriteHeader(http.StatusOK)
 			_, _ = w.Write(msgpack.Encode(object))
 			return true
@@ -135,9 +138,9 @@ func MakeMsgpResponder(url string, object interface{}) func(string, http.Respons
 	}
 }
 
-func MakeStatusResponder(url string, status int, object interface{}) func(string, http.ResponseWriter) bool {
-	return func(reqPath string, w http.ResponseWriter) bool {
-		if strings.Contains(reqPath, url) {
+func MakeStatusResponder(url string, status int, object interface{}) algodCustomHandler {
+	return func(r *http.Request, w http.ResponseWriter) bool {
+		if strings.Contains(r.URL.Path, url) {
 			w.WriteHeader(status)
 			_, _ = w.Write(msgpack.Encode(object))
 			return true
