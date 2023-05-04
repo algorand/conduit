@@ -238,7 +238,29 @@ func TestInitCatchup(t *testing.T) {
 				MakeMsgpStatusResponder("post", "/v2/catchup/", http.StatusOK, nil)),
 			err:  "received unexpected error (StatusAfterBlock) waiting for node to catchup: HTTP 400",
 			logs: []string{},
-		},
+		}, {
+			name:        "monitor catchup success",
+			adminToken:  "admin",
+			targetRound: 1237,
+			catchpoint:  "1236#abcd",
+			algodServer: NewAlgodServer(
+				GenesisResponder,
+				MakePostSyncRoundResponder(http.StatusOK),
+				MakeJsonResponderSeries("/v2/status", []int{http.StatusOK}, []interface{}{
+					models.NodeStatus{LastRound: 1235},
+					models.NodeStatus{Catchpoint: "1236#abcd", CatchpointProcessedAccounts: 1, CatchpointTotalAccounts: 1},
+					models.NodeStatus{Catchpoint: "1236#abcd", CatchpointVerifiedAccounts: 1, CatchpointTotalAccounts: 1},
+					models.NodeStatus{Catchpoint: "1236#abcd", CatchpointAcquiredBlocks: 1, CatchpointTotalBlocks: 1},
+					models.NodeStatus{Catchpoint: "1236#abcd"},
+					models.NodeStatus{LastRound: 1236},
+				}),
+				MakeMsgpStatusResponder("post", "/v2/catchup/", http.StatusOK, "")),
+			logs: []string{
+				"catchup phase Processed Accounts: 1 / 1",
+				"catchup phase Verified Accounts: 1 / 1",
+				"catchup phase Acquired Blocks: 1 / 1",
+				"catchup phase Verified Blocks",
+			}},
 	}
 	for _, ttest := range tests {
 		ttest := ttest
