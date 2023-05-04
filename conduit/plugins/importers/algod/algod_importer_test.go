@@ -185,7 +185,7 @@ func TestInitCatchup(t *testing.T) {
 		name        string
 		catchpoint  string
 		targetRound sdk.Round
-		auto        bool
+		adminToken  string // to trigger fast-catchup
 		algodServer *httptest.Server
 		err         string
 		logs        []string
@@ -200,6 +200,7 @@ func TestInitCatchup(t *testing.T) {
 			logs: []string{}},
 		{
 			name:       "catchpoint parse failure",
+			adminToken: "admin",
 			catchpoint: "notvalid",
 			algodServer: NewAlgodServer(
 				GenesisResponder,
@@ -208,6 +209,7 @@ func TestInitCatchup(t *testing.T) {
 			logs: []string{}},
 		{
 			name:       "invalid catchpoint round uint parsing error",
+			adminToken: "admin",
 			catchpoint: "abcd#abcd",
 			algodServer: NewAlgodServer(
 				GenesisResponder,
@@ -216,6 +218,7 @@ func TestInitCatchup(t *testing.T) {
 			logs: []string{}},
 		{
 			name:       "node status failure",
+			adminToken: "admin",
 			catchpoint: "1234#abcd",
 			algodServer: NewAlgodServer(
 				GenesisResponder,
@@ -225,6 +228,7 @@ func TestInitCatchup(t *testing.T) {
 			logs: []string{}},
 		{
 			name:        "catchpoint round before node round skips fast catchup",
+			adminToken:  "admin",
 			catchpoint:  "1234#abcd",
 			targetRound: 1235,
 			algodServer: NewAlgodServer(
@@ -234,6 +238,7 @@ func TestInitCatchup(t *testing.T) {
 			logs: []string{"No catchup required. Node round 1235, target round 1235, catchpoint round 1234."},
 		}, {
 			name:        "start catchpoint catchup failure",
+			adminToken:  "admin",
 			catchpoint:  "1236#abcd",
 			targetRound: 1240,
 			algodServer: NewAlgodServer(
@@ -246,6 +251,7 @@ func TestInitCatchup(t *testing.T) {
 		},
 		{
 			name:        "monitor catchup node status failure",
+			adminToken:  "admin",
 			catchpoint:  "1236#abcd",
 			targetRound: 1239,
 			algodServer: NewAlgodServer(
@@ -256,38 +262,16 @@ func TestInitCatchup(t *testing.T) {
 			err:  "received unexpected error getting node status: HTTP 400",
 			logs: []string{},
 		}, {
-			name:        "monitor catchup success",
-			catchpoint:  "1236#abcd",
-			targetRound: 1240,
-			auto:        true, // ignored
-			algodServer: NewAlgodServer(
-				GenesisResponder,
-				MakeSyncRoundResponder(http.StatusOK),
-				MakeJsonResponderSeries("/v2/status", []int{http.StatusOK}, []interface{}{
-					models.NodeStatus{LastRound: 1235},
-					models.NodeStatus{Catchpoint: "1236#abcd", CatchpointProcessedAccounts: 1, CatchpointTotalAccounts: 1},
-					models.NodeStatus{Catchpoint: "1236#abcd", CatchpointVerifiedAccounts: 1, CatchpointTotalAccounts: 1},
-					models.NodeStatus{Catchpoint: "1236#abcd", CatchpointAcquiredBlocks: 1, CatchpointTotalBlocks: 1},
-					models.NodeStatus{Catchpoint: "1236#abcd"},
-					models.NodeStatus{LastRound: 1236},
-				}),
-				MakeStatusResponder("/v2/catchup/", http.StatusOK, "")),
-			logs: []string{
-				"catchup phase Processed Accounts: 1 / 1",
-				"catchup phase Verified Accounts: 1 / 1",
-				"catchup phase Acquired Blocks: 1 / 1",
-				"catchup phase Verified Blocks",
-			},
-		}, {
 			name:       "auto catchup used (even if the mocking isn't setup for it)",
+			adminToken: "admin",
 			catchpoint: "",
-			auto:       true,
 			algodServer: NewAlgodServer(
 				GenesisResponder,
 			),
 			err: "failed to lookup catchpoint label list",
 		}, {
 			name:        "wait for node to catchup error",
+			adminToken:  "admin",
 			targetRound: 1240,
 			catchpoint:  "1236#abcd",
 			algodServer: NewAlgodServer(
@@ -310,7 +294,7 @@ func TestInitCatchup(t *testing.T) {
 				NetAddr: ttest.algodServer.URL,
 				CatchupConfig: CatchupParams{
 					Catchpoint: ttest.catchpoint,
-					Auto:       ttest.auto,
+					AdminToken: ttest.adminToken,
 				},
 			}
 			cfgStr, err := yaml.Marshal(cfg)

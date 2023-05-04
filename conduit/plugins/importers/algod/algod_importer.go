@@ -330,14 +330,16 @@ func (algodImp *algodImporter) Init(ctx context.Context, initProvider data.InitP
 
 	catchpoint := ""
 
-	// check for catchpoint to use.
-	if algodImp.cfg.CatchupConfig.Catchpoint != "" {
-		catchpoint = algodImp.cfg.CatchupConfig.Catchpoint
-	} else if algodImp.cfg.CatchupConfig.Auto {
-		URL := fmt.Sprintf(catchpointsURL, genesis.Network)
-		catchpoint, err = getMissingCatchpointLabel(URL, uint64(initProvider.NextDBRound()))
-		if err != nil {
-			return nil, fmt.Errorf("unable to lookup catchpoint: %w", err)
+	// If there is an admin token, look for a catchpoint to use.
+	if algodImp.cfg.CatchupConfig.AdminToken != "" {
+		if algodImp.cfg.CatchupConfig.Catchpoint != "" {
+			catchpoint = algodImp.cfg.CatchupConfig.Catchpoint
+		} else {
+			URL := fmt.Sprintf(catchpointsURL, genesis.Network)
+			catchpoint, err = getMissingCatchpointLabel(URL, uint64(initProvider.NextDBRound()))
+			if err != nil {
+				return nil, fmt.Errorf("unable to lookup catchpoint: %w", err)
+			}
 		}
 	}
 

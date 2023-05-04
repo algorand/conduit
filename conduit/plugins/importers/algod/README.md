@@ -6,7 +6,9 @@ This plugin imports block data from an algod node. Fetch blocks data from the [a
 
 ### Automatic Fast Catchup
 
-If an admin API token and Auto (or a catchpoint label) are set, and a fast catchup would help, the plugin will coordinate running fast catchup on the node. If a catchpoint label is set, that takes precedent over auto being set to true.
+If an admin API token is set, the plugin will attempt to use a fast catchup when it would help reach the target round.
+A specific catchpoint can be provided, otherwise one will be selected automatically by querying the catchpoint URLs
+listed in the sample.
 
 ### Follower Node Orchestration
 
@@ -34,9 +36,11 @@ When using a follower node, ledger state delta objects are provided to the proce
 
     # Algod catchpoint catchup arguments
     catchup-config:
-        # Automatically download an appropriate catchpoint label. If false, you
-        # must specify a catchpoint to use fast catchup.
-        auto: false
+        # Algod Admin API Token. Set the admin token to use fast catchup during
+        # startup. The importer checks to see if a catchup would help and if so
+        # the catchpoint label will be used. If no catchpoint is provided, the
+        # importer will automatically select one.
+        admin-token: ""
         # The catchpoint to use when running fast catchup. If this is set it
         # overrides 'auto: true'. To select an appropriate catchpoint for your
         # deployment, see the list of available catchpoints for each network:
@@ -44,6 +48,4 @@ When using a follower node, ledger state delta objects are provided to the proce
         #   betanet: https://algorand-catchpoints.s3.us-east-2.amazonaws.com/consolidated/betanet_catchpoints.txt
         #   testnet: https://algorand-catchpoints.s3.us-east-2.amazonaws.com/consolidated/testnet_catchpoints.txt
         catchpoint: ""
-        # Algod Admin API Token
-        admin-token: ""
 ```

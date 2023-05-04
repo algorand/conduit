@@ -19,8 +19,6 @@ type Config struct {
 
 // CatchupParams provides information required to sync a follower node to the pipeline round
 type CatchupParams struct {
-	// <code>auto</code> controls whether to automatically download an appropriate catchpoint label.
-	Auto bool `yaml:"auto"`
 	// <code>catchpoint</code> is the catchpoint used to run fast catchup on startup when your node is behind the current pipeline round.
 	Catchpoint string `yaml:"catchpoint"`
 	// <code>admin-token</code> is the algod admin API token.
