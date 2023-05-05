@@ -57,11 +57,3 @@ Indexer was built in a way that strongly coupled it to Postgresql, and the defin
 Going forward we will continue to maintain the Indexer application, however our main focus will be enabling and optimizing a multitude of use cases through the Conduit pipeline design rather the singular Indexer pipeline.
 
 For a more detailed look at the differences between Conduit and Indexer, see [our migration guide](./docs/tutorials/IndexerMigration.md).
-
-# Known Issues
-
-## Restarting Follower Nodes Multiple Times in a Row
-
-When a follower node is restarted, the sync round is advanced to the node's ledger round. This causes a chain reaction where the node's ledger round is then advanced by `MaxAcctLookback` rounds. When this happens, the node should temporarily have access to 2 * `MaxAcctLookback` ledger state delta responses because some had been previously persisted to disk. However, if the follower node is restarted a second time before conduit has consumed the temporary ledger state delta objects, the node will become desynchronized from Conduit.
-
-When this happens the follower node must be manually re-synchronized with Conduit. This is done by launching a new follower node or running fast catchup to move to an earlier round.
