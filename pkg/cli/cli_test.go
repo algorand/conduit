@@ -52,9 +52,9 @@ func TestBanner(t *testing.T) {
 		require.NoError(t, err)
 
 		if hideBanner {
-			assert.NotContains(t, string(data), banner)
+			assert.NotContains(t, string(data), Banner)
 		} else {
-			assert.Contains(t, string(data), banner)
+			assert.Contains(t, string(data), Banner)
 		}
 	}
 
