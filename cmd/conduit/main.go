@@ -14,7 +14,7 @@ import (
 )
 
 func main() {
-	conduitCmd := cli.MakeConduitCmd()
+	conduitCmd := cli.MakeConduitCmdWithUtilities()
 
 	// Hidden command to generate docs in a given directory
 	// conduit generate-docs [path]

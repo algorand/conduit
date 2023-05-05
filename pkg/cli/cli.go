@@ -30,12 +30,6 @@ const (
 	conduitEnvVar = "CONDUIT_DATA_DIR"
 )
 
-// init() function for main package
-func init() {
-	conduitCmd.AddCommand(initialize.InitCommand)
-	conduitCmd.AddCommand(list.Command)
-}
-
 // runConduitCmdWithConfig run the main logic with a supplied conduit config
 func runConduitCmdWithConfig(args *data.Args) error {
 	defer pipeline.HandlePanic(logger)
@@ -106,6 +100,13 @@ func runConduitCmdWithConfig(args *data.Args) error {
 	defer pipeline.Stop()
 	pipeline.Wait()
 	return pipeline.Error()
+}
+
+func MakeConduitCmdWithUtilities() *cobra.Command {
+	cmd := MakeConduitCmd()
+	cmd.AddCommand(initialize.InitCommand)
+	cmd.AddCommand(list.Command)
+	return cmd
 }
 
 // MakeConduitCmd creates the main cobra command, initializes flags
