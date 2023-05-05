@@ -230,7 +230,7 @@ func checkRounds(logger *logrus.Logger, catchpointRound, nodeRound, targetRound 
 
 func (algodImp *algodImporter) needsCatchup(targetRound uint64) bool {
 	if algodImp.mode == followerMode {
-		// If we are in follower mode, use the sync round as a proxy for the node round
+		// If we are in follower mode, check if the round delta is available.
 		_, err := algodImp.getDelta(targetRound)
 		return err != nil
 	} else {
