@@ -27,6 +27,9 @@ var Importers = make(map[string]Constructor)
 // for loose coupling between the configuration and the implementation. It is extremely similar to the way sql.DB
 // drivers are configured and used.
 func Register(name string, constructor Constructor) {
+	if _, ok := Importers[name]; ok {
+		panic(fmt.Errorf("importer %s already registered", name))
+	}
 	Importers[name] = constructor
 }
 
