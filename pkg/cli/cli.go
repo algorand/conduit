@@ -19,9 +19,12 @@ import (
 )
 
 var (
-	logger     *log.Logger
-	conduitCmd = MakeConduitCmd()
+	logger *log.Logger
 
+	// ConduitCmd is the root command for conduit
+	ConduitCmd = MakeConduitCmd()
+
+	//Banner is TUI banner for conduit
 	//go:embed banner.txt
 	Banner string
 )
@@ -102,6 +105,7 @@ func runConduitCmdWithConfig(args *data.Args) error {
 	return pipeline.Error()
 }
 
+// MakeConduitCmdWithUtilities creates the main cobra command with all utilities
 func MakeConduitCmdWithUtilities() *cobra.Command {
 	cmd := MakeConduitCmd()
 	cmd.AddCommand(initialize.InitCommand)
