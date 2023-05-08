@@ -14,6 +14,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v3"
 
+	"github.com/algorand/go-algorand-sdk/v2/client/v2/algod"
 	"github.com/algorand/go-algorand-sdk/v2/client/v2/common/models"
 	sdk "github.com/algorand/go-algorand-sdk/v2/types"
 
@@ -283,7 +284,7 @@ func TestInitCatchup(t *testing.T) {
 			require.NoError(t, err)
 			_, err = testImporter.Init(context.Background(), conduit.MakePipelineInitProvider(&ttest.targetRound, nil), plugins.MakePluginConfig(string(cfgStr)), testLogger)
 			if ttest.err != "" {
-				require.ErrorContains(t, err, ttest.err)
+				require.ErrorContains(t, err, ttest.err, ttest.err)
 			} else {
 				require.NoError(t, err)
 			}
@@ -683,4 +684,73 @@ func TestGetMissingCatchpointLabelError(t *testing.T) {
 	defer ts.Close()
 	_, err := getMissingCatchpointLabel(ts.URL, 1100)
 	require.ErrorContains(t, err, "no catchpoint label found for round 1100 at:")
+}
+
+func TestNeedsCatchup(t *testing.T) {
+	testcases := []struct {
+		name       string
+		mode       int
+		responders []algodCustomHandler
+		logMsg     string
+		result     bool
+	}{
+		{
+			name:       "Follower mode, no delta",
+			mode:       followerMode,
+			responders: []algodCustomHandler{},
+			logMsg:     "Unable to fetch state delta for round",
+			result:     true,
+		},
+		{
+			name:       "Follower mode, delta",
+			mode:       followerMode,
+			responders: []algodCustomHandler{LedgerStateDeltaResponder},
+			logMsg:     "",
+			result:     false,
+		},
+		{
+			name:       "Archival mode, no block",
+			mode:       archivalMode,
+			responders: []algodCustomHandler{},
+			logMsg:     "Unable to fetch block for round",
+			result:     true,
+		},
+		{
+			name:       "Archival mode, block",
+			mode:       archivalMode,
+			responders: []algodCustomHandler{BlockResponder},
+			logMsg:     "",
+			result:     false,
+		},
+	}
+
+	for _, tc := range testcases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			server := NewAlgodServer(tc.responders...)
+			client, err := algod.MakeClient(server.URL, "")
+			require.NoError(t, err)
+
+			testLogger, hook := test.NewNullLogger()
+			testImporter := &algodImporter{
+				ctx:     context.Background(),
+				aclient: client,
+				logger:  testLogger,
+				mode:    tc.mode,
+				cfg: Config{
+					NetAddr: server.URL,
+				},
+			}
+
+			assert.Equal(t, tc.result, testImporter.needsCatchup(1234))
+			if tc.logMsg != "" {
+				assert.Len(t, hook.AllEntries(), 1)
+				assert.Contains(t, hook.LastEntry().Message, tc.logMsg)
+			} else {
+				assert.Len(t, hook.AllEntries(), 0)
+			}
+		})
+	}
 }
