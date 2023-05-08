@@ -251,10 +251,11 @@ func (algodImp *algodImporter) needsCatchup(targetRound uint64) bool {
 // node to slow catchup.
 func (algodImp *algodImporter) catchupNode(network string, targetRound uint64) error {
 	if !algodImp.needsCatchup(targetRound) {
+		algodImp.logger.Infof("No catchup required to reach round %d", targetRound)
 		return nil
 	}
 
-	algodImp.log.Infof("Catchup required to reach round %d", targetRound)
+	algodImp.logger.Infof("Catchup required to reach round %d", targetRound)
 
 	catchpoint := ""
 
