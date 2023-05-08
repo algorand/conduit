@@ -6,11 +6,10 @@ import (
 
 	"github.com/spf13/cobra/doc"
 
-	"github.com/algorand/conduit/pkg/cli"
-
 	_ "github.com/algorand/conduit/conduit/plugins/exporters/all"
 	_ "github.com/algorand/conduit/conduit/plugins/importers/all"
 	_ "github.com/algorand/conduit/conduit/plugins/processors/all"
+	"github.com/algorand/conduit/pkg/cli"
 )
 
 func main() {

@@ -241,19 +241,18 @@ func (algodImp *algodImporter) catchupNode(catchpoint string, targetRound uint64
 
 		if runCatchup, err := checkRounds(algodImp.logger, uint64(cpRound), nStatus.LastRound, targetRound); !runCatchup || err != nil {
 			return err
-		} else {
-			algodImp.logger.Infof("Starting catchpoint catchup with label %s", catchpoint)
+		}
+		algodImp.logger.Infof("Starting catchpoint catchup with label %s", catchpoint)
 
-			err = algodImp.startCatchpointCatchup(catchpoint)
-			if err != nil {
-				return err
-			}
+		err = algodImp.startCatchpointCatchup(catchpoint)
+		if err != nil {
+			return err
+		}
 
-			// Wait for algod to catchup
-			err = algodImp.monitorCatchpointCatchup()
-			if err != nil {
-				return err
-			}
+		// Wait for algod to catchup
+		err = algodImp.monitorCatchpointCatchup()
+		if err != nil {
+			return err
 		}
 	}
 
