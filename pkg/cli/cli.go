@@ -24,7 +24,7 @@ var (
 	// ConduitCmd is the root command for conduit
 	ConduitCmd = MakeConduitCmd()
 
-	//Banner is TUI banner for conduit
+	//Banner is the banner for conduit's pipeline
 	//go:embed banner.txt
 	Banner string
 )

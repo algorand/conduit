@@ -49,7 +49,7 @@ func TestExporterByNameNotFound(t *testing.T) {
 	assert.EqualError(t, err, expectedErr)
 }
 
-// TestRegister verifies that the Register functions works as expected.
+// TestRegister verifies that Register works as expected.
 func TestRegister(t *testing.T) {
 	mockName := "____mock"
 	assert.NotContains(t, Exporters, mockName)
