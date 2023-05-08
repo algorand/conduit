@@ -236,15 +236,15 @@ func (algodImp *algodImporter) needsCatchup(targetRound uint64) bool {
 			algodImp.logger.Infof("Unable to fetch state delta for round %d: %s", targetRound, err)
 		}
 		return err != nil
-	} else {
-		// Otherwise just check if the block is available.
-		_, err := algodImp.aclient.Block(targetRound).Do(algodImp.ctx)
-		if err != nil {
-			algodImp.logger.Infof("Unable to fetch block for round %d: %s", targetRound, err)
-		}
-		// If the block is not available, we must catchup.
-		return err != nil
 	}
+
+	// Otherwise just check if the block is available.
+	_, err := algodImp.aclient.Block(targetRound).Do(algodImp.ctx)
+	if err != nil {
+		algodImp.logger.Infof("Unable to fetch block for round %d: %s", targetRound, err)
+	}
+	// If the block is not available, we must catchup.
+	return err != nil
 }
 
 // catchupNode facilitates catching up via fast catchup, or waiting for the
@@ -253,6 +253,8 @@ func (algodImp *algodImporter) catchupNode(network string, targetRound uint64) e
 	if !algodImp.needsCatchup(targetRound) {
 		return nil
 	}
+
+	algodImp.log.Infof("Catchup required to reach round %d", targetRound)
 
 	catchpoint := ""
 
