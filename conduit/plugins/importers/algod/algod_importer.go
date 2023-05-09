@@ -228,12 +228,58 @@ func checkRounds(logger *logrus.Logger, catchpointRound, nodeRound, targetRound 
 	return false, nil
 }
 
-func (algodImp *algodImporter) catchupNode(catchpoint string, targetRound uint64) error {
+func (algodImp *algodImporter) needsCatchup(targetRound uint64) bool {
+	if algodImp.mode == followerMode {
+		// If we are in follower mode, check if the round delta is available.
+		_, err := algodImp.getDelta(targetRound)
+		if err != nil {
+			algodImp.logger.Infof("Unable to fetch state delta for round %d: %s", targetRound, err)
+		}
+		return err != nil
+	}
+
+	// Otherwise just check if the block is available.
+	_, err := algodImp.aclient.Block(targetRound).Do(algodImp.ctx)
+	if err != nil {
+		algodImp.logger.Infof("Unable to fetch block for round %d: %s", targetRound, err)
+	}
+	// If the block is not available, we must catchup.
+	return err != nil
+}
+
+// catchupNode facilitates catching up via fast catchup, or waiting for the
+// node to slow catchup.
+func (algodImp *algodImporter) catchupNode(network string, targetRound uint64) error {
+	if !algodImp.needsCatchup(targetRound) {
+		algodImp.logger.Infof("No catchup required to reach round %d", targetRound)
+		return nil
+	}
+
+	algodImp.logger.Infof("Catchup required to reach round %d", targetRound)
+
+	catchpoint := ""
+
+	// If there is an admin token, look for a catchpoint to use.
+	if algodImp.cfg.CatchupConfig.AdminToken != "" {
+		if algodImp.cfg.CatchupConfig.Catchpoint != "" {
+			catchpoint = algodImp.cfg.CatchupConfig.Catchpoint
+		} else {
+			URL := fmt.Sprintf(catchpointsURL, network)
+			var err error
+			catchpoint, err = getMissingCatchpointLabel(URL, targetRound)
+			if err != nil {
+				return fmt.Errorf("unable to lookup catchpoint: %w", err)
+			}
+		}
+	}
+
 	if catchpoint != "" {
 		cpRound, err := parseCatchpointRound(catchpoint)
 		if err != nil {
 			return err
 		}
+
+		// Get the node status.
 		nStatus, err := algodImp.aclient.Status().Do(algodImp.ctx)
 		if err != nil {
 			return fmt.Errorf("received unexpected error failed to get node status: %w", err)
@@ -327,22 +373,7 @@ func (algodImp *algodImporter) Init(ctx context.Context, initProvider data.InitP
 		return nil, fmt.Errorf("unable to fetch genesis file from API at %s", algodImp.cfg.NetAddr)
 	}
 
-	catchpoint := ""
-
-	// If there is an admin token, look for a catchpoint to use.
-	if algodImp.cfg.CatchupConfig.AdminToken != "" {
-		if algodImp.cfg.CatchupConfig.Catchpoint != "" {
-			catchpoint = algodImp.cfg.CatchupConfig.Catchpoint
-		} else {
-			URL := fmt.Sprintf(catchpointsURL, genesis.Network)
-			catchpoint, err = getMissingCatchpointLabel(URL, uint64(initProvider.NextDBRound()))
-			if err != nil {
-				return nil, fmt.Errorf("unable to lookup catchpoint: %w", err)
-			}
-		}
-	}
-
-	err = algodImp.catchupNode(catchpoint, uint64(initProvider.NextDBRound()))
+	err = algodImp.catchupNode(genesis.Network, uint64(initProvider.NextDBRound()))
 
 	return &genesis, err
 }
