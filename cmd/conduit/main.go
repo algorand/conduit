@@ -19,6 +19,7 @@ import (
 	_ "github.com/algorand/conduit/conduit/plugins/exporters/all"
 	_ "github.com/algorand/conduit/conduit/plugins/importers/all"
 	_ "github.com/algorand/conduit/conduit/plugins/processors/all"
+	"github.com/algorand/conduit/conduit/telemetry"
 	"github.com/algorand/conduit/version"
 )
 
@@ -71,6 +72,24 @@ func runConduitCmdWithConfig(args *data.Args) error {
 		return fmt.Errorf("failed to create logger: %w", err)
 	}
 
+	// Initialize telemetry
+	if pCfg.Telemetry.Enabled {
+		// TODO: Clean up
+		telemetryConfig := telemetry.MakeTelemetryConfig()
+		telemetryState, err := telemetry.MakeTelemetryState(telemetryConfig)
+		if err != nil {
+			return fmt.Errorf("failed to initialize telemetry: %w", err)
+		}
+		logger.Infoln(telemetryState.Client.Info())
+
+		event := telemetryState.MakeTelemetryStartupEvent()
+		err = telemetryState.SendEvent(event)
+		if err != nil {
+			return fmt.Errorf("failed to send telemetry event: %w", err)
+		}
+	}
+
+	logger.Infof("TODO: Delete me: Custom Build %v", pCfg.Telemetry.Enabled)
 	logger.Infof("Starting Conduit %s", version.LongVersion())
 	logger.Infof("Using data directory: %s", args.ConduitDataDir)
 	logger.Info("Conduit configuration is valid")

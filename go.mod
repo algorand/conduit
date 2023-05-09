@@ -6,11 +6,14 @@ require (
 	github.com/algorand/go-algorand-sdk/v2 v2.0.0-20230324200319-055c8d2b174a
 	github.com/algorand/go-codec/codec v1.1.8
 	github.com/algorand/indexer v0.0.0-20230315150109-cf0074cfd4ed
+	github.com/google/uuid v1.3.0
 	github.com/jackc/pgx/v4 v4.13.0
+	github.com/opensearch-project/opensearch-go v1.1.0
 	github.com/prometheus/client_golang v1.11.1
 	github.com/sirupsen/logrus v1.8.1
 	github.com/spf13/cobra v1.3.0
 	github.com/stretchr/testify v1.8.1
+	github.com/yuin/goldmark v1.5.4
 	gopkg.in/yaml.v3 v3.0.1
 
 )
@@ -33,7 +36,6 @@ require (
 	github.com/go-openapi/swag v0.19.5 // indirect
 	github.com/golang/protobuf v1.5.2 // indirect
 	github.com/google/go-querystring v1.0.0 // indirect
-	github.com/google/uuid v1.3.0 // indirect
 	github.com/inconshreveable/mousetrap v1.0.0 // indirect
 	github.com/invopop/yaml v0.1.0 // indirect
 	github.com/jackc/chunkreader/v2 v2.0.1 // indirect
@@ -67,7 +69,6 @@ require (
 	github.com/stretchr/objx v0.5.0 // indirect
 	github.com/valyala/bytebufferpool v1.0.0 // indirect
 	github.com/valyala/fasttemplate v1.2.1 // indirect
-	github.com/yuin/goldmark v1.5.4 // indirect
 	go.uber.org/atomic v1.7.0 // indirect
 	go.uber.org/multierr v1.6.0 // indirect
 	go.uber.org/zap v1.17.0 // indirect
