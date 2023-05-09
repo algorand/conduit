@@ -1,8 +1,10 @@
 package telemetry
 
 import (
+	"bytes"
 	"context"
 	"crypto/tls"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"time"
@@ -10,7 +12,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/opensearch-project/opensearch-go"
 	"github.com/opensearch-project/opensearch-go/opensearchapi"
-	"github.com/opensearch-project/opensearch-go/opensearchutil"
 )
 
 // MakeOpenSearchClient creates a new OpenSearch client.
@@ -49,29 +50,30 @@ func MakeTelemetryConfig() TelemetryConfig {
 	return TelemetryConfig{
 		Enable:   true,
 		URI:      "https://localhost:9200", // TODO: Fix to actual URI
-		GUID:     uuid.New().String(),      // Uses Google UUID instead of go-algorand utils
+		GUID:     uuid.New().String(),      // Use Google UUID instead of go-algorand utils
 		Index:    "conduit-telemetry",
 		UserName: "admin", // TODO: Use algorand credentials
 		Password: "admin",
 	}
 }
 
-func (t *TelemetryState) MakeTelemetryStartupEvent() map[string]interface{} {
-	return map[string]interface{}{
-		"message": "starting conduit",
-		"guid":    t.TelemetryConfig.GUID,
-		"time":    time.Now(),
+func (t *TelemetryState) MakeTelemetryStartupEvent() TelemetryEvent {
+	return TelemetryEvent{
+		Message: "starting conduit",
+		GUID:    t.TelemetryConfig.GUID,
+		Time:    time.Now(),
 	}
 }
 
-func (t *TelemetryState) SendEvent(event map[string]interface{}) error {
+func (t *TelemetryState) SendEvent(event TelemetryEvent) error {
+	data, _ := json.Marshal(event)
 	req := opensearchapi.IndexRequest{
 		Index: t.TelemetryConfig.Index,
-		Body:  opensearchutil.NewJSONReader(event),
+		Body:  bytes.NewReader(data),
 	}
 	_, err := req.Do(context.Background(), t.Client)
 	if err != nil {
-		return fmt.Errorf("failed to insert event ", err)
+		return fmt.Errorf("failed to insert event: %w", err)
 	}
 	return nil
 }
