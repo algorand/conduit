@@ -25,6 +25,7 @@ import (
 	"github.com/algorand/conduit/conduit/plugins/exporters"
 	"github.com/algorand/conduit/conduit/plugins/importers"
 	"github.com/algorand/conduit/conduit/plugins/processors"
+	"github.com/algorand/conduit/conduit/telemetry"
 )
 
 // Pipeline is a struct that orchestrates the entire
@@ -195,6 +196,33 @@ func (p *pipelineImpl) pluginRoundOverride() (uint64, error) {
 	return pluginOverride, nil
 }
 
+// initializeTelemetry initializes telemetry and reads or sets the GUID in the metadata.
+func (p *pipelineImpl) initializeTelemetry() error {
+	telemetryConfig := telemetry.MakeTelemetryConfig()
+	telemetryState, err := telemetry.MakeTelemetryState(telemetryConfig)
+	if err != nil {
+		return fmt.Errorf("failed to initialize telemetry: %w", err)
+	}
+	p.logger.Infoln("Telemetry initialized")
+
+	// If GUID is not in metadata, save it. Otherwise, use the GUID from metadata.
+	if p.pipelineMetadata.TelemetryId == "" {
+		p.pipelineMetadata.TelemetryId = telemetryState.TelemetryConfig.GUID
+	} else {
+		telemetryState.TelemetryConfig.GUID = p.pipelineMetadata.TelemetryId
+	}
+	p.logger.Infoln("Telemetry ", telemetryState.TelemetryConfig.GUID)
+
+	(*p.initProvider).SetTelemetryState(telemetryState)
+
+	event := telemetryState.MakeTelemetryStartupEvent()
+	err = telemetryState.SendEvent(event)
+	if err != nil {
+		return fmt.Errorf("failed to send telemetry event: %w", err)
+	}
+	return nil
+}
+
 // Init prepares the pipeline for processing block data
 func (p *pipelineImpl) Init() error {
 	p.logger.Infof("Starting Pipeline Initialization")
@@ -254,9 +282,20 @@ func (p *pipelineImpl) Init() error {
 
 	// InitProvider
 	round := sdk.Round(p.pipelineMetadata.NextRound)
-	// Initial genesis object is nil--gets updated after importer.Init
-	var initProvider data.InitProvider = conduit.MakePipelineInitProvider(&round, nil)
+	// Initial genesis object is nil and gets updated after importer.Init
+	// Initial state object is nil and gets updated after initializeTelemetry
+	var initProvider data.InitProvider = conduit.MakePipelineInitProvider(&round, nil, nil)
 	p.initProvider = &initProvider
+
+	// Initialize Telemetry
+	if p.cfg.Telemetry.Enabled {
+		// If telemetry cannot be initialized, log a warning and continue
+		// pipeline initialization.
+		err = p.initializeTelemetry()
+		if err != nil {
+			p.logger.Warn("Telemetry initialization failed. Continuing without telemetry.")
+		}
+	}
 
 	// Initialize Importer
 	{

@@ -88,7 +88,7 @@ func initializeImporter(t *testing.T, numRounds int) (importer importers.Importe
 	}
 	data, err := yaml.Marshal(cfg)
 	require.NoError(t, err)
-	genesis, err = importer.Init(context.Background(), conduit.MakePipelineInitProvider(&pRound, nil), plugins.MakePluginConfig(string(data)), logger)
+	genesis, err = importer.Init(context.Background(), conduit.MakePipelineInitProvider(&pRound, nil, nil), plugins.MakePluginConfig(string(data)), logger)
 	assert.NoError(t, err)
 	require.NotNil(t, genesis)
 	require.Equal(t, genesisExpected, *genesis)
@@ -102,7 +102,7 @@ func TestInitSuccess(t *testing.T) {
 
 func TestInitUnmarshalFailure(t *testing.T) {
 	testImporter = New()
-	_, err := testImporter.Init(context.Background(), conduit.MakePipelineInitProvider(&pRound, nil), plugins.MakePluginConfig("`"), logger)
+	_, err := testImporter.Init(context.Background(), conduit.MakePipelineInitProvider(&pRound, nil, nil), plugins.MakePluginConfig("`"), logger)
 	assert.Error(t, err)
 	assert.ErrorContains(t, err, "invalid configuration")
 	testImporter.Close()
@@ -141,7 +141,7 @@ func TestRetryAndDuration(t *testing.T) {
 	}
 	data, err := yaml.Marshal(cfg)
 	require.NoError(t, err)
-	_, err = importer.Init(context.Background(), conduit.MakePipelineInitProvider(&pRound, nil), plugins.MakePluginConfig(string(data)), logger)
+	_, err = importer.Init(context.Background(), conduit.MakePipelineInitProvider(&pRound, nil, nil), plugins.MakePluginConfig(string(data)), logger)
 	assert.NoError(t, err)
 
 	start := time.Now()
@@ -165,7 +165,7 @@ func TestRetryWithCancel(t *testing.T) {
 	data, err := yaml.Marshal(cfg)
 	ctx, cancel := context.WithCancel(context.Background())
 	require.NoError(t, err)
-	_, err = importer.Init(ctx, conduit.MakePipelineInitProvider(&pRound, nil), plugins.MakePluginConfig(string(data)), logger)
+	_, err = importer.Init(ctx, conduit.MakePipelineInitProvider(&pRound, nil, nil), plugins.MakePluginConfig(string(data)), logger)
 	assert.NoError(t, err)
 
 	// Cancel after delay

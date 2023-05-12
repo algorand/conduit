@@ -1,6 +1,7 @@
 package data
 
 import (
+	"github.com/algorand/conduit/conduit/telemetry"
 	sdk "github.com/algorand/go-algorand-sdk/v2/types"
 )
 
@@ -16,6 +17,8 @@ type InitProvider interface {
 	GetGenesis() *sdk.Genesis
 	SetGenesis(*sdk.Genesis)
 	NextDBRound() sdk.Round
+	GetTelemetryState() *telemetry.TelemetryState
+	SetTelemetryState(*telemetry.TelemetryState)
 }
 
 // BlockData is provided to the Exporter on each round.
