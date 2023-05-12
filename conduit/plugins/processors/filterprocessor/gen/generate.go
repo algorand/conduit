@@ -50,6 +50,7 @@ var ignoreTags = map[string]bool{
 	// TODO: support map types?
 	"dt.gd": true,
 	"dt.ld": true,
+	"dt.sa": true,
 	// TODO: support array types?
 	"txn.apaa": true,
 	"txn.apat": true,
