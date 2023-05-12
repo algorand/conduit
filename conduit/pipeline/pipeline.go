@@ -211,7 +211,6 @@ func (p *pipelineImpl) initializeTelemetry() error {
 	} else {
 		telemetryState.TelemetryConfig.GUID = p.pipelineMetadata.TelemetryId
 	}
-	p.logger.Infoln("Telemetry ", telemetryState.TelemetryConfig.GUID)
 
 	(*p.initProvider).SetTelemetryState(telemetryState)
 
