@@ -50,7 +50,6 @@ var ignoreTags = map[string]bool{
 	// TODO: support map types?
 	"dt.gd": true,
 	"dt.ld": true,
-	"dt.sa": true,
 	// TODO: support array types?
 	"txn.apaa": true,
 	"txn.apat": true,
@@ -60,6 +59,7 @@ var ignoreTags = map[string]bool{
 	"txn.apap": true,
 	"txn.apsu": true,
 	"dt.lg":    true,
+	"dt.sa":    true,
 }
 
 func noCast(t reflect.StructField) bool {
