@@ -20,8 +20,6 @@ type TelemetryConfig struct {
 
 // TelemetryEvent represents a single event to be emitted to OpenSearch
 type TelemetryEvent struct {
-	// Contains all the fields set by the user.
-	// Data map[string]interface{}
 	// Time at which the event was created
 	Time time.Time `json:"timestamp"`
 	// Event message

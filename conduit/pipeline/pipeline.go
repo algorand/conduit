@@ -203,13 +203,13 @@ func (p *pipelineImpl) initializeTelemetry() error {
 	if err != nil {
 		return fmt.Errorf("failed to initialize telemetry: %w", err)
 	}
-	p.logger.Infoln("Telemetry initialized")
+	p.logger.Infof("Telemetry initialized with URI: %s", telemetryConfig.URI)
 
 	// If GUID is not in metadata, save it. Otherwise, use the GUID from metadata.
-	if p.pipelineMetadata.TelemetryId == "" {
-		p.pipelineMetadata.TelemetryId = telemetryState.TelemetryConfig.GUID
+	if p.pipelineMetadata.TelemetryID == "" {
+		p.pipelineMetadata.TelemetryID = telemetryState.TelemetryConfig.GUID
 	} else {
-		telemetryState.TelemetryConfig.GUID = p.pipelineMetadata.TelemetryId
+		telemetryState.TelemetryConfig.GUID = p.pipelineMetadata.TelemetryID
 	}
 
 	(*p.initProvider).SetTelemetryState(telemetryState)
@@ -290,8 +290,7 @@ func (p *pipelineImpl) Init() error {
 	if p.cfg.Telemetry.Enabled {
 		// If telemetry cannot be initialized, log a warning and continue
 		// pipeline initialization.
-		err = p.initializeTelemetry()
-		if err != nil {
+		if err = p.initializeTelemetry(); err != nil {
 			p.logger.Warn("Telemetry initialization failed. Continuing without telemetry.")
 		}
 	}
