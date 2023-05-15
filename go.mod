@@ -3,7 +3,7 @@ module github.com/algorand/conduit
 go 1.17
 
 require (
-	github.com/algorand/go-algorand-sdk/v2 v2.0.0-20230511222239-d0007f96cf95
+	github.com/algorand/go-algorand-sdk/v2 v2.0.0-20230515174312-963d360c9eb7
 	github.com/algorand/go-codec/codec v1.1.8
 	github.com/algorand/indexer v0.0.0-20230315150109-cf0074cfd4ed
 	github.com/jackc/pgx/v4 v4.13.0
