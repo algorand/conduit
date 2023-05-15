@@ -6,7 +6,9 @@ This plugin imports block data from an algod node. Fetch blocks data from the [a
 
 ### Automatic Fast Catchup
 
-If an admin API token and catchpoint are set, the plugin will automatically run fast catchup on startup if the node is behind the current pipeline round.
+If an admin API token is set, the plugin will attempt to use a fast catchup when it would help reach the target round.
+A specific catchpoint can be provided, otherwise one will be selected automatically by querying the catchpoint URLs
+listed in the sample.
 
 ### Follower Node Orchestration
 
@@ -34,12 +36,16 @@ When using a follower node, ledger state delta objects are provided to the proce
 
     # Algod catchpoint catchup arguments
     catchup-config:
-        # The catchpoint to use when running fast catchup. Select an appropriate catchpoint for your deployment.
-        # They are published in the following locations:
-        # mainnet: https://algorand-catchpoints.s3.us-east-2.amazonaws.com/consolidated/mainnet_catchpoints.txt
-        # betanet: https://algorand-catchpoints.s3.us-east-2.amazonaws.com/consolidated/betanet_catchpoints.txt
-        # testnet: https://algorand-catchpoints.s3.us-east-2.amazonaws.com/consolidated/testnet_catchpoints.txt
-        catchpoint: ""
-        # Algod Admin API Token
+        # Algod Admin API Token. Set the admin token to use fast catchup during
+        # startup. The importer checks to see if a catchup would help and if so
+        # the catchpoint label will be used. If no catchpoint is provided, the
+        # importer will automatically select one.
         admin-token: ""
+        # The catchpoint to use when running fast catchup. If this is set it
+        # overrides 'auto: true'. To select an appropriate catchpoint for your
+        # deployment, see the list of available catchpoints for each network:
+        #   mainnet: https://algorand-catchpoints.s3.us-east-2.amazonaws.com/consolidated/mainnet_catchpoints.txt
+        #   betanet: https://algorand-catchpoints.s3.us-east-2.amazonaws.com/consolidated/betanet_catchpoints.txt
+        #   testnet: https://algorand-catchpoints.s3.us-east-2.amazonaws.com/consolidated/testnet_catchpoints.txt
+        catchpoint: ""
 ```

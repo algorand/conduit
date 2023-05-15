@@ -1,9 +1,12 @@
 package algodimporter
 
 import (
+	"bufio"
 	"context"
 	_ "embed" // used to embed config
 	"fmt"
+	"io"
+	"net/http"
 	"net/url"
 	"reflect"
 	"strconv"
@@ -42,6 +45,8 @@ const (
 const (
 	retries = 5
 )
+
+const catchpointsURL = "https://algorand-catchpoints.s3.us-east-2.amazonaws.com/consolidated/%s_catchpoints.txt"
 
 type algodImporter struct {
 	aclient *algod.Client
@@ -96,7 +101,7 @@ func parseCatchpointRound(catchpoint string) (round sdk.Round, err error) {
 	return
 }
 
-func (algodImp *algodImporter) startCatchpointCatchup() error {
+func (algodImp *algodImporter) startCatchpointCatchup(catchpoint string) error {
 	// Run catchpoint catchup
 	client, err := common.MakeClient(algodImp.cfg.NetAddr, "X-Algo-API-Token", algodImp.cfg.CatchupConfig.AdminToken)
 	if err != nil {
@@ -106,13 +111,13 @@ func (algodImp *algodImporter) startCatchpointCatchup() error {
 	err = client.Post(
 		algodImp.ctx,
 		&resp,
-		fmt.Sprintf("/v2/catchup/%s", common.EscapeParams(algodImp.cfg.CatchupConfig.Catchpoint)...),
+		fmt.Sprintf("/v2/catchup/%s", common.EscapeParams(catchpoint)...),
 		nil,
 		nil,
 		nil,
 	)
 	if err != nil {
-		return fmt.Errorf("POST /v2/catchup/%s received unexpected error: %w", algodImp.cfg.CatchupConfig.Catchpoint, err)
+		return fmt.Errorf("POST /v2/catchup/%s received unexpected error: %w", catchpoint, err)
 	}
 	return nil
 }
@@ -154,37 +159,142 @@ func (algodImp *algodImporter) monitorCatchpointCatchup() error {
 	return nil
 }
 
-func (algodImp *algodImporter) catchupNode(initProvider data.InitProvider) error {
-	if algodImp.mode == followerMode {
-		// Set the sync round to the round provided by initProvider
-		_, err := algodImp.aclient.SetSyncRound(uint64(initProvider.NextDBRound())).Do(algodImp.ctx)
+func getMissingCatchpointLabel(URL string, nextRound uint64) (string, error) {
+	resp, err := http.Get(URL)
+	if err != nil {
+		return "", err
+	}
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", fmt.Errorf("failed to read catchpoint label response: %w", err)
+	}
+
+	if resp.StatusCode != 200 {
+		return "", fmt.Errorf("failed to lookup catchpoint label list (%d): %s", resp.StatusCode, string(body))
+	}
+
+	// look for best match without going over
+	var label string
+	labels := string(body)
+	scanner := bufio.NewScanner(strings.NewReader(labels))
+	for scanner.Scan() && scanner.Text() != "" {
+		line := scanner.Text()
+		round, err := parseCatchpointRound(line)
 		if err != nil {
-			return fmt.Errorf("received unexpected error setting sync round (%d): %w", initProvider.NextDBRound(), err)
+			return "", err
+		}
+		// TODO: Change >= to > after go-algorand#5352 is fixed.
+		if uint64(round) >= nextRound {
+			break
+		}
+		label = line
+	}
+
+	if label == "" {
+		return "", fmt.Errorf("no catchpoint label found for round %d at: %s", nextRound, URL)
+	}
+
+	return label, nil
+}
+
+// checkRounds to see if catchup is needed, an error is returned if a bad state
+// is detected.
+func checkRounds(logger *logrus.Logger, catchpointRound, nodeRound, targetRound uint64) (bool, error) {
+	// Make sure catchpoint round is not in the future
+	// TODO: Change < to <= after go-algorand#5352 is fixed.
+	canCatchup := catchpointRound < targetRound
+	mustCatchup := targetRound < nodeRound
+	shouldCatchup := nodeRound < catchpointRound
+
+	msg := fmt.Sprintf("Node round %d, target round %d, catchpoint round %d", nodeRound, targetRound, catchpointRound)
+
+	if canCatchup && mustCatchup {
+		logger.Infof("Catchup required, node round ahead of target round. %s.", msg)
+		return true, nil
+	}
+
+	if canCatchup && shouldCatchup {
+		logger.Infof("Catchup requested. %s.", msg)
+		return true, nil
+	}
+
+	if !canCatchup && mustCatchup {
+		err := fmt.Errorf("node round %d and catchpoint round %d are ahead of target round %d", nodeRound, catchpointRound, targetRound)
+		logger.Errorf("Catchup required but no valid catchpoint available, %s.", err.Error())
+		return false, err
+	}
+
+	logger.Infof("No catchup required. %s.", msg)
+	return false, nil
+}
+
+func (algodImp *algodImporter) needsCatchup(targetRound uint64) bool {
+	if algodImp.mode == followerMode {
+		// If we are in follower mode, check if the round delta is available.
+		_, err := algodImp.getDelta(targetRound)
+		if err != nil {
+			algodImp.logger.Infof("Unable to fetch state delta for round %d: %s", targetRound, err)
+		}
+		return err != nil
+	}
+
+	// Otherwise just check if the block is available.
+	_, err := algodImp.aclient.Block(targetRound).Do(algodImp.ctx)
+	if err != nil {
+		algodImp.logger.Infof("Unable to fetch block for round %d: %s", targetRound, err)
+	}
+	// If the block is not available, we must catchup.
+	return err != nil
+}
+
+// catchupNode facilitates catching up via fast catchup, or waiting for the
+// node to slow catchup.
+func (algodImp *algodImporter) catchupNode(network string, targetRound uint64) error {
+	if !algodImp.needsCatchup(targetRound) {
+		algodImp.logger.Infof("No catchup required to reach round %d", targetRound)
+		return nil
+	}
+
+	algodImp.logger.Infof("Catchup required to reach round %d", targetRound)
+
+	catchpoint := ""
+
+	// If there is an admin token, look for a catchpoint to use.
+	if algodImp.cfg.CatchupConfig.AdminToken != "" {
+		if algodImp.cfg.CatchupConfig.Catchpoint != "" {
+			catchpoint = algodImp.cfg.CatchupConfig.Catchpoint
+		} else {
+			URL := fmt.Sprintf(catchpointsURL, network)
+			var err error
+			catchpoint, err = getMissingCatchpointLabel(URL, targetRound)
+			if err != nil {
+				return fmt.Errorf("unable to lookup catchpoint: %w", err)
+			}
 		}
 	}
 
-	// Run Catchpoint Catchup
-	if algodImp.cfg.CatchupConfig.Catchpoint != "" {
-		cpRound, err := parseCatchpointRound(algodImp.cfg.CatchupConfig.Catchpoint)
+	if catchpoint != "" {
+		cpRound, err := parseCatchpointRound(catchpoint)
 		if err != nil {
 			return err
 		}
+
+		// Get the node status.
 		nStatus, err := algodImp.aclient.Status().Do(algodImp.ctx)
 		if err != nil {
 			return fmt.Errorf("received unexpected error failed to get node status: %w", err)
 		}
-		if cpRound <= sdk.Round(nStatus.LastRound) {
-			algodImp.logger.Infof(
-				"Skipping catchpoint catchup for %s, since it's before node round %d",
-				algodImp.cfg.CatchupConfig.Catchpoint,
-				nStatus.LastRound,
-			)
-		} else {
-			err = algodImp.startCatchpointCatchup()
-			if err != nil {
-				return err
-			}
+
+		if runCatchup, err := checkRounds(algodImp.logger, uint64(cpRound), nStatus.LastRound, targetRound); !runCatchup || err != nil {
+			return err
 		}
+		algodImp.logger.Infof("Starting catchpoint catchup with label %s", catchpoint)
+
+		err = algodImp.startCatchpointCatchup(catchpoint)
+		if err != nil {
+			return err
+		}
+
 		// Wait for algod to catchup
 		err = algodImp.monitorCatchpointCatchup()
 		if err != nil {
@@ -192,7 +302,17 @@ func (algodImp *algodImporter) catchupNode(initProvider data.InitProvider) error
 		}
 	}
 
-	_, err := algodImp.aclient.StatusAfterBlock(uint64(initProvider.NextDBRound())).Do(algodImp.ctx)
+	// Set the sync round after fast-catchup in case the node round is ahead of the target round.
+	// Trying to set it before would cause an error.
+	if algodImp.mode == followerMode {
+		// Set the sync round to the round provided by initProvider
+		_, err := algodImp.aclient.SetSyncRound(targetRound).Do(algodImp.ctx)
+		if err != nil {
+			return fmt.Errorf("received unexpected error setting sync round (%d): %w", targetRound, err)
+		}
+	}
+
+	_, err := algodImp.aclient.StatusAfterBlock(targetRound).Do(algodImp.ctx)
 	if err != nil {
 		err = fmt.Errorf("received unexpected error (StatusAfterBlock) waiting for node to catchup: %w", err)
 	}
@@ -253,7 +373,7 @@ func (algodImp *algodImporter) Init(ctx context.Context, initProvider data.InitP
 		return nil, fmt.Errorf("unable to fetch genesis file from API at %s", algodImp.cfg.NetAddr)
 	}
 
-	err = algodImp.catchupNode(initProvider)
+	err = algodImp.catchupNode(genesis.Network, uint64(initProvider.NextDBRound()))
 
 	return &genesis, err
 }

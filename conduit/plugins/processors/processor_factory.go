@@ -27,6 +27,9 @@ var Processors = make(map[string]ProcessorConstructor)
 // for loose coupling between the configuration and the implementation. It is extremely similar to the way sql.DB
 // drivers are configured and used.
 func Register(name string, constructor ProcessorConstructor) {
+	if _, ok := Processors[name]; ok {
+		panic(fmt.Errorf("processor %s already registered", name))
+	}
 	Processors[name] = constructor
 }
 

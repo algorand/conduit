@@ -1,6 +1,7 @@
 package processors
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/sirupsen/logrus"
@@ -51,4 +52,18 @@ func TestProcessorBuilderByNameNotFound(t *testing.T) {
 	_, err := ProcessorBuilderByName("barfoo")
 	expectedErr := "no Processor Constructor for barfoo"
 	assert.EqualError(t, err, expectedErr)
+}
+
+// TestRegister verifies that Register works as expected.
+func TestRegister(t *testing.T) {
+	mockName := "____mock"
+	assert.NotContains(t, Processors, mockName)
+
+	Register(mockName, &mockProcessorConstructor{})
+	assert.Contains(t, Processors, mockName)
+
+	panicMsg := fmt.Sprintf("processor %s already registered", mockName)
+	assert.PanicsWithError(t, panicMsg, func() {
+		Register(mockName, &mockProcessorConstructor{})
+	})
 }

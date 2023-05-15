@@ -1,6 +1,7 @@
 package exporters
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/sirupsen/logrus"
@@ -46,4 +47,18 @@ func TestExporterByNameNotFound(t *testing.T) {
 	_, err := ExporterBuilderByName("barfoo")
 	expectedErr := "no Exporter Constructor for barfoo"
 	assert.EqualError(t, err, expectedErr)
+}
+
+// TestRegister verifies that Register works as expected.
+func TestRegister(t *testing.T) {
+	mockName := "____mock"
+	assert.NotContains(t, Exporters, mockName)
+
+	Register(mockName, &mockExporterConstructor{})
+	assert.Contains(t, Exporters, mockName)
+
+	panicMsg := fmt.Sprintf("exporter %s already registered", mockName)
+	assert.PanicsWithError(t, panicMsg, func() {
+		Register(mockName, &mockExporterConstructor{})
+	})
 }

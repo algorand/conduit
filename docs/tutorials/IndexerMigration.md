@@ -26,7 +26,7 @@ graph LR;
     ledger["Local Ledger"]
     db["PostgreSQL DB"]
     restapi["REST API"]
-    
+
     algod-->index;
     subgraph "Data Pipeline"
         index-->ledger;
@@ -82,7 +82,6 @@ graph LR;
     ro2---psql;
     lb---ro3;
     ro3---psql;
-    
 ```
 Because the database connection can only tolerate a single writer without having race conditions and/or deadlocks,
 Indexer offers a read-only mode which does not run the data pipeline and has no write access to the database. It's
@@ -120,7 +119,6 @@ graph LR;
     ro2---psql;
     lb---ro3;
     ro3---psql;
-    
 ```
 
 With this architecture you're free to do things like use filter processors to limit the size of your database--though
@@ -133,7 +131,7 @@ it could fetch any block it needed, Conduit's algod importer is not required to 
 what is called Follower mode in algod. You can take a look [here](https://github.com/algorand/go-algorand/blob/master/node/follower_node.go)
 if you're interested in looking at the source code for the follower node.
 
-To run algod in Follower mode, it must be launched with `EnableFollowMode` set to `true` in the algod config.  
+To run algod in Follower mode, it must be launched with `EnableFollowMode` set to `true` in the algod config.
 Doing this will provide the new features listed below, but will remove the node's ability to participate in consensus
 (propose new blocks), or broadcast transactions to be included in new blocks. It will only, as hinted by its name, follow the chain.
 
@@ -142,7 +140,7 @@ Follower mode algod provides 2 key features required by Conduit.
 ### Sync Rounds
 In order to remove the requirement of algod being Archival, we needed a way to ensure that algod would have the data
 available for the particular round that our Conduit pipeline was importing at any given time. We've done this through
-the concept of a `sync` round. 
+the concept of a `sync` round.
 
 The sync round is a parameter which Conduit provides to algod. It specifies the particular round that we want algod to
 ensure is kept in the cache until we've finished running it through our Conduit pipeline. When a sync round is set on a
@@ -183,7 +181,7 @@ fetch all required data directly from the algod node, and ensure that the node i
 ## Altering Architecture of Indexer Applications
 
 Let's take a look at a theoretical application more closely and see what in particular we need to do to alter it to use
-Conduit. 
+Conduit.
 
 Here's a diagram of a containerized application (leaving out some details such as load balancers, and scaled out API
 nodes).
@@ -196,7 +194,7 @@ graph LR;
     subgraph "Persistent Volume"
         ll["Local Ledger"];
     end
-    
+
     indexer-->algod;
     indexer-->psql;
     indexer-->ll;
@@ -231,7 +229,7 @@ Follower nodes provide the same methods of catchup as regular algod nodes, but w
 recent ledger round upon startup. Thaht scenario will be covered in step 3.
 
 ### Step 2: Remove the Local Ledger
-Because our Conduit pipeline will use the Follower node's state delta API, we no longer need our local ledger persistent 
+Because our Conduit pipeline will use the Follower node's state delta API, we no longer need our local ledger persistent
 volume. It can be removed.
 
 ### Step 3: Refactor our Indexer Writer to Conduit
@@ -255,11 +253,12 @@ metrics:
 log-level: "INFO"
 importer:
   name: "algod",
-  config: 
+  config:
     "netaddr": $ALGOD_ADDR,
     "token": $ALGOD_TOKEN,
     "mode": "follower",
     catchup-config:
+        auto: false
         catchpoint: ""
         admin-token: ""
 exporter:
@@ -268,27 +267,23 @@ exporter:
     "connection-string": $PGSQL_CONNECTION_STRING,
 ```
 
-If your algod node needs to run fast catchup, you can fill in the catchup-config section. You'll need to first look up your Indexer round from the postgres database. The Indexer stores the latest round in the database, and you can read it via the `/health` endpoint. The result is formatted in json
-so you can use jq to more easily see your Indexer's round (if your Indexer is listening locally on port 8980).
-```bash
-curl http://localhost:8980/health | jq '.round'
-```
+If your algod node needs to run fast catchup, you can fill in the catchup-config section. You'll need to first look up your Admin API token from algod. It is in a file named `algod.admin.token`. To automatically lookup the appropriate catchpoint label, set `auto: true`.
 
-Now that you can look up a catchpoint, conduit will run fast catchup on your node if a catchpoint is provided. Look up the closest catchpoint prior to the desired sync round. 
-For a list of catchpoints, you can reference the following:
+Note: to manually lookup the catchpoint label, see the complete listings here:
 * [Mainnet](https://algorand-catchpoints.s3.us-east-2.amazonaws.com/consolidated/mainnet_catchpoints.txt)
 * [Testnet](https://algorand-catchpoints.s3.us-east-2.amazonaws.com/consolidated/testnet_catchpoints.txt)
 * [Betanet](https://algorand-catchpoints.s3.us-east-2.amazonaws.com/consolidated/betanet_catchpoints.txt)
 
-For example, if your postgres database is on round 25001234, use the following configuration:
+Your `catchup-config` section should be updated to the following:
 ```yaml
     catchup-config:
-        catchpoint: "25000000#EOX5UYQV4IXTGYQCIDR7ZLUK6WZGDC5EG6PYQGBG6PBYNAQUPN2Q"
+        auto: true
         admin-token: "$ALGOD_ADMIN_TOKEN"
 ```
 
-Then run Conduit, `conduit -d $CONDUIT_DATA_DIR`!
+With configuration complete, run Conduit: `conduit -d $CONDUIT_DATA_DIR`
 
 You can separately run your Indexer with `--no-algod` to connect your API to the database.
 
 If you configured a catchpoint, Conduit will facilitate a fast catchup during initialization. Once the catchpoint has been reached the node will resume normal catchup to advance from the catchpoint round to target round defined in postgres. The fast-catchup and catchup process may take anywhere from 30 minutes to over an hour depending on hardware and disk configurations.
+

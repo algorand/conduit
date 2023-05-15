@@ -27,6 +27,10 @@ var Exporters = make(map[string]ExporterConstructor)
 // for loose coupling between the configuration and the implementation. It is extremely similar to the way sql.DB
 // drivers are configured and used.
 func Register(name string, constructor ExporterConstructor) {
+	if _, ok := Exporters[name]; ok {
+		panic(fmt.Errorf("exporter %s already registered", name))
+	}
+
 	Exporters[name] = constructor
 }
 
