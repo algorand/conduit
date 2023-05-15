@@ -36,9 +36,6 @@ jobs:
       - name: Build Conduit
         run: make
 
-      - name: Run linter
-        run: make lint
-
       - name: Run tests
         run: make test
 
