@@ -1,19 +1,20 @@
 package conduit
 
 import (
-	"github.com/algorand/conduit/conduit/telemetry"
 	sdk "github.com/algorand/go-algorand-sdk/v2/types"
+
+	"github.com/algorand/conduit/conduit/telemetry"
 )
 
 // PipelineInitProvider algod based init provider
 type PipelineInitProvider struct {
 	currentRound   *sdk.Round
 	genesis        *sdk.Genesis
-	telemetryState *telemetry.TelemetryState
+	telemetryState *telemetry.State
 }
 
 // MakePipelineInitProvider constructs an init provider.
-func MakePipelineInitProvider(currentRound *sdk.Round, genesis *sdk.Genesis, state *telemetry.TelemetryState) *PipelineInitProvider {
+func MakePipelineInitProvider(currentRound *sdk.Round, genesis *sdk.Genesis, state *telemetry.State) *PipelineInitProvider {
 	return &PipelineInitProvider{
 		currentRound:   currentRound,
 		genesis:        genesis,
@@ -37,11 +38,11 @@ func (a *PipelineInitProvider) NextDBRound() sdk.Round {
 }
 
 // SetTelemetryState updates the telemetry state in the init provider
-func (a *PipelineInitProvider) SetTelemetryState(state *telemetry.TelemetryState) {
+func (a *PipelineInitProvider) SetTelemetryState(state *telemetry.State) {
 	a.telemetryState = state
 }
 
 // GetTelemetryState gets the telemetry state in the init provider
-func (a *PipelineInitProvider) GetTelemetryState() *telemetry.TelemetryState {
+func (a *PipelineInitProvider) GetTelemetryState() *telemetry.State {
 	return a.telemetryState
 }

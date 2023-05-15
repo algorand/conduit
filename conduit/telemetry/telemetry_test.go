@@ -17,7 +17,7 @@ func TestTelemetryConfig(t *testing.T) {
 }
 
 func TestMakeTelemetryStartupEvent(t *testing.T) {
-	config := TelemetryConfig{
+	config := Config{
 		GUID: "test-guid",
 	}
 	state, err := MakeTelemetryState(config)

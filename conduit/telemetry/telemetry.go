@@ -31,8 +31,8 @@ const DefaultTelemetryUserName = "admin"
 const DefaultTelemetryPassword = "admin"
 
 // MakeTelemetryConfig initializes a new TelemetryConfig.
-func MakeTelemetryConfig() TelemetryConfig {
-	return TelemetryConfig{
+func MakeTelemetryConfig() Config {
+	return Config{
 		Enable:   true,
 		URI:      DefaultOpenSearchURI,
 		GUID:     uuid.New().String(), // Use Google UUID instead of go-algorand utils
@@ -43,7 +43,7 @@ func MakeTelemetryConfig() TelemetryConfig {
 }
 
 // MakeOpenSearchClient creates a new OpenSearch client.
-func MakeOpenSearchClient(cfg TelemetryConfig) (*opensearch.Client, error) {
+func MakeOpenSearchClient(cfg Config) (*opensearch.Client, error) {
 	client, err := opensearch.NewClient(opensearch.Config{
 		Transport: &http.Transport{
 			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
@@ -60,13 +60,13 @@ func MakeOpenSearchClient(cfg TelemetryConfig) (*opensearch.Client, error) {
 }
 
 // MakeTelemetryState initializes a new TelemetryState.
-func MakeTelemetryState(cfg TelemetryConfig) (*TelemetryState, error) {
+func MakeTelemetryState(cfg Config) (*State, error) {
 	client, err := MakeOpenSearchClient(cfg)
 	if err != nil {
 		return nil, err
 	}
 
-	telemetryState := &TelemetryState{
+	telemetryState := &State{
 		Client:          client,
 		TelemetryConfig: cfg,
 	}
@@ -74,8 +74,8 @@ func MakeTelemetryState(cfg TelemetryConfig) (*TelemetryState, error) {
 }
 
 // MakeTelemetryStartupEvent sends a startup event when the pipeline is initialized.
-func (t *TelemetryState) MakeTelemetryStartupEvent() TelemetryEvent {
-	return TelemetryEvent{
+func (t *State) MakeTelemetryStartupEvent() Event {
+	return Event{
 		Message: "starting conduit",
 		GUID:    t.TelemetryConfig.GUID,
 		Time:    time.Now(),
@@ -83,7 +83,7 @@ func (t *TelemetryState) MakeTelemetryStartupEvent() TelemetryEvent {
 }
 
 // SendEvent sends a TelemetryEvent to OpenSearch.
-func (t *TelemetryState) SendEvent(event TelemetryEvent) error {
+func (t *State) SendEvent(event Event) error {
 	data, _ := json.Marshal(event)
 	req := opensearchapi.IndexRequest{
 		Index: t.TelemetryConfig.Index,
