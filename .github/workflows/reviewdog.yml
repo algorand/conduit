@@ -24,5 +24,5 @@ jobs:
           golangci_lint_flags: "-c .golangci.yml --allow-parallel-runners"
           reporter: "github-pr-review"
           tool_name: "Lint Errors"
-          level: "error"
+          level: "warn"
           fail_on_error: true
