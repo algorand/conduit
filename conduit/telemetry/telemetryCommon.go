@@ -28,8 +28,14 @@ type Event struct {
 	GUID string `json:"guid"`
 }
 
-// State holds the OpenSearch client and TelemetryConfig
-type State struct {
+// Client represents the Telemetry client and config
+type Client interface {
+	MakeTelemetryStartupEvent() Event
+	SendEvent(event Event) error
+}
+
+// OpenSearchClient holds the OpenSearch client and TelemetryConfig
+type OpenSearchClient struct {
 	Client          *opensearch.Client
 	TelemetryConfig Config
 }

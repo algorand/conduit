@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"math"
 	"net/http"
+	"net/http/httptest"
 	"os"
 	"path"
 	"path/filepath"
@@ -28,6 +29,7 @@ import (
 	"github.com/algorand/conduit/conduit/plugins/exporters"
 	"github.com/algorand/conduit/conduit/plugins/importers"
 	"github.com/algorand/conduit/conduit/plugins/processors"
+	"github.com/algorand/conduit/conduit/telemetry"
 )
 
 // a unique block data to validate with tests
@@ -189,6 +191,22 @@ func (m *mockExporter) OnComplete(input data.BlockData) error {
 	m.finalRound = sdk.Round(input.BlockHeader.Round)
 	m.Called(input)
 	return err
+}
+
+type mockTelemetryClient struct {
+	mock.Mock
+	cfg    telemetry.Config
+	client *telemetry.Client
+}
+
+func (m *mockTelemetryClient) MakeTelemetryStartupEvent() telemetry.Event {
+	m.Called()
+	return telemetry.Event{}
+}
+
+func (m *mockTelemetryClient) SendEvent(event telemetry.Event) error {
+	m.Called(event)
+	return nil
 }
 
 func mockPipeline(t *testing.T, dataDir string) (*pipelineImpl, *test.Hook, *mockImporter, *mockProcessor, *mockExporter) {
@@ -521,6 +539,47 @@ func TestPipelineMetricsConfigs(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, 200, resp.StatusCode)
 	assert.Equal(t, pImpl.cfg.Metrics.Prefix, prefixOverride)
+}
+
+func TestPipelineTelemetryConfigs(t *testing.T) {
+	pImpl, _, _, _, _ := mockPipeline(t, "")
+	count := 0
+
+	telemetrySrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(200)
+		count += 1
+	}))
+	defer telemetrySrv.Close()
+
+	telemetryRequest := func() (*http.Response, error) {
+		resp0, err0 := http.Get(telemetrySrv.URL)
+		return resp0, err0
+	}
+	// // metrics should be OFF by default
+	// err := pImpl.Init()
+	// assert.NoError(t, err)
+	// time.Sleep(1 * time.Second)
+	// _, err = telemetryRequest()
+	// assert.Error(t, err)
+
+	// telemetry OFF, default prefix
+	pImpl.cfg.Telemetry = data.Telemetry{
+		Enabled: false,
+	}
+	pImpl.Init()
+	time.Sleep(1 * time.Second)
+	resp, err := telemetryRequest()
+	assert.Error(t, err)
+
+	// telemetry ON
+	pImpl.cfg.Telemetry = data.Telemetry{
+		Enabled: true,
+	}
+	pImpl.Init()
+	time.Sleep(1 * time.Second)
+	resp, err = telemetryRequest()
+	assert.NoError(t, err)
+	assert.Equal(t, 200, resp.StatusCode)
 }
 
 func TestRoundOverrideValidConflict(t *testing.T) {

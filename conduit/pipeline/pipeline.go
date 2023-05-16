@@ -199,7 +199,7 @@ func (p *pipelineImpl) pluginRoundOverride() (uint64, error) {
 // initializeTelemetry initializes telemetry and reads or sets the GUID in the metadata.
 func (p *pipelineImpl) initializeTelemetry() error {
 	telemetryConfig := telemetry.MakeTelemetryConfig()
-	telemetryState, err := telemetry.MakeTelemetryState(telemetryConfig)
+	telemetryClient, err := telemetry.MakeOpenSearchClient(telemetryConfig)
 	if err != nil {
 		return fmt.Errorf("failed to initialize telemetry: %w", err)
 	}
@@ -207,15 +207,15 @@ func (p *pipelineImpl) initializeTelemetry() error {
 
 	// If GUID is not in metadata, save it. Otherwise, use the GUID from metadata.
 	if p.pipelineMetadata.TelemetryID == "" {
-		p.pipelineMetadata.TelemetryID = telemetryState.TelemetryConfig.GUID
+		p.pipelineMetadata.TelemetryID = telemetryClient.TelemetryConfig.GUID
 	} else {
-		telemetryState.TelemetryConfig.GUID = p.pipelineMetadata.TelemetryID
+		telemetryClient.TelemetryConfig.GUID = p.pipelineMetadata.TelemetryID
 	}
 
-	(*p.initProvider).SetTelemetryState(telemetryState)
+	(*p.initProvider).SetTelemetryClient(telemetryClient)
 
-	event := telemetryState.MakeTelemetryStartupEvent()
-	err = telemetryState.SendEvent(event)
+	event := telemetryClient.MakeTelemetryStartupEvent()
+	err = telemetryClient.SendEvent(event)
 	if err != nil {
 		return fmt.Errorf("failed to send telemetry event: %w", err)
 	}

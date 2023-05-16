@@ -8,17 +8,17 @@ import (
 
 // PipelineInitProvider algod based init provider
 type PipelineInitProvider struct {
-	currentRound   *sdk.Round
-	genesis        *sdk.Genesis
-	telemetryState *telemetry.State
+	currentRound    *sdk.Round
+	genesis         *sdk.Genesis
+	telemetryClient *telemetry.OpenSearchClient
 }
 
 // MakePipelineInitProvider constructs an init provider.
-func MakePipelineInitProvider(currentRound *sdk.Round, genesis *sdk.Genesis, state *telemetry.State) *PipelineInitProvider {
+func MakePipelineInitProvider(currentRound *sdk.Round, genesis *sdk.Genesis, client *telemetry.OpenSearchClient) *PipelineInitProvider {
 	return &PipelineInitProvider{
-		currentRound:   currentRound,
-		genesis:        genesis,
-		telemetryState: state,
+		currentRound:    currentRound,
+		genesis:         genesis,
+		telemetryClient: client,
 	}
 }
 
@@ -37,12 +37,12 @@ func (a *PipelineInitProvider) NextDBRound() sdk.Round {
 	return *a.currentRound
 }
 
-// SetTelemetryState updates the telemetry state in the init provider
-func (a *PipelineInitProvider) SetTelemetryState(state *telemetry.State) {
-	a.telemetryState = state
+// SetTelemetryClient updates the telemetry state in the init provider
+func (a *PipelineInitProvider) SetTelemetryClient(state *telemetry.OpenSearchClient) {
+	a.telemetryClient = state
 }
 
-// GetTelemetryState gets the telemetry state in the init provider
-func (a *PipelineInitProvider) GetTelemetryState() *telemetry.State {
-	return a.telemetryState
+// GetTelemetryClient gets the telemetry state in the init provider
+func (a *PipelineInitProvider) GetTelemetryClient() *telemetry.OpenSearchClient {
+	return a.telemetryClient
 }

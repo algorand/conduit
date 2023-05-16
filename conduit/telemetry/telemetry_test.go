@@ -20,7 +20,7 @@ func TestMakeTelemetryStartupEvent(t *testing.T) {
 	config := Config{
 		GUID: "test-guid",
 	}
-	state, err := MakeTelemetryState(config)
+	state, err := MakeOpenSearchClient(config)
 	require.NoError(t, err)
 	event := state.MakeTelemetryStartupEvent()
 	require.Equal(t, "starting conduit", event.Message)

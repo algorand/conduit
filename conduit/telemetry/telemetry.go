@@ -42,8 +42,8 @@ func MakeTelemetryConfig() Config {
 	}
 }
 
-// MakeOpenSearchClient creates a new OpenSearch client.
-func MakeOpenSearchClient(cfg Config) (*opensearch.Client, error) {
+// initializeOpenSearchClient creates a new OpenSearch client.
+func initializeOpenSearchClient(cfg Config) (*opensearch.Client, error) {
 	client, err := opensearch.NewClient(opensearch.Config{
 		Transport: &http.Transport{
 			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
@@ -59,14 +59,14 @@ func MakeOpenSearchClient(cfg Config) (*opensearch.Client, error) {
 	return client, nil
 }
 
-// MakeTelemetryState initializes a new TelemetryState.
-func MakeTelemetryState(cfg Config) (*State, error) {
-	client, err := MakeOpenSearchClient(cfg)
+// MakeOpenSearchClient initializes a new TelemetryState.
+func MakeOpenSearchClient(cfg Config) (*OpenSearchClient, error) {
+	client, err := initializeOpenSearchClient(cfg)
 	if err != nil {
 		return nil, err
 	}
 
-	telemetryState := &State{
+	telemetryState := &OpenSearchClient{
 		Client:          client,
 		TelemetryConfig: cfg,
 	}
@@ -74,7 +74,7 @@ func MakeTelemetryState(cfg Config) (*State, error) {
 }
 
 // MakeTelemetryStartupEvent sends a startup event when the pipeline is initialized.
-func (t *State) MakeTelemetryStartupEvent() Event {
+func (t *OpenSearchClient) MakeTelemetryStartupEvent() Event {
 	return Event{
 		Message: "starting conduit",
 		GUID:    t.TelemetryConfig.GUID,
@@ -83,7 +83,7 @@ func (t *State) MakeTelemetryStartupEvent() Event {
 }
 
 // SendEvent sends a TelemetryEvent to OpenSearch.
-func (t *State) SendEvent(event Event) error {
+func (t *OpenSearchClient) SendEvent(event Event) error {
 	data, _ := json.Marshal(event)
 	req := opensearchapi.IndexRequest{
 		Index: t.TelemetryConfig.Index,
