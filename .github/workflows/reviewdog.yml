@@ -22,7 +22,9 @@ jobs:
         with:
           golangci_lint_version: "v1.47.3"
           golangci_lint_flags: "-c .golangci.yml --allow-parallel-runners"
+          go_version: "1.17.13"
           reporter: "github-pr-review"
           tool_name: "Lint Errors"
           level: "error"
           fail_on_error: true
+          filter_mode: "nofilter"
