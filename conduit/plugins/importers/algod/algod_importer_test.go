@@ -690,6 +690,7 @@ func TestNeedsCatchup(t *testing.T) {
 	testcases := []struct {
 		name       string
 		mode       int
+		round      uint64
 		responders []algodCustomHandler
 		logMsg     string
 		result     bool
@@ -697,6 +698,7 @@ func TestNeedsCatchup(t *testing.T) {
 		{
 			name:       "Follower mode, no delta",
 			mode:       followerMode,
+			round:      1234,
 			responders: []algodCustomHandler{},
 			logMsg:     "Unable to fetch state delta for round",
 			result:     true,
@@ -704,13 +706,31 @@ func TestNeedsCatchup(t *testing.T) {
 		{
 			name:       "Follower mode, delta",
 			mode:       followerMode,
+			round:      1234,
 			responders: []algodCustomHandler{LedgerStateDeltaResponder},
 			logMsg:     "",
 			result:     false,
 		},
 		{
+			name:       "Follower mode round 0, no delta",
+			mode:       followerMode,
+			round:      0,
+			responders: []algodCustomHandler{},
+			logMsg:     "No state deltas are ever available for round 0",
+			result:     true,
+		},
+		{
+			name:       "Follower mode round 0, delta",
+			mode:       followerMode,
+			round:      0,
+			responders: []algodCustomHandler{LedgerStateDeltaResponder},
+			logMsg:     "No state deltas are ever available for round 0",
+			result:     true,
+		},
+		{
 			name:       "Archival mode, no block",
 			mode:       archivalMode,
+			round:      1234,
 			responders: []algodCustomHandler{},
 			logMsg:     "Unable to fetch block for round",
 			result:     true,
@@ -718,6 +738,7 @@ func TestNeedsCatchup(t *testing.T) {
 		{
 			name:       "Archival mode, block",
 			mode:       archivalMode,
+			round:      1234,
 			responders: []algodCustomHandler{BlockResponder},
 			logMsg:     "",
 			result:     false,
@@ -744,7 +765,7 @@ func TestNeedsCatchup(t *testing.T) {
 				},
 			}
 
-			assert.Equal(t, tc.result, testImporter.needsCatchup(1234))
+			assert.Equal(t, tc.result, testImporter.needsCatchup(tc.round))
 			if tc.logMsg != "" {
 				assert.Len(t, hook.AllEntries(), 1)
 				assert.Contains(t, hook.LastEntry().Message, tc.logMsg)
