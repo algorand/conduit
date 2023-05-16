@@ -551,35 +551,27 @@ func TestPipelineTelemetryConfigs(t *testing.T) {
 	}))
 	defer telemetrySrv.Close()
 
-	telemetryRequest := func() (*http.Response, error) {
-		resp0, err0 := http.Get(telemetrySrv.URL)
-		return resp0, err0
-	}
-	// // metrics should be OFF by default
-	// err := pImpl.Init()
-	// assert.NoError(t, err)
-	// time.Sleep(1 * time.Second)
-	// _, err = telemetryRequest()
-	// assert.Error(t, err)
-
-	// telemetry OFF, default prefix
+	// telemetry OFF, check that client is nil
 	pImpl.cfg.Telemetry = data.Telemetry{
 		Enabled: false,
 	}
 	pImpl.Init()
-	time.Sleep(1 * time.Second)
-	resp, err := telemetryRequest()
-	assert.Error(t, err)
+	client := (*pImpl.initProvider).GetTelemetryClient()
+	assert.Nil(t, client)
 
 	// telemetry ON
 	pImpl.cfg.Telemetry = data.Telemetry{
 		Enabled: true,
 	}
 	pImpl.Init()
-	time.Sleep(1 * time.Second)
-	resp, err = telemetryRequest()
-	assert.NoError(t, err)
-	assert.Equal(t, 200, resp.StatusCode)
+	client = (*pImpl.initProvider).GetTelemetryClient()
+	assert.NotNil(t, client)
+	assert.NotNil(t, client.Client)
+	assert.Equal(t, true, client.TelemetryConfig.Enable)
+	assert.Equal(t, telemetry.DefaultOpenSearchURI, client.TelemetryConfig.URI)
+	assert.Equal(t, telemetry.DefaultIndexName, client.TelemetryConfig.Index)
+	assert.Equal(t, telemetry.DefaultTelemetryUserName, client.TelemetryConfig.UserName)
+	assert.Equal(t, telemetry.DefaultTelemetryPassword, client.TelemetryConfig.Password)
 }
 
 func TestRoundOverrideValidConflict(t *testing.T) {
