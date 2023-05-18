@@ -56,6 +56,14 @@ func getAllAndTidyUp() (*modfile.File, string, error) {
 		return mod, sum, fmt.Errorf("problem parsing %s: %w", goMod, err)
 	}
 
+	compatVersion := fmt.Sprintf("-compat=%s", mod.Go.Version)
+	fmt.Printf("go mod tidy'ing with %s\n", compatVersion)
+	cmdA := exec.Command("go", "mod", "tidy", compatVersion)
+	err = cmdA.Run()
+	if err != nil {
+		return mod, sum, fmt.Errorf("problem with: go mod tidy: %w", err)
+	}
+
 	direct := make([]string, 0)
 	for _, require := range mod.Require {
 		if !require.Indirect {
@@ -64,18 +72,12 @@ func getAllAndTidyUp() (*modfile.File, string, error) {
 	}
 
 	for _, pinnedPkg := range direct {
-		fmt.Println("Getting", pinnedPkg)
+		fmt.Println("go get'ing", pinnedPkg)
 		cmd := exec.Command("go", "get", pinnedPkg)
 		err := cmd.Run()
 		if err != nil {
 			return mod, sum, fmt.Errorf("problem with: go get %s: %w", pinnedPkg, err)
 		}
-	}
-
-	cmdA := exec.Command("go", "mod", "tidy", fmt.Sprintf("-compat=%s", mod.Go.Version))
-	err = cmdA.Run()
-	if err != nil {
-		return mod, sum, fmt.Errorf("problem with: go mod tidy: %w", err)
 	}
 
 	return mod, sum, nil
