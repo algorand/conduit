@@ -35,6 +35,7 @@ test:
 lint:
 	golangci-lint run -c .golangci.yml
 	go vet ./...
+	go run go_mod_tidier.go
 
 fmt:
 	go fmt ./...

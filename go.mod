@@ -12,6 +12,7 @@ require (
 	github.com/spf13/cobra v1.3.0
 	github.com/stretchr/testify v1.8.1
 	github.com/yuin/goldmark v1.5.4
+	golang.org/x/mod v0.6.0
 	gopkg.in/yaml.v3 v3.0.1
 
 )
