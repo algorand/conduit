@@ -36,4 +36,6 @@ exporter:
     # DropCertificate is used to remove the vote certificate from the block data before writing files.
     drop-certificate: true
 
-
+# Enable telemetry for conduit
+telemetry:
+  enabled: true
