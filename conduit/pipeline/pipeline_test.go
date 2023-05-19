@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"math"
 	"net/http"
-	"net/http/httptest"
 	"os"
 	"path"
 	"path/filepath"
@@ -527,13 +526,6 @@ func TestPipelineMetricsConfigs(t *testing.T) {
 
 func TestPipelineTelemetryConfigs(t *testing.T) {
 	pImpl, _, _, _, _ := mockPipeline(t, "")
-	count := 0
-
-	telemetrySrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(200)
-		count += 1
-	}))
-	defer telemetrySrv.Close()
 
 	// telemetry OFF, check that client is nil
 	pImpl.cfg.Telemetry = data.Telemetry{
