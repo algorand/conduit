@@ -193,22 +193,6 @@ func (m *mockExporter) OnComplete(input data.BlockData) error {
 	return err
 }
 
-type mockTelemetryClient struct {
-	mock.Mock
-	cfg    telemetry.Config
-	client *telemetry.Client
-}
-
-func (m *mockTelemetryClient) MakeTelemetryStartupEvent() telemetry.Event {
-	m.Called()
-	return telemetry.Event{}
-}
-
-func (m *mockTelemetryClient) SendEvent(event telemetry.Event) error {
-	m.Called(event)
-	return nil
-}
-
 func mockPipeline(t *testing.T, dataDir string) (*pipelineImpl, *test.Hook, *mockImporter, *mockProcessor, *mockExporter) {
 	if dataDir == "" {
 		dataDir = t.TempDir()
