@@ -197,11 +197,11 @@ func (p *pipelineImpl) pluginRoundOverride() (uint64, error) {
 }
 
 // initializeTelemetry initializes telemetry and reads or sets the GUID in the metadata.
-func (p *pipelineImpl) initializeTelemetry() error {
+func (p *pipelineImpl) initializeTelemetry() (*telemetry.OpenSearchClient, error) {
 	telemetryConfig := telemetry.MakeTelemetryConfig()
 	telemetryClient, err := telemetry.MakeOpenSearchClient(telemetryConfig)
 	if err != nil {
-		return fmt.Errorf("failed to initialize telemetry: %w", err)
+		return nil, fmt.Errorf("failed to initialize telemetry: %w", err)
 	}
 	p.logger.Infof("Telemetry initialized with URI: %s", telemetryConfig.URI)
 
@@ -212,14 +212,7 @@ func (p *pipelineImpl) initializeTelemetry() error {
 		telemetryClient.TelemetryConfig.GUID = p.pipelineMetadata.TelemetryID
 	}
 
-	(*p.initProvider).SetTelemetryClient(telemetryClient)
-
-	event := telemetryClient.MakeTelemetryStartupEvent()
-	err = telemetryClient.SendEvent(event)
-	if err != nil {
-		return fmt.Errorf("failed to send telemetry event: %w", err)
-	}
-	return nil
+	return telemetryClient, nil
 }
 
 // Init prepares the pipeline for processing block data
@@ -281,19 +274,26 @@ func (p *pipelineImpl) Init() error {
 
 	// InitProvider
 	round := sdk.Round(p.pipelineMetadata.NextRound)
-	// Initial genesis object is nil and gets updated after importer.Init
-	// Initial state object is nil and gets updated after initializeTelemetry
-	var initProvider data.InitProvider = conduit.MakePipelineInitProvider(&round, nil, nil)
-	p.initProvider = &initProvider
 
 	// Initialize Telemetry
+	var telemetryClient *telemetry.OpenSearchClient
 	if p.cfg.Telemetry.Enabled {
 		// If telemetry cannot be initialized, log a warning and continue
 		// pipeline initialization.
-		if err = p.initializeTelemetry(); err != nil {
+		telemetryClient, err = p.initializeTelemetry()
+		if err != nil {
 			p.logger.Warn("Telemetry initialization failed. Continuing without telemetry.")
 		}
+		// Try sending a startup event. If it fails, log a warning and continue
+		event := telemetryClient.MakeTelemetryStartupEvent()
+		if err = telemetryClient.SendEvent(event); err != nil {
+			p.logger.Warn("failed to send telemetry event: %w", err)
+		}
 	}
+
+	// Initial genesis object is nil and gets updated after importer.Init
+	var initProvider data.InitProvider = conduit.MakePipelineInitProvider(&round, nil, telemetryClient)
+	p.initProvider = &initProvider
 
 	// Initialize Importer
 	{

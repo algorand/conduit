@@ -37,11 +37,6 @@ func (a *PipelineInitProvider) NextDBRound() sdk.Round {
 	return *a.currentRound
 }
 
-// SetTelemetryClient updates the telemetry state in the init provider
-func (a *PipelineInitProvider) SetTelemetryClient(state *telemetry.OpenSearchClient) {
-	a.telemetryClient = state
-}
-
 // GetTelemetryClient gets the telemetry state in the init provider
 func (a *PipelineInitProvider) GetTelemetryClient() *telemetry.OpenSearchClient {
 	return a.telemetryClient
