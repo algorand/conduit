@@ -198,7 +198,7 @@ func (p *pipelineImpl) pluginRoundOverride() (uint64, error) {
 
 // initializeTelemetry initializes telemetry and reads or sets the GUID in the metadata.
 func (p *pipelineImpl) initializeTelemetry() (*telemetry.OpenSearchClient, error) {
-	telemetryConfig := telemetry.MakeTelemetryConfig()
+	telemetryConfig := telemetry.MakeTelemetryConfig(p.cfg.Telemetry.URI, p.cfg.Telemetry.Index, p.cfg.Telemetry.UserName, p.cfg.Telemetry.Password)
 	telemetryClient, err := telemetry.MakeOpenSearchClient(telemetryConfig)
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize telemetry: %w", err)
@@ -280,14 +280,15 @@ func (p *pipelineImpl) Init() error {
 	if p.cfg.Telemetry.Enabled {
 		// If telemetry cannot be initialized, log a warning and continue
 		// pipeline initialization.
-		telemetryClient, err = p.initializeTelemetry()
-		if err != nil {
+		var telemetryErr error
+		telemetryClient, telemetryErr = p.initializeTelemetry()
+		if telemetryErr != nil {
 			p.logger.Warn("Telemetry initialization failed. Continuing without telemetry.")
 		}
 		// Try sending a startup event. If it fails, log a warning and continue
 		event := telemetryClient.MakeTelemetryStartupEvent()
-		if err = telemetryClient.SendEvent(event); err != nil {
-			p.logger.Warn("failed to send telemetry event: %w", err)
+		if telemetryErr = telemetryClient.SendEvent(event); telemetryErr != nil {
+			p.logger.Warnf("failed to send telemetry event: %s", telemetryErr)
 		}
 	}
 

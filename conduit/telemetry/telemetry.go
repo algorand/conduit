@@ -14,31 +14,15 @@ import (
 	"github.com/opensearch-project/opensearch-go/opensearchapi"
 )
 
-// DefaultOpenSearchURI is the URI of the OpenSearch instance.
-// TODO: Fix to actual URI
-const DefaultOpenSearchURI = "https://localhost:9200"
-
-// DefaultIndexName is the name of the index to which telemetry events are sent.
-const DefaultIndexName = "conduit-telemetry"
-
-// DefaultTelemetryUserName is the username for the OpenSearch instance.
-// We intentionally store credentials in the source code
-// to report telemetry to a write-only database.
-// TODO: Fix to actual username for algorand
-const DefaultTelemetryUserName = "admin"
-
-// DefaultTelemetryPassword is the password for the OpenSearch instance.
-const DefaultTelemetryPassword = "admin"
-
 // MakeTelemetryConfig initializes a new TelemetryConfig.
-func MakeTelemetryConfig() Config {
+func MakeTelemetryConfig(telemetryURI, index, username, password string) Config {
 	return Config{
 		Enable:   true,
-		URI:      DefaultOpenSearchURI,
+		URI:      telemetryURI,
 		GUID:     uuid.New().String(), // Use Google UUID instead of go-algorand utils
-		Index:    DefaultIndexName,
-		UserName: DefaultTelemetryUserName,
-		Password: DefaultTelemetryPassword,
+		Index:    index,
+		UserName: username,
+		Password: password,
 	}
 }
 

@@ -37,3 +37,8 @@ exporter:
 # Enable telemetry for conduit
 telemetry:
   enabled: true
+  # These configs define default values for initializing the telemetry server.
+  uri: ""
+  index: ""
+  username: ""
+  password: ""

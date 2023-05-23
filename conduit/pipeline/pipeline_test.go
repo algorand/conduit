@@ -28,7 +28,6 @@ import (
 	"github.com/algorand/conduit/conduit/plugins/exporters"
 	"github.com/algorand/conduit/conduit/plugins/importers"
 	"github.com/algorand/conduit/conduit/plugins/processors"
-	"github.com/algorand/conduit/conduit/telemetry"
 )
 
 // a unique block data to validate with tests
@@ -537,17 +536,21 @@ func TestPipelineTelemetryConfigs(t *testing.T) {
 
 	// telemetry ON
 	pImpl.cfg.Telemetry = data.Telemetry{
-		Enabled: true,
+		Enabled:  true,
+		URI:      "test-uri",
+		Index:    "test-index",
+		UserName: "test-username",
+		Password: "test-password",
 	}
 	pImpl.Init()
 	client = (*pImpl.initProvider).GetTelemetryClient()
 	assert.NotNil(t, client)
 	assert.NotNil(t, client.Client)
 	assert.Equal(t, true, client.TelemetryConfig.Enable)
-	assert.Equal(t, telemetry.DefaultOpenSearchURI, client.TelemetryConfig.URI)
-	assert.Equal(t, telemetry.DefaultIndexName, client.TelemetryConfig.Index)
-	assert.Equal(t, telemetry.DefaultTelemetryUserName, client.TelemetryConfig.UserName)
-	assert.Equal(t, telemetry.DefaultTelemetryPassword, client.TelemetryConfig.Password)
+	assert.Equal(t, "test-uri", client.TelemetryConfig.URI)
+	assert.Equal(t, "test-index", client.TelemetryConfig.Index)
+	assert.Equal(t, "test-username", client.TelemetryConfig.UserName)
+	assert.Equal(t, "test-password", client.TelemetryConfig.Password)
 }
 
 func TestRoundOverrideValidConflict(t *testing.T) {

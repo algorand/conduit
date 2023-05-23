@@ -43,7 +43,11 @@ type Metrics struct {
 
 // Telemetry configs for sending Telemetry to OpenSearch
 type Telemetry struct {
-	Enabled bool `yaml:"enabled"`
+	Enabled  bool   `yaml:"enabled"`
+	URI      string `yaml:"uri"`
+	Index    string `yaml:"index"`
+	UserName string `yaml:"username"`
+	Password string `yaml:"password"`
 }
 
 // Config stores configuration specific to the conduit pipeline

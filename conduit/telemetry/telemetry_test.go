@@ -7,12 +7,13 @@ import (
 )
 
 func TestTelemetryConfig(t *testing.T) {
-	config := MakeTelemetryConfig()
+
+	config := MakeTelemetryConfig("test-uri", "test-index", "test-user", "test-password")
 	require.Equal(t, true, config.Enable)
-	require.Equal(t, DefaultOpenSearchURI, config.URI)
-	require.Equal(t, DefaultIndexName, config.Index)
-	require.Equal(t, DefaultTelemetryUserName, config.UserName)
-	require.Equal(t, DefaultTelemetryPassword, config.Password)
+	require.Equal(t, "test-uri", config.URI)
+	require.Equal(t, "test-index", config.Index)
+	require.Equal(t, "test-user", config.UserName)
+	require.Equal(t, "test-password", config.Password)
 	require.NotEqual(t, "", config.GUID)
 }
 
