@@ -28,6 +28,7 @@ import (
 	"github.com/algorand/conduit/conduit/plugins/exporters"
 	"github.com/algorand/conduit/conduit/plugins/importers"
 	"github.com/algorand/conduit/conduit/plugins/processors"
+	"github.com/algorand/conduit/conduit/telemetry"
 )
 
 // a unique block data to validate with tests
@@ -531,8 +532,8 @@ func TestPipelineTelemetryConfigs(t *testing.T) {
 		Enabled: false,
 	}
 	pImpl.Init()
-	client := (*pImpl.initProvider).GetTelemetryClient()
-	assert.Nil(t, client)
+	baseClient := (*pImpl.initProvider).GetTelemetryClient()
+	assert.Nil(t, baseClient)
 
 	// telemetry ON
 	pImpl.cfg.Telemetry = data.Telemetry{
@@ -543,7 +544,9 @@ func TestPipelineTelemetryConfigs(t *testing.T) {
 		Password: "test-password",
 	}
 	pImpl.Init()
-	client = (*pImpl.initProvider).GetTelemetryClient()
+	baseClient = (*pImpl.initProvider).GetTelemetryClient()
+	client := baseClient.(*telemetry.OpenSearchClient)
+
 	assert.NotNil(t, client)
 	assert.NotNil(t, client.Client)
 	assert.Equal(t, true, client.TelemetryConfig.Enable)

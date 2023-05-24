@@ -18,7 +18,7 @@ type InitProvider interface {
 	GetGenesis() *sdk.Genesis
 	SetGenesis(*sdk.Genesis)
 	NextDBRound() sdk.Round
-	GetTelemetryClient() *telemetry.OpenSearchClient
+	GetTelemetryClient() telemetry.Client
 }
 
 // BlockData is provided to the Exporter on each round.

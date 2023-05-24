@@ -197,7 +197,7 @@ func (p *pipelineImpl) pluginRoundOverride() (uint64, error) {
 }
 
 // initializeTelemetry initializes telemetry and reads or sets the GUID in the metadata.
-func (p *pipelineImpl) initializeTelemetry() (*telemetry.OpenSearchClient, error) {
+func (p *pipelineImpl) initializeTelemetry() (telemetry.Client, error) {
 	telemetryConfig := telemetry.MakeTelemetryConfig(p.cfg.Telemetry.URI, p.cfg.Telemetry.Index, p.cfg.Telemetry.UserName, p.cfg.Telemetry.Password)
 	telemetryClient, err := telemetry.MakeOpenSearchClient(telemetryConfig)
 	if err != nil {
@@ -276,7 +276,7 @@ func (p *pipelineImpl) Init() error {
 	round := sdk.Round(p.pipelineMetadata.NextRound)
 
 	// Initialize Telemetry
-	var telemetryClient *telemetry.OpenSearchClient
+	var telemetryClient telemetry.Client
 	if p.cfg.Telemetry.Enabled {
 		// If telemetry cannot be initialized, log a warning and continue
 		// pipeline initialization.

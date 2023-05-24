@@ -10,11 +10,11 @@ import (
 type PipelineInitProvider struct {
 	currentRound    *sdk.Round
 	genesis         *sdk.Genesis
-	telemetryClient *telemetry.OpenSearchClient
+	telemetryClient telemetry.Client
 }
 
 // MakePipelineInitProvider constructs an init provider.
-func MakePipelineInitProvider(currentRound *sdk.Round, genesis *sdk.Genesis, client *telemetry.OpenSearchClient) *PipelineInitProvider {
+func MakePipelineInitProvider(currentRound *sdk.Round, genesis *sdk.Genesis, client telemetry.Client) *PipelineInitProvider {
 	return &PipelineInitProvider{
 		currentRound:    currentRound,
 		genesis:         genesis,
@@ -38,6 +38,6 @@ func (a *PipelineInitProvider) NextDBRound() sdk.Round {
 }
 
 // GetTelemetryClient gets the telemetry state in the init provider
-func (a *PipelineInitProvider) GetTelemetryClient() *telemetry.OpenSearchClient {
+func (a *PipelineInitProvider) GetTelemetryClient() telemetry.Client {
 	return a.telemetryClient
 }
