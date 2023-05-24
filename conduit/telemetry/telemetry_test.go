@@ -3,6 +3,7 @@ package telemetry
 import (
 	"testing"
 
+	"github.com/algorand/indexer/version"
 	"github.com/stretchr/testify/require"
 )
 
@@ -26,4 +27,5 @@ func TestMakeTelemetryStartupEvent(t *testing.T) {
 	event := state.MakeTelemetryStartupEvent()
 	require.Equal(t, "starting conduit", event.Message)
 	require.Equal(t, "test-guid", event.GUID)
+	require.NotEqual(t, version.LongVersion(), event.Version)
 }

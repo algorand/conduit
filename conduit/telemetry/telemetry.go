@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/algorand/conduit/version"
 	"github.com/google/uuid"
 	"github.com/opensearch-project/opensearch-go"
 	"github.com/opensearch-project/opensearch-go/opensearchapi"
@@ -63,6 +64,7 @@ func (t *OpenSearchClient) MakeTelemetryStartupEvent() Event {
 		Message: "starting conduit",
 		GUID:    t.TelemetryConfig.GUID,
 		Time:    time.Now(),
+		Version: version.LongVersion(),
 	}
 }
 

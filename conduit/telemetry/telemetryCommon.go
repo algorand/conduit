@@ -24,8 +24,10 @@ type Event struct {
 	Time time.Time `json:"timestamp"`
 	// Event message
 	Message string `json:"message"`
-	// ID
+	// Unique ID assigned to the pipeline upon initialization
 	GUID string `json:"guid"`
+	// Version of conduit
+	Version string `json:"version"`
 }
 
 // Client represents the Telemetry client and config
