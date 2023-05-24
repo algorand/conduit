@@ -9,10 +9,11 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/algorand/conduit/version"
 	"github.com/google/uuid"
 	"github.com/opensearch-project/opensearch-go"
 	"github.com/opensearch-project/opensearch-go/opensearchapi"
+
+	"github.com/algorand/conduit/version"
 )
 
 // MakeTelemetryConfig initializes a new TelemetryConfig.
