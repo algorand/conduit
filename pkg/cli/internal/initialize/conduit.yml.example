@@ -37,8 +37,10 @@ exporter:
 # Enable telemetry for conduit
 telemetry:
   enabled: true
-  # These configs define default values for initializing the telemetry server.
-  uri: ""
-  index: ""
-  username: ""
-  password: ""
+
+  # By default the following fields will be configured to send data to Algorand.
+  # To store your own telemetry events, they can be overridden.
+  # uri: ""
+  # index: ""
+  # username: ""
+  # password: ""
