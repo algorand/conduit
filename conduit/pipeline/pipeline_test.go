@@ -554,6 +554,12 @@ func TestPipelineTelemetryConfigs(t *testing.T) {
 	assert.Equal(t, "test-index", client.TelemetryConfig.Index)
 	assert.Equal(t, "test-username", client.TelemetryConfig.UserName)
 	assert.Equal(t, "test-password", client.TelemetryConfig.Password)
+
+	event := client.MakeTelemetryStartupEvent()
+	assert.Equal(t, "starting conduit", event.Message)
+	assert.NotEmpty(t, event.Time)
+	assert.NotEmpty(t, event.GUID)
+	assert.NotEmpty(t, event.Version)
 }
 
 func TestRoundOverrideValidConflict(t *testing.T) {
