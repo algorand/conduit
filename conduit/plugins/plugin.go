@@ -6,7 +6,7 @@ type Plugin interface {
 	PluginMetadata
 
 	// Config returns the configuration options used to create a Plugin.
-	// Initialized during Init, it should return nil until the Exporter has been Connected.
+	// Initialized during Init, it should return nil until after the Plugin's Init.
 	Config() string
 
 	// Close will be called during termination of the Conduit process.
