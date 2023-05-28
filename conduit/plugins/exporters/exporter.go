@@ -3,9 +3,10 @@ package exporters
 import (
 	"context"
 
+	"github.com/sirupsen/logrus"
+
 	"github.com/algorand/conduit/conduit/data"
 	"github.com/algorand/conduit/conduit/plugins"
-	"github.com/sirupsen/logrus"
 )
 
 // Exporter defines the interface for plugins

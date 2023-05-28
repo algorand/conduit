@@ -1,5 +1,6 @@
 package plugins
 
+// Plugin is the common interface for all Conduit plugins.
 type Plugin interface {
 	// PluginMetadata - implement this interface.
 	PluginMetadata

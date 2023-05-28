@@ -3,9 +3,10 @@ package processors
 import (
 	"context"
 
+	"github.com/sirupsen/logrus"
+
 	"github.com/algorand/conduit/conduit/data"
 	"github.com/algorand/conduit/conduit/plugins"
-	"github.com/sirupsen/logrus"
 )
 
 // Processor an interface that defines an object that can filter and process transactions
