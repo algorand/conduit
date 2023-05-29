@@ -28,7 +28,8 @@ func (i *mockImporter) Metadata() plugins.Metadata {
 func (i *mockImporter) Init(ctx context.Context, initProvider data.InitProvider, cfg plugins.PluginConfig, logger *logrus.Logger) (*sdk.Genesis, error) {
 	return &sdk.Genesis{}, nil
 }
-func (i *mockImporter) Config() string                              { return "" }
+
+// func (i *mockImporter) Config() string                              { return "" }
 func (i *mockImporter) Close() error                                { return nil }
 func (i *mockImporter) GetBlock(rnd uint64) (data.BlockData, error) { return data.BlockData{}, nil }
 

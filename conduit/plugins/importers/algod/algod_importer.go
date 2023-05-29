@@ -15,7 +15,6 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/sirupsen/logrus"
-	"gopkg.in/yaml.v3"
 
 	"github.com/algorand/go-algorand-sdk/v2/client/v2/algod"
 	"github.com/algorand/go-algorand-sdk/v2/client/v2/common"
@@ -382,10 +381,10 @@ func (algodImp *algodImporter) Init(ctx context.Context, initProvider data.InitP
 	return &genesis, err
 }
 
-func (algodImp *algodImporter) Config() string {
-	s, _ := yaml.Marshal(algodImp.cfg)
-	return string(s)
-}
+// func (algodImp *algodImporter) Config() string {
+// 	s, _ := yaml.Marshal(algodImp.cfg)
+// 	return string(s)
+// }
 
 func (algodImp *algodImporter) Close() error {
 	if algodImp.cancel != nil {

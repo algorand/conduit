@@ -81,7 +81,7 @@ func initializeImporter(t *testing.T, numRounds int) (importer importers.Importe
 	tempdir = t.TempDir()
 	genesisExpected := initializeTestData(t, tempdir, numRounds)
 	importer = New()
-	defer importer.Config()
+	// defer importer.Config()
 	cfg := Config{
 		BlocksDir:     tempdir,
 		RetryDuration: 0,
@@ -108,12 +108,12 @@ func TestInitUnmarshalFailure(t *testing.T) {
 	testImporter.Close()
 }
 
-func TestConfigDefault(t *testing.T) {
-	testImporter = New()
-	expected, err := yaml.Marshal(&Config{})
-	require.NoError(t, err)
-	assert.Equal(t, string(expected), testImporter.Config())
-}
+// func TestConfigDefault(t *testing.T) {
+// 	testImporter = New()
+// 	expected, err := yaml.Marshal(&Config{})
+// 	require.NoError(t, err)
+// 	assert.Equal(t, string(expected), testImporter.Config())
+// }
 
 func TestGetBlockSuccess(t *testing.T) {
 	numRounds := 10
@@ -133,7 +133,7 @@ func TestRetryAndDuration(t *testing.T) {
 	tempdir := t.TempDir()
 	initializeTestData(t, tempdir, 0)
 	importer := New()
-	defer importer.Config()
+	// defer importer.Config()
 	cfg := Config{
 		BlocksDir:     tempdir,
 		RetryDuration: 10 * time.Millisecond,
@@ -156,7 +156,7 @@ func TestRetryWithCancel(t *testing.T) {
 	tempdir := t.TempDir()
 	initializeTestData(t, tempdir, 0)
 	importer := New()
-	defer importer.Config()
+	// defer importer.Config()
 	cfg := Config{
 		BlocksDir:     tempdir,
 		RetryDuration: 1 * time.Hour,
