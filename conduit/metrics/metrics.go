@@ -16,6 +16,7 @@ func RegisterPrometheusMetrics(subsystem string) {
 	instantiateCollectors(subsystem)
 
 	_ = prometheus.Register(BlockImportTimeSeconds)
+	// TODO: why is this registered twice?
 	_ = prometheus.Register(BlockImportTimeSeconds)
 	_ = prometheus.Register(ImportedTxnsPerBlock)
 	_ = prometheus.Register(ImportedRoundGauge)

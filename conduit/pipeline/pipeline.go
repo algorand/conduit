@@ -409,7 +409,7 @@ func (p *pipelineImpl) Start() {
 					}
 					metrics.ImporterTimeSeconds.Observe(time.Since(importStart).Seconds())
 
-					// TODO: Verify that the block was build with a known protocol version.
+					// TODO: Verify that the block was built with a known protocol version.
 
 					// Start time currently measures operations after block fetching is complete.
 					// This is for backwards compatibility w/ Indexer's metrics
