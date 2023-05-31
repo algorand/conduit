@@ -228,8 +228,10 @@ func TestInitCatchup(t *testing.T) {
 			catchpoint: "",
 			algodServer: NewAlgodServer(
 				GenesisResponder,
+				MakePostSyncRoundResponder(http.StatusOK),
+				MakeJsonResponderSeries("/v2/status", []int{http.StatusOK, http.StatusBadRequest}, []interface{}{models.NodeStatus{LastRound: 1235}}),
 			),
-			err: "failed to lookup catchpoint label list",
+			logs: []string{"failed to lookup catchpoint label list"},
 		}, {
 			name:        "wait for node to catchup error",
 			adminToken:  "admin",

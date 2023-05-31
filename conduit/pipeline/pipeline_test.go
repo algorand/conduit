@@ -684,17 +684,18 @@ func (e *errorImporter) GetBlock(_ uint64) (data.BlockData, error) {
 
 // TestPipelineRetryVariables tests that modifying the retry variables results in longer time taken for a pipeline to run
 func TestPipelineRetryVariables(t *testing.T) {
+	maxDuration := 5 * time.Second
+	epsilon := 250 * time.Millisecond // allow for some error in timing
 	tests := []struct {
 		name          string
 		retryDelay    time.Duration
 		retryCount    uint64
 		totalDuration time.Duration
-		epsilon       time.Duration
 	}{
-		{"0 seconds", 2 * time.Second, 0, 0 * time.Second, 1 * time.Second},
-		{"2 seconds", 2 * time.Second, 1, 2 * time.Second, 1 * time.Second},
-		{"4 seconds", 2 * time.Second, 2, 4 * time.Second, 1 * time.Second},
-		{"10 seconds", 2 * time.Second, 5, 10 * time.Second, 1 * time.Second},
+		{"retryCount=0 (unlimited)", 500 * time.Millisecond, 0, maxDuration},
+		{"retryCount=1", 500 * time.Millisecond, 1, 500 * time.Millisecond},
+		{"retryCount=2", 500 * time.Millisecond, 2, 1 * time.Second},
+		{"retryCount=5", 500 * time.Millisecond, 5, 2500 * time.Millisecond},
 	}
 	for _, testCase := range tests {
 		t.Run(testCase.name, func(t *testing.T) {
@@ -704,8 +705,9 @@ func TestPipelineRetryVariables(t *testing.T) {
 			var pProcessor processors.Processor = &mockProcessor{}
 			var pExporter exporters.Exporter = &mockExporter{}
 			l, _ := test.NewNullLogger()
+			ctx, cf := context.WithCancel(context.Background())
 			pImpl := pipelineImpl{
-				ctx: context.Background(),
+				ctx: ctx,
 				cfg: &data.Config{
 					RetryCount: testCase.retryCount,
 					RetryDelay: testCase.retryDelay,
@@ -744,15 +746,28 @@ func TestPipelineRetryVariables(t *testing.T) {
 			err := pImpl.Init()
 			assert.Nil(t, err)
 			before := time.Now()
+			done := false
+			// test for "unlimited" timeout
+			go func() {
+				time.Sleep(maxDuration)
+				if !done {
+					cf()
+					assert.Equal(t, testCase.totalDuration, maxDuration)
+				}
+			}()
 			pImpl.Start()
 			pImpl.wg.Wait()
 			after := time.Now()
 			timeTaken := after.Sub(before)
 
-			msg := fmt.Sprintf("seconds taken: %s, expected duration seconds: %s, epsilon: %s", timeTaken.String(), testCase.totalDuration.String(), testCase.epsilon.String())
-			assert.WithinDurationf(t, before.Add(testCase.totalDuration), after, testCase.epsilon, msg)
-			assert.Equal(t, errImporter.GetBlockCount, testCase.retryCount+1)
-
+			msg := fmt.Sprintf("seconds taken: %s, expected duration seconds: %s, epsilon: %s", timeTaken.String(), testCase.totalDuration.String(), epsilon)
+			assert.WithinDurationf(t, before.Add(testCase.totalDuration), after, epsilon, msg)
+			if testCase.retryCount == 0 {
+				assert.GreaterOrEqual(t, errImporter.GetBlockCount, uint64(1))
+			} else {
+				assert.Equal(t, errImporter.GetBlockCount, testCase.retryCount+1)
+			}
+			done = true
 		})
 	}
 }

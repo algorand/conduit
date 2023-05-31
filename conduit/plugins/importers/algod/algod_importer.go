@@ -268,7 +268,9 @@ func (algodImp *algodImporter) catchupNode(network string, targetRound uint64) e
 			var err error
 			catchpoint, err = getMissingCatchpointLabel(URL, targetRound)
 			if err != nil {
-				algodImp.logger.Warnf("unable to lookup catchpoint: %w", err)
+				// catchpoints are only available for past 6 months.
+				// This case handles the scenario where the catchpoint is not available.
+				algodImp.logger.Warnf("unable to lookup catchpoint: %s", err)
 			}
 		}
 	}
