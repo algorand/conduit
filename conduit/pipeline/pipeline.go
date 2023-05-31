@@ -389,7 +389,7 @@ func (p *pipelineImpl) Start() {
 			}
 
 			if retry > 0 {
-				p.logger.Infof("Retry number %d resuming after a retry delay.", retry)
+				p.logger.Infof("Retry number %d resuming after a %s retry delay.", retry, p.cfg.RetryDelay)
 				time.Sleep(p.cfg.RetryDelay)
 			}
 

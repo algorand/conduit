@@ -10,6 +10,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -20,6 +21,7 @@ import (
 	"github.com/sirupsen/logrus/hooks/test"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 
 	"github.com/algorand/conduit/conduit"
 	"github.com/algorand/conduit/conduit/data"
@@ -692,10 +694,29 @@ func TestPipelineRetryVariables(t *testing.T) {
 		retryCount    uint64
 		totalDuration time.Duration
 	}{
-		{"retryCount=0 (unlimited)", 500 * time.Millisecond, 0, maxDuration},
-		{"retryCount=1", 500 * time.Millisecond, 1, 500 * time.Millisecond},
-		{"retryCount=2", 500 * time.Millisecond, 2, 1 * time.Second},
-		{"retryCount=5", 500 * time.Millisecond, 5, 2500 * time.Millisecond},
+		{
+			name:          "retryCount=0 (unlimited)",
+			retryDelay:    500 * time.Millisecond,
+			totalDuration: maxDuration,
+		},
+		{
+			name:          "retryCount=1",
+			retryDelay:    500 * time.Millisecond,
+			retryCount:    1,
+			totalDuration: 500 * time.Millisecond,
+		},
+		{
+			name:          "retryCount=2",
+			retryDelay:    500 * time.Millisecond,
+			retryCount:    2,
+			totalDuration: 1 * time.Second,
+		},
+		{
+			name:          "retryCount=5",
+			retryDelay:    500 * time.Millisecond,
+			retryCount:    5,
+			totalDuration: 2500 * time.Millisecond,
+		},
 	}
 	for _, testCase := range tests {
 		t.Run(testCase.name, func(t *testing.T) {
@@ -704,7 +725,7 @@ func TestPipelineRetryVariables(t *testing.T) {
 			var pImporter importers.Importer = errImporter
 			var pProcessor processors.Processor = &mockProcessor{}
 			var pExporter exporters.Exporter = &mockExporter{}
-			l, _ := test.NewNullLogger()
+			l, hook := test.NewNullLogger()
 			ctx, cf := context.WithCancel(context.Background())
 			pImpl := pipelineImpl{
 				ctx: ctx,
@@ -768,6 +789,17 @@ func TestPipelineRetryVariables(t *testing.T) {
 				assert.Equal(t, errImporter.GetBlockCount, testCase.retryCount+1)
 			}
 			done = true
+			for hook := hook.AllEntries(); len(hook) > 0; hook = hook[1:] {
+
+			}
+			fmt.Println(hook.AllEntries())
+			for _, entry := range hook.AllEntries() {
+				str, err := entry.String()
+				require.NoError(t, err)
+				if strings.HasPrefix(str, "Retry number 1") {
+					assert.Equal(t, "Retry number 1 resuming after a 500ms retry delay.", str)
+				}
+			}
 		})
 	}
 }
