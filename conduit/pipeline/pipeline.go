@@ -383,12 +383,13 @@ func (p *pipelineImpl) Start() {
 		for {
 		pipelineRun:
 			metrics.PipelineRetryCount.Observe(float64(retry))
-			if retry > p.cfg.RetryCount {
+			if retry > p.cfg.RetryCount && p.cfg.RetryCount != 0 {
 				p.logger.Errorf("Pipeline has exceeded maximum retry count (%d) - stopping...", p.cfg.RetryCount)
 				return
 			}
 
 			if retry > 0 {
+				p.logger.Infof("Retry number %d resuming after a retry delay.", retry)
 				time.Sleep(p.cfg.RetryDelay)
 			}
 

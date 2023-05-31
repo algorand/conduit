@@ -229,11 +229,7 @@ func checkRounds(logger *logrus.Logger, catchpointRound, nodeRound, targetRound 
 }
 
 func (algodImp *algodImporter) needsCatchup(targetRound uint64) bool {
-	if algodImp.mode == followerMode {
-		if targetRound == 0 {
-			algodImp.logger.Info("No state deltas are ever available for round 0")
-			return true
-		}
+	if algodImp.mode == followerMode && targetRound != 0 {
 		// If we are in follower mode, check if the round delta is available.
 		_, err := algodImp.getDelta(targetRound)
 		if err != nil {
@@ -272,7 +268,7 @@ func (algodImp *algodImporter) catchupNode(network string, targetRound uint64) e
 			var err error
 			catchpoint, err = getMissingCatchpointLabel(URL, targetRound)
 			if err != nil {
-				return fmt.Errorf("unable to lookup catchpoint: %w", err)
+				algodImp.logger.Warnf("unable to lookup catchpoint: %w", err)
 			}
 		}
 	}
