@@ -228,8 +228,10 @@ func TestInitCatchup(t *testing.T) {
 			catchpoint: "",
 			algodServer: NewAlgodServer(
 				GenesisResponder,
+				MakePostSyncRoundResponder(http.StatusOK),
+				MakeJsonResponderSeries("/v2/status", []int{http.StatusOK, http.StatusBadRequest}, []interface{}{models.NodeStatus{LastRound: 1235}}),
 			),
-			err: "failed to lookup catchpoint label list",
+			logs: []string{"failed to lookup catchpoint label list"},
 		}, {
 			name:        "wait for node to catchup error",
 			adminToken:  "admin",
@@ -712,20 +714,20 @@ func TestNeedsCatchup(t *testing.T) {
 			result:     false,
 		},
 		{
-			name:       "Follower mode round 0, no delta",
+			name:       "Follower mode round 0, no block",
 			mode:       followerMode,
 			round:      0,
 			responders: []algodCustomHandler{},
-			logMsg:     "No state deltas are ever available for round 0",
+			logMsg:     "Unable to fetch block for round 0",
 			result:     true,
 		},
 		{
 			name:       "Follower mode round 0, delta",
 			mode:       followerMode,
 			round:      0,
-			responders: []algodCustomHandler{LedgerStateDeltaResponder},
-			logMsg:     "No state deltas are ever available for round 0",
-			result:     true,
+			responders: []algodCustomHandler{BlockResponder},
+			logMsg:     "",
+			result:     false,
 		},
 		{
 			name:       "Archival mode, no block",
