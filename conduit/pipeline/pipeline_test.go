@@ -789,9 +789,6 @@ func TestPipelineRetryVariables(t *testing.T) {
 				assert.Equal(t, errImporter.GetBlockCount, testCase.retryCount+1)
 			}
 			done = true
-			for hook := hook.AllEntries(); len(hook) > 0; hook = hook[1:] {
-
-			}
 			fmt.Println(hook.AllEntries())
 			for _, entry := range hook.AllEntries() {
 				str, err := entry.String()
