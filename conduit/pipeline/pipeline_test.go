@@ -610,6 +610,7 @@ func TestRoundRequestError(t *testing.T) {
 func TestRoundOverride(t *testing.T) {
 	// cli override NextRound, 0 is a test for no override.
 	for i := 0; i < 10; i++ {
+		i := i
 		t.Run(fmt.Sprintf("cli round override %d", i), func(t *testing.T) {
 			t.Parallel()
 			pImpl, _, _, _, _ := mockPipeline(t, "")
