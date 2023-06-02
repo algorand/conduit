@@ -1,6 +1,5 @@
 # Getting Started
 
-
 ## Installation
 
 ### Download
@@ -13,7 +12,9 @@ The latest `conduit` binary can be downloaded from the [GitHub releases page](ht
 2. Run `make conduit`.
 3. The binary is created at `cmd/conduit/conduit`.
 
-## Getting Started
+## Configuration and Plugins
+
+### Configuration File
 
 Conduit requires a configuration file to set up and run a data pipeline. To generate an initial skeleton for a conduit
 config file, you can run `./conduit init -d data`. This will set up a sample data directory with a config located at
@@ -24,17 +25,21 @@ You can find a valid config file in [Configuration.md](Configuration.md) or via 
 
 Once you have a valid config file in a directory, `config_directory`, launch conduit with `./conduit -d config_directory`.
 
-# Configuration and Plugins
+### Plugins
+
 Conduit comes with an initial set of plugins available for use in pipelines. For more information on the possible
 plugins and how to include these plugins in your pipeline's configuration file see [Configuration.md](Configuration.md).
 
-# Tutorials
+## Tutorials
 
-## Migrate from the Legacy Indexer Architecture to a Conduit-backed Indexer
+### Migrate from the Legacy Indexer Architecture to a Conduit-backed Indexer
+
 [How to migrate from a legacy Indexer architecture to a Conduit-backed Indexer deployment. .](./tutorials/IndexerMigration.md)
 
-## Set up Conduit for the Indexer API
+### Set up Conduit for the Indexer API
+
 [How to configure algod, PostgreSQL and Conduit as an Indexer API backend.](./tutorials/IndexerWriter.md)
 
-## Writing Block Data to the Filesystem
+### Writing Block Data to the Filesystem
+
 [Use the file exporter to write data to files.](./tutorials/WritingBlocksToFile.md)
