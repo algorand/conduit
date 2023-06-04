@@ -102,15 +102,18 @@ func (p *pipelineImpl) registerPluginMetricsCallbacks() {
 	}
 }
 
+// makeConfig creates a plugin config from a name and config pair.
+// It also creates a logger for the plugin and configures it using the pipeline's log settings.
 func (p *pipelineImpl) makeConfig(cfg data.NameConfigPair, pluginType plugins.PluginType) (*log.Logger, plugins.PluginConfig, error) {
 	configs, err := yaml.Marshal(cfg.Config)
 	if err != nil {
-		return nil, plugins.PluginConfig{}, fmt.Errorf("makeConfig(): could not serialize config: %w", err)
+		return nil, plugins.PluginConfig{}, fmt.Errorf("makeLoggerAndConfig(): could not serialize config: %w", err)
 	}
 
-	l := log.New()
-	l.SetOutput(p.logger.Out)
-	l.SetFormatter(makePluginLogFormatter(plugins.Processor, cfg.Name))
+	lgr := log.New()
+	lgr.SetOutput(p.logger.Out)
+	lgr.SetLevel(p.logger.Level)
+	lgr.SetFormatter(makePluginLogFormatter(string(pluginType), cfg.Name))
 
 	var config plugins.PluginConfig
 	config.Config = string(configs)
@@ -118,11 +121,11 @@ func (p *pipelineImpl) makeConfig(cfg data.NameConfigPair, pluginType plugins.Pl
 		config.DataDir = path.Join(p.cfg.ConduitArgs.ConduitDataDir, fmt.Sprintf("%s_%s", pluginType, cfg.Name))
 		err = os.MkdirAll(config.DataDir, os.ModePerm)
 		if err != nil {
-			return nil, plugins.PluginConfig{}, fmt.Errorf("makeConfig: unable to create plugin data directory: %w", err)
+			return nil, plugins.PluginConfig{}, fmt.Errorf("makeLoggerAndConfig: unable to create plugin data directory: %w", err)
 		}
 	}
 
-	return l, config, nil
+	return lgr, config, nil
 }
 
 // pluginRoundOverride looks at the round override argument, and attempts to query

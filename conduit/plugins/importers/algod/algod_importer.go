@@ -69,7 +69,9 @@ var algodImporterMetadata = plugins.Metadata{
 
 func (algodImp *algodImporter) OnComplete(input data.BlockData) error {
 	if algodImp.mode == followerMode {
-		_, err := algodImp.aclient.SetSyncRound(input.Round() + 1).Do(algodImp.ctx)
+		syncRound := input.Round() + 1
+		_, err := algodImp.aclient.SetSyncRound(syncRound).Do(algodImp.ctx)
+		algodImp.logger.Tracef("importer algod.OnComplete(BlockData) called SetSyncRound(syncRound=%d) err: %v", syncRound, err)
 		return err
 	}
 
@@ -135,6 +137,7 @@ func (algodImp *algodImporter) monitorCatchpointCatchup() error {
 			return algodImp.ctx.Err()
 		}
 		stat, err := algodImp.aclient.Status().Do(algodImp.ctx)
+		algodImp.logger.Tracef("importer algod.monitorCatchpointCatchup() called Status() err: %v", err)
 		if err != nil {
 			return fmt.Errorf("received unexpected error getting node status: %w", err)
 		}
@@ -240,6 +243,7 @@ func (algodImp *algodImporter) needsCatchup(targetRound uint64) bool {
 
 	// Otherwise just check if the block is available.
 	_, err := algodImp.aclient.Block(targetRound).Do(algodImp.ctx)
+	algodImp.logger.Tracef("importer algod.needsCatchup() called Block(targetRound=%d) err: %v", targetRound, err)
 	if err != nil {
 		algodImp.logger.Infof("Unable to fetch block for round %d: %s", targetRound, err)
 	}
@@ -283,6 +287,7 @@ func (algodImp *algodImporter) catchupNode(network string, targetRound uint64) e
 
 		// Get the node status.
 		nStatus, err := algodImp.aclient.Status().Do(algodImp.ctx)
+		algodImp.logger.Tracef("importer algod.catchupNode() called Status() err: %v", err)
 		if err != nil {
 			return fmt.Errorf("received unexpected error failed to get node status: %w", err)
 		}
@@ -309,12 +314,14 @@ func (algodImp *algodImporter) catchupNode(network string, targetRound uint64) e
 	if algodImp.mode == followerMode {
 		// Set the sync round to the round provided by initProvider
 		_, err := algodImp.aclient.SetSyncRound(targetRound).Do(algodImp.ctx)
+		algodImp.logger.Tracef("importer algod.catchupNode() called SetSyncRound(targetRound=%d) err: %v", targetRound, err)
 		if err != nil {
 			return fmt.Errorf("received unexpected error setting sync round (%d): %w", targetRound, err)
 		}
 	}
 
 	_, err := algodImp.aclient.StatusAfterBlock(targetRound).Do(algodImp.ctx)
+	algodImp.logger.Tracef("importer algod.catchupNode() called StatusAfterBlock(targetRound=%d) err: %v", targetRound, err)
 	if err != nil {
 		err = fmt.Errorf("received unexpected error (StatusAfterBlock) waiting for node to catchup: %w", err)
 	}
@@ -399,6 +406,7 @@ func (algodImp *algodImporter) getDelta(rnd uint64) (sdk.LedgerStateDelta, error
 	}{Format: "msgp"}
 	// Note: this uses lenient decoding. GetRaw and msgpack.Decode would allow strict decoding.
 	err := (*common.Client)(algodImp.aclient).GetRawMsgpack(algodImp.ctx, &delta, fmt.Sprintf("/v2/deltas/%d", rnd), params, nil)
+	algodImp.logger.Tracef("importer algod.getDelta() called /v2/deltas/%d err: %v", rnd, err)
 	if err != nil {
 		return sdk.LedgerStateDelta{}, err
 	}
@@ -414,6 +422,7 @@ func (algodImp *algodImporter) GetBlock(rnd uint64) (data.BlockData, error) {
 
 	for r := 0; r < retries; r++ {
 		status, err = algodImp.aclient.StatusAfterBlock(rnd - 1).Do(algodImp.ctx)
+		algodImp.logger.Tracef("importer algod.GetBlock() called StatusAfterBlock(%d) err: %v", rnd-1, err)
 		if err != nil {
 			// If context has expired.
 			if algodImp.ctx.Err() != nil {
@@ -425,6 +434,7 @@ func (algodImp *algodImporter) GetBlock(rnd uint64) (data.BlockData, error) {
 		}
 		start := time.Now()
 		blockbytes, err = algodImp.aclient.BlockRaw(rnd).Do(algodImp.ctx)
+		algodImp.logger.Tracef("importer algod.GetBlock() called BlockRaw(%d) err: %v", rnd, err)
 		dt := time.Since(start)
 		getAlgodRawBlockTimeSeconds.Observe(dt.Seconds())
 		if err != nil {
