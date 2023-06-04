@@ -107,7 +107,7 @@ func (p *pipelineImpl) registerPluginMetricsCallbacks() {
 func (p *pipelineImpl) makeConfig(cfg data.NameConfigPair, pluginType plugins.PluginType) (*log.Logger, plugins.PluginConfig, error) {
 	configs, err := yaml.Marshal(cfg.Config)
 	if err != nil {
-		return nil, plugins.PluginConfig{}, fmt.Errorf("makeLoggerAndConfig(): could not serialize config: %w", err)
+		return nil, plugins.PluginConfig{}, fmt.Errorf("makeConfig(): could not serialize config: %w", err)
 	}
 
 	lgr := log.New()
@@ -121,7 +121,7 @@ func (p *pipelineImpl) makeConfig(cfg data.NameConfigPair, pluginType plugins.Pl
 		config.DataDir = path.Join(p.cfg.ConduitArgs.ConduitDataDir, fmt.Sprintf("%s_%s", pluginType, cfg.Name))
 		err = os.MkdirAll(config.DataDir, os.ModePerm)
 		if err != nil {
-			return nil, plugins.PluginConfig{}, fmt.Errorf("makeLoggerAndConfig: unable to create plugin data directory: %w", err)
+			return nil, plugins.PluginConfig{}, fmt.Errorf("makeConfig: unable to create plugin data directory: %w", err)
 		}
 	}
 
