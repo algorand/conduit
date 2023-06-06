@@ -48,7 +48,7 @@ func TestCloseSuccess(t *testing.T) {
 mode: %s
 netaddr: %s
 `, archivalModeStr, ts.URL)
-	gen, err := testImporter.Init(ctx, conduit.MakePipelineInitProvider(&pRound, nil), plugins.MakePluginConfig(cfgStr), logger)
+	gen, err := testImporter.Init(ctx, conduit.MakePipelineInitProvider(&pRound, nil, nil), plugins.MakePluginConfig(cfgStr), logger)
 	assert.NoError(t, err)
 	assert.NotNil(t, gen)
 	err = testImporter.Close()
@@ -287,7 +287,7 @@ func TestInitCatchup(t *testing.T) {
 			cfgStr, err := yaml.Marshal(cfg)
 			require.NoError(t, err)
 			var gen *sdk.Genesis
-			gen, err = testImporter.Init(context.Background(), conduit.MakePipelineInitProvider(&ttest.targetRound, nil), plugins.MakePluginConfig(string(cfgStr)), testLogger)
+			gen, err = testImporter.Init(context.Background(), conduit.MakePipelineInitProvider(&ttest.targetRound, nil, nil), plugins.MakePluginConfig(string(cfgStr)), testLogger)
 			if ttest.err != "" {
 				require.ErrorContains(t, err, ttest.err, ttest.err)
 			} else {
@@ -319,7 +319,7 @@ func TestInitParseUrlFailure(t *testing.T) {
 mode: %s
 netaddr: %s
 `, "follower", url)
-	gen, err := testImporter.Init(ctx, conduit.MakePipelineInitProvider(&pRound, nil), plugins.MakePluginConfig(cfgStr), logger)
+	gen, err := testImporter.Init(ctx, conduit.MakePipelineInitProvider(&pRound, nil, nil), plugins.MakePluginConfig(cfgStr), logger)
 	assert.ErrorContains(t, err, "parse")
 	assert.Nil(t, gen)
 }
@@ -337,7 +337,7 @@ func TestInitModeFailure(t *testing.T) {
 mode: %s
 netaddr: %s
 `, name, ts.URL)
-	gen, err := testImporter.Init(ctx, conduit.MakePipelineInitProvider(&pRound, nil), plugins.MakePluginConfig(cfgStr), logger)
+	gen, err := testImporter.Init(ctx, conduit.MakePipelineInitProvider(&pRound, nil, nil), plugins.MakePluginConfig(cfgStr), logger)
 	assert.EqualError(t, err, fmt.Sprintf("algod importer was set to a mode (%s) that wasn't supported", name))
 	assert.Nil(t, gen)
 }
@@ -354,7 +354,7 @@ func TestInitGenesisFailure(t *testing.T) {
 mode: %s
 netaddr: %s
 `, archivalModeStr, ts.URL)
-	gen, err := testImporter.Init(ctx, conduit.MakePipelineInitProvider(&pRound, nil), plugins.MakePluginConfig(cfgStr), logger)
+	gen, err := testImporter.Init(ctx, conduit.MakePipelineInitProvider(&pRound, nil, nil), plugins.MakePluginConfig(cfgStr), logger)
 	assert.Error(t, err)
 	assert.ErrorContains(t, err, "unable to fetch genesis file")
 	assert.Nil(t, gen)
@@ -368,7 +368,7 @@ func TestInitUnmarshalFailure(t *testing.T) {
 	logger := logrus.New()
 
 	testImporter := New()
-	gen, err := testImporter.Init(ctx, conduit.MakePipelineInitProvider(&pRound, nil), plugins.MakePluginConfig("`"), logger)
+	gen, err := testImporter.Init(ctx, conduit.MakePipelineInitProvider(&pRound, nil, nil), plugins.MakePluginConfig("`"), logger)
 	assert.Error(t, err)
 	assert.ErrorContains(t, err, "connect failure in unmarshalConfig")
 	assert.Nil(t, gen)
@@ -397,7 +397,7 @@ func TestWaitForBlockBlockFailure(t *testing.T) {
 mode: %s
 netaddr: %s
 `, archivalModeStr, ts.URL)
-	gen, err := testImporter.Init(ctx, conduit.MakePipelineInitProvider(&pRound, nil), plugins.MakePluginConfig(cfgStr), logger)
+	gen, err := testImporter.Init(ctx, conduit.MakePipelineInitProvider(&pRound, nil, nil), plugins.MakePluginConfig(cfgStr), logger)
 	assert.NoError(t, err)
 	assert.NotNil(t, gen)
 	assert.NotEqual(t, testImporter, nil)
@@ -454,7 +454,7 @@ func TestGetBlockSuccess(t *testing.T) {
 			testImporter := &algodImporter{}
 
 			var gen *sdk.Genesis
-			gen, err = testImporter.Init(ctx, conduit.MakePipelineInitProvider(&pRound, nil), plugins.MakePluginConfig(string(cfgStr)), logger)
+			gen, err = testImporter.Init(ctx, conduit.MakePipelineInitProvider(&pRound, nil, nil), plugins.MakePluginConfig(string(cfgStr)), logger)
 			assert.NoError(t, err)
 			assert.NotNil(t, gen)
 			assert.NotEqual(t, testImporter, nil)
@@ -514,7 +514,7 @@ func TestGetBlockContextCancelled(t *testing.T) {
 mode: %s
 netaddr: %s
 `, ttest.name, ttest.algodServer.URL)
-			gen, err := testImporter.Init(ctx, conduit.MakePipelineInitProvider(&pRound, nil), plugins.MakePluginConfig(cfgStr), logger)
+			gen, err := testImporter.Init(ctx, conduit.MakePipelineInitProvider(&pRound, nil, nil), plugins.MakePluginConfig(cfgStr), logger)
 			assert.NoError(t, err)
 			assert.NotNil(t, gen)
 			assert.NotEqual(t, testImporter, nil)
@@ -559,7 +559,7 @@ func TestGetBlockFailure(t *testing.T) {
 mode: %s
 netaddr: %s
 `, ttest.name, ttest.algodServer.URL)
-			gen, err := testImporter.Init(ctx, conduit.MakePipelineInitProvider(&pRound, nil), plugins.MakePluginConfig(cfgStr), logger)
+			gen, err := testImporter.Init(ctx, conduit.MakePipelineInitProvider(&pRound, nil, nil), plugins.MakePluginConfig(cfgStr), logger)
 			assert.NoError(t, err)
 			assert.NotNil(t, gen)
 			assert.NotEqual(t, testImporter, nil)
@@ -651,7 +651,7 @@ func TestGetBlockErrors(t *testing.T) {
 
 			testImporter := &algodImporter{}
 			var gen *sdk.Genesis
-			gen, err = testImporter.Init(ctx, conduit.MakePipelineInitProvider(&pRound, nil), pcfg, testLogger)
+			gen, err = testImporter.Init(ctx, conduit.MakePipelineInitProvider(&pRound, nil, nil), pcfg, testLogger)
 			require.NoError(t, err)
 			require.NotNil(t, gen)
 
