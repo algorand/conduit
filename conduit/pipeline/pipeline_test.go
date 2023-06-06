@@ -10,6 +10,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -20,6 +21,7 @@ import (
 	"github.com/sirupsen/logrus/hooks/test"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 
 	"github.com/algorand/conduit/conduit"
 	"github.com/algorand/conduit/conduit/data"
@@ -649,6 +651,7 @@ func TestRoundRequestError(t *testing.T) {
 func TestRoundOverride(t *testing.T) {
 	// cli override NextRound, 0 is a test for no override.
 	for i := 0; i < 10; i++ {
+		i := i
 		t.Run(fmt.Sprintf("cli round override %d", i), func(t *testing.T) {
 			t.Parallel()
 			pImpl, _, _, _, _ := mockPipeline(t, "")
@@ -723,17 +726,37 @@ func (e *errorImporter) GetBlock(_ uint64) (data.BlockData, error) {
 
 // TestPipelineRetryVariables tests that modifying the retry variables results in longer time taken for a pipeline to run
 func TestPipelineRetryVariables(t *testing.T) {
+	maxDuration := 5 * time.Second
+	epsilon := 250 * time.Millisecond // allow for some error in timing
 	tests := []struct {
 		name          string
 		retryDelay    time.Duration
 		retryCount    uint64
 		totalDuration time.Duration
-		epsilon       time.Duration
 	}{
-		{"0 seconds", 2 * time.Second, 0, 0 * time.Second, 1 * time.Second},
-		{"2 seconds", 2 * time.Second, 1, 2 * time.Second, 1 * time.Second},
-		{"4 seconds", 2 * time.Second, 2, 4 * time.Second, 1 * time.Second},
-		{"10 seconds", 2 * time.Second, 5, 10 * time.Second, 1 * time.Second},
+		{
+			name:          "retryCount=0 (unlimited)",
+			retryDelay:    500 * time.Millisecond,
+			totalDuration: maxDuration,
+		},
+		{
+			name:          "retryCount=1",
+			retryDelay:    500 * time.Millisecond,
+			retryCount:    1,
+			totalDuration: 500 * time.Millisecond,
+		},
+		{
+			name:          "retryCount=2",
+			retryDelay:    500 * time.Millisecond,
+			retryCount:    2,
+			totalDuration: 1 * time.Second,
+		},
+		{
+			name:          "retryCount=5",
+			retryDelay:    500 * time.Millisecond,
+			retryCount:    5,
+			totalDuration: 2500 * time.Millisecond,
+		},
 	}
 	for _, testCase := range tests {
 		t.Run(testCase.name, func(t *testing.T) {
@@ -742,9 +765,10 @@ func TestPipelineRetryVariables(t *testing.T) {
 			var pImporter importers.Importer = errImporter
 			var pProcessor processors.Processor = &mockProcessor{}
 			var pExporter exporters.Exporter = &mockExporter{}
-			l, _ := test.NewNullLogger()
+			l, hook := test.NewNullLogger()
+			ctx, cf := context.WithCancel(context.Background())
 			pImpl := pipelineImpl{
-				ctx: context.Background(),
+				ctx: ctx,
 				cfg: &data.Config{
 					RetryCount: testCase.retryCount,
 					RetryDelay: testCase.retryDelay,
@@ -783,15 +807,36 @@ func TestPipelineRetryVariables(t *testing.T) {
 			err := pImpl.Init()
 			assert.Nil(t, err)
 			before := time.Now()
+			done := false
+			// test for "unlimited" timeout
+			go func() {
+				time.Sleep(maxDuration)
+				if !done {
+					cf()
+					assert.Equal(t, testCase.totalDuration, maxDuration)
+				}
+			}()
 			pImpl.Start()
 			pImpl.wg.Wait()
 			after := time.Now()
 			timeTaken := after.Sub(before)
 
-			msg := fmt.Sprintf("seconds taken: %s, expected duration seconds: %s, epsilon: %s", timeTaken.String(), testCase.totalDuration.String(), testCase.epsilon.String())
-			assert.WithinDurationf(t, before.Add(testCase.totalDuration), after, testCase.epsilon, msg)
-			assert.Equal(t, errImporter.GetBlockCount, testCase.retryCount+1)
-
+			msg := fmt.Sprintf("seconds taken: %s, expected duration seconds: %s, epsilon: %s", timeTaken.String(), testCase.totalDuration.String(), epsilon)
+			assert.WithinDurationf(t, before.Add(testCase.totalDuration), after, epsilon, msg)
+			if testCase.retryCount == 0 {
+				assert.GreaterOrEqual(t, errImporter.GetBlockCount, uint64(1))
+			} else {
+				assert.Equal(t, errImporter.GetBlockCount, testCase.retryCount+1)
+			}
+			done = true
+			fmt.Println(hook.AllEntries())
+			for _, entry := range hook.AllEntries() {
+				str, err := entry.String()
+				require.NoError(t, err)
+				if strings.HasPrefix(str, "Retry number 1") {
+					assert.Equal(t, "Retry number 1 resuming after a 500ms retry delay.", str)
+				}
+			}
 		})
 	}
 }
