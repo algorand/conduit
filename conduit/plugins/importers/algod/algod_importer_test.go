@@ -325,7 +325,7 @@ netaddr: %s
 	err := testImporter.Init(ctx, conduit.MakePipelineInitProvider(&pRound, nil), plugins.MakePluginConfig(cfgStr), logger)
 	assert.ErrorContains(t, err, "parse")
 	gen, err := testImporter.GetGenesis()
-	require.NoError(t, err)
+	require.Error(t, err, "algod importer is missing its genesis")
 	assert.Nil(t, gen)
 }
 
@@ -345,7 +345,7 @@ netaddr: %s
 	err := testImporter.Init(ctx, conduit.MakePipelineInitProvider(&pRound, nil), plugins.MakePluginConfig(cfgStr), logger)
 	assert.EqualError(t, err, fmt.Sprintf("algod importer was set to a mode (%s) that wasn't supported", name))
 	gen, err := testImporter.GetGenesis()
-	require.NoError(t, err)
+	require.Error(t, err, "algod importer is missing its genesis")
 	assert.Nil(t, gen)
 }
 
@@ -366,7 +366,7 @@ netaddr: %s
 	assert.ErrorContains(t, err, "unable to fetch genesis file")
 	gen, err := testImporter.GetGenesis()
 	assert.Nil(t, gen)
-	require.NoError(t, err)
+	require.Error(t, err, "algod importer is missing its genesis")
 	testImporter.Close()
 }
 
@@ -381,7 +381,7 @@ func TestInitUnmarshalFailure(t *testing.T) {
 	assert.Error(t, err)
 	assert.ErrorContains(t, err, "connect failure in unmarshalConfig")
 	gen, err := testImporter.GetGenesis()
-	require.NoError(t, err)
+	require.Error(t, err, "algod importer is missing its genesis")
 	assert.Nil(t, gen)
 	testImporter.Close()
 }

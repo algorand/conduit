@@ -389,7 +389,7 @@ func (algodImp *algodImporter) GetGenesis() (*sdk.Genesis, error) {
 	if algodImp.genesis != nil {
 		return algodImp.genesis, nil
 	}
-	return nil, fmt.Errorf("algod importer is missing its genesis: GetGenesis() should be called before Init()")
+	return nil, fmt.Errorf("algod importer is missing its genesis: GetGenesis() should be called only after Init()")
 }
 
 func (algodImp *algodImporter) Close() error {
