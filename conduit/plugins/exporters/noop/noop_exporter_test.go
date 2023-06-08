@@ -38,16 +38,6 @@ func TestExporterInit(t *testing.T) {
 	assert.NoError(t, ne.Init(context.Background(), &conduit.PipelineInitProvider{}, plugins.MakePluginConfig(""), nil))
 }
 
-// func TestExporterConfig(t *testing.T) {
-// 	defaultConfig := &ExporterConfig{}
-// 	expected, err := yaml.Marshal(defaultConfig)
-// 	if err != nil {
-// 		t.Fatalf("unable to Marshal default noop.ExporterConfig: %v", err)
-// 	}
-// 	assert.NoError(t, ne.Init(context.Background(), &conduit.PipelineInitProvider{}, plugins.MakePluginConfig(""), nil))
-// 	assert.Equal(t, string(expected), ne.Config())
-// }
-
 func TestExporterClose(t *testing.T) {
 	assert.NoError(t, ne.Close())
 }
