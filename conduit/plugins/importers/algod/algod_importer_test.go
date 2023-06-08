@@ -151,7 +151,8 @@ func TestInitCatchup(t *testing.T) {
 		targetRound sdk.Round
 		adminToken  string // to trigger fast-catchup
 		algodServer *httptest.Server
-		err         string
+		errInit     string
+		errGetGen   string
 		logs        []string
 	}{
 		{
@@ -160,8 +161,9 @@ func TestInitCatchup(t *testing.T) {
 			algodServer: NewAlgodServer(
 				GenesisResponder,
 				MakePostSyncRoundResponder(http.StatusBadRequest)),
-			err:  "received unexpected error setting sync round (1): HTTP 400",
-			logs: []string{}},
+			errInit:   "received unexpected error setting sync round (1): HTTP 400",
+			errGetGen: "",
+			logs:      []string{}},
 		{
 			name:       "catchpoint parse failure",
 			adminToken: "admin",
@@ -169,8 +171,9 @@ func TestInitCatchup(t *testing.T) {
 			algodServer: NewAlgodServer(
 				GenesisResponder,
 				MakePostSyncRoundResponder(http.StatusOK)),
-			err:  "unable to parse catchpoint, invalid format",
-			logs: []string{}},
+			errInit:   "unable to parse catchpoint, invalid format",
+			errGetGen: "",
+			logs:      []string{}},
 		{
 			name:       "invalid catchpoint round uint parsing error",
 			adminToken: "admin",
@@ -178,8 +181,9 @@ func TestInitCatchup(t *testing.T) {
 			algodServer: NewAlgodServer(
 				GenesisResponder,
 				MakePostSyncRoundResponder(http.StatusOK)),
-			err:  "invalid syntax",
-			logs: []string{}},
+			errInit:   "invalid syntax",
+			errGetGen: "",
+			logs:      []string{}},
 		{
 			name:       "node status failure",
 			adminToken: "admin",
@@ -188,8 +192,9 @@ func TestInitCatchup(t *testing.T) {
 				GenesisResponder,
 				MakePostSyncRoundResponder(http.StatusOK),
 				MakeMsgpStatusResponder("get", "/v2/status", http.StatusBadRequest, "")),
-			err:  "received unexpected error failed to get node status: HTTP 400",
-			logs: []string{}},
+			errInit:   "received unexpected error failed to get node status: HTTP 400",
+			errGetGen: "",
+			logs:      []string{}},
 		{
 			name:        "catchpoint round before node round skips fast catchup",
 			adminToken:  "admin",
@@ -210,8 +215,9 @@ func TestInitCatchup(t *testing.T) {
 				MakePostSyncRoundResponder(http.StatusOK),
 				MakeNodeStatusResponder(models.NodeStatus{LastRound: 1235}),
 				MakeMsgpStatusResponder("get", "/v2/catchup/", http.StatusBadRequest, "")),
-			err:  "POST /v2/catchup/1236#abcd received unexpected error: HTTP 400",
-			logs: []string{},
+			errInit:   "POST /v2/catchup/1236#abcd received unexpected error: HTTP 400",
+			errGetGen: "",
+			logs:      []string{},
 		},
 		{
 			name:        "monitor catchup node status failure",
@@ -224,8 +230,9 @@ func TestInitCatchup(t *testing.T) {
 				// OK in 'catchupNode', fail in 'monitorCatchup'
 				MakeJsonResponderSeries("/v2/status", []int{http.StatusOK, http.StatusBadRequest}, []interface{}{models.NodeStatus{LastRound: 1235}}),
 				MakeMsgpStatusResponder("post", "/v2/catchup/", http.StatusOK, "")),
-			err:  "received unexpected error getting node status: HTTP 400",
-			logs: []string{},
+			errInit:   "received unexpected error getting node status: HTTP 400",
+			errGetGen: "",
+			logs:      []string{},
 		}, {
 			name:       "auto catchup used (even if the mocking isn't setup for it)",
 			adminToken: "admin",
@@ -246,8 +253,9 @@ func TestInitCatchup(t *testing.T) {
 				MakePostSyncRoundResponder(http.StatusOK),
 				MakeJsonResponderSeries("/v2/status", []int{http.StatusOK, http.StatusOK, http.StatusBadRequest}, []interface{}{models.NodeStatus{LastRound: 1235}}),
 				MakeMsgpStatusResponder("post", "/v2/catchup/", http.StatusOK, nil)),
-			err:  "received unexpected error (StatusAfterBlock) waiting for node to catchup: HTTP 400",
-			logs: []string{},
+			errInit:   "received unexpected error (StatusAfterBlock) waiting for node to catchup: HTTP 400",
+			errGetGen: "",
+			logs:      []string{},
 		}, {
 			name:        "monitor catchup success",
 			adminToken:  "admin",
@@ -288,15 +296,20 @@ func TestInitCatchup(t *testing.T) {
 			}
 			cfgStr, err := yaml.Marshal(cfg)
 			require.NoError(t, err)
-			//var gen *sdk.Genesis
-			// TODO: this needs to handle GetGenesis
 			err = testImporter.Init(context.Background(), conduit.MakePipelineInitProvider(&ttest.targetRound, nil), plugins.MakePluginConfig(string(cfgStr)), testLogger)
-			if ttest.err != "" {
-				require.ErrorContains(t, err, ttest.err, ttest.err)
+			if ttest.errInit != "" {
+				require.ErrorContains(t, err, ttest.errInit, ttest.errInit)
 			} else {
 				require.NoError(t, err)
-				// assert.NotNil(t, gen)
 			}
+			gen, errGG := testImporter.GetGenesis()
+			if ttest.errGetGen != "" {
+				require.Nil(t, gen)
+				require.ErrorContains(t, errGG, ttest.errGetGen, ttest.errGetGen)
+			} else {
+				require.NoError(t, errGG)
+			}
+
 			_ = testImporter.Close()
 			// Make sure each of the expected log messages are present
 			for _, log := range ttest.logs {
