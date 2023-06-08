@@ -37,11 +37,6 @@ func (p *Processor) Metadata() plugins.Metadata {
 	}
 }
 
-// Config noop
-// func (p *Processor) Config() string {
-// 	return ""
-// }
-
 // Init noop
 func (p *Processor) Init(_ context.Context, _ data.InitProvider, _ plugins.PluginConfig, _ *logrus.Logger) error {
 	return nil

@@ -141,11 +141,6 @@ func (exp *postgresqlExporter) Init(ctx context.Context, initProvider data.InitP
 	return nil
 }
 
-// func (exp *postgresqlExporter) Config() string {
-// 	ret, _ := yaml.Marshal(exp.cfg)
-// 	return string(ret)
-// }
-
 func (exp *postgresqlExporter) Close() error {
 	if exp.db != nil {
 		exp.db.Close()

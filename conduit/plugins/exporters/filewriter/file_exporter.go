@@ -67,11 +67,6 @@ func (exp *fileExporter) Init(_ context.Context, initProvider data.InitProvider,
 	return err
 }
 
-// func (exp *fileExporter) Config() string {
-// 	ret, _ := yaml.Marshal(exp.cfg)
-// 	return string(ret)
-// }
-
 func (exp *fileExporter) Close() error {
 	exp.logger.Infof("latest round on file: %d", exp.round)
 	return nil

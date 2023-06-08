@@ -372,16 +372,6 @@ func TestInitUnmarshalFailure(t *testing.T) {
 	testImporter.Close()
 }
 
-// func TestConfigDefault(t *testing.T) {
-// 	t.Parallel()
-// 	testImporter := New()
-// 	expected, err := yaml.Marshal(&Config{})
-// 	if err != nil {
-// 		t.Fatalf("unable to Marshal default algodimporter.Config: %v", err)
-// 	}
-// 	assert.Equal(t, string(expected), testImporter.Config())
-// }
-
 func TestWaitForBlockBlockFailure(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()

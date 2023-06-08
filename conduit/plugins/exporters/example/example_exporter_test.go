@@ -28,10 +28,6 @@ func TestExporterInit(t *testing.T) {
 	assert.Panics(t, func() { exExp.Init(context.Background(), nil, plugins.MakePluginConfig(""), nil) })
 }
 
-// func TestExporterConfig(t *testing.T) {
-// 	assert.Panics(t, func() { exExp.Config() })
-// }
-
 func TestExporterClose(t *testing.T) {
 	assert.Panics(t, func() { exExp.Close() })
 }

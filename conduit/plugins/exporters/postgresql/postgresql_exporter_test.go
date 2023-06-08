@@ -57,16 +57,6 @@ func TestConnectDbFailure(t *testing.T) {
 	assert.ErrorContains(t, pgsqlExp.Init(context.Background(), conduit.MakePipelineInitProvider(&round, nil), cfg, logger), "connection string is empty for postgres")
 }
 
-// func TestConfigDefault(t *testing.T) {
-// 	pgsqlExp := pgsqlConstructor.New()
-// 	defaultConfig := &ExporterConfig{}
-// 	expected, err := yaml.Marshal(defaultConfig)
-// 	if err != nil {
-// 		t.Fatalf("unable to Marshal default postgresql.ExporterConfig: %v", err)
-// 	}
-// 	assert.Equal(t, string(expected), pgsqlExp.Config())
-// }
-
 func TestReceiveInvalidBlock(t *testing.T) {
 	pgsqlExp := pgsqlConstructor.New()
 	cfg := plugins.MakePluginConfig("test: true")

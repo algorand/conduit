@@ -48,12 +48,6 @@ func (a *FilterProcessor) Metadata() plugins.Metadata {
 	}
 }
 
-// Config returns the config
-// func (a *FilterProcessor) Config() string {
-// 	s, _ := yaml.Marshal(a.cfg)
-// 	return string(s)
-// }
-
 // Init initializes the filter processor
 func (a *FilterProcessor) Init(ctx context.Context, _ data.InitProvider, cfg plugins.PluginConfig, logger *log.Logger) error {
 	a.logger = logger

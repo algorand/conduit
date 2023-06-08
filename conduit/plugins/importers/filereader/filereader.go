@@ -78,11 +78,6 @@ func (r *fileReader) Init(ctx context.Context, _ data.InitProvider, cfg plugins.
 	return &genesis, err
 }
 
-// func (r *fileReader) Config() string {
-// 	s, _ := yaml.Marshal(r.cfg)
-// 	return string(s)
-// }
-
 func (r *fileReader) Close() error {
 	if r.cancel != nil {
 		r.cancel()

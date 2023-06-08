@@ -36,11 +36,6 @@ func (exp *exampleExporter) Init(_ context.Context, _ data.InitProvider, _ plugi
 	panic("not implemented")
 }
 
-// Config returns the unmarshaled config object
-// func (exp *exampleExporter) Config() string {
-// 	panic("not implemented")
-// }
-
 // Close provides the opportunity to close connections, flush buffers, etc. when the process is terminating
 func (exp *exampleExporter) Close() error {
 	panic("not implemented")

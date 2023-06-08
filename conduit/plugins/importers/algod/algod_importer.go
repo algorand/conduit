@@ -381,11 +381,6 @@ func (algodImp *algodImporter) Init(ctx context.Context, initProvider data.InitP
 	return &genesis, err
 }
 
-// func (algodImp *algodImporter) Config() string {
-// 	s, _ := yaml.Marshal(algodImp.cfg)
-// 	return string(s)
-// }
-
 func (algodImp *algodImporter) Close() error {
 	if algodImp.cancel != nil {
 		algodImp.cancel()

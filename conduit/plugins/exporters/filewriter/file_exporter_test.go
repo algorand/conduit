@@ -82,8 +82,6 @@ func TestExporterInitDefaults(t *testing.T) {
 			pcfg.DataDir = tempdir
 			err := fileExp.Init(context.Background(), conduit.MakePipelineInitProvider(&round, nil), pcfg, logger)
 			require.NoError(t, err)
-			// pluginConfig := fileExp.Config()
-			// assert.Contains(t, pluginConfig, fmt.Sprintf("block-dir: %s", tc.expected))
 		})
 	}
 }
@@ -96,9 +94,6 @@ func TestExporterInit(t *testing.T) {
 	// creates a new output file
 	err := fileExp.Init(context.Background(), conduit.MakePipelineInitProvider(&round, nil), plugins.MakePluginConfig(config), logger)
 	assert.NoError(t, err)
-	// pluginConfig := fileExp.Config()
-	// configWithDefault := config + "filename-pattern: '%[1]d_block.json'\n" + "drop-certificate: false\n"
-	// assert.Equal(t, configWithDefault, string(pluginConfig))
 	fileExp.Close()
 
 	// can open existing file

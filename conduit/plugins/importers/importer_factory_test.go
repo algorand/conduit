@@ -29,7 +29,6 @@ func (i *mockImporter) Init(ctx context.Context, initProvider data.InitProvider,
 	return &sdk.Genesis{}, nil
 }
 
-// func (i *mockImporter) Config() string                              { return "" }
 func (i *mockImporter) Close() error                                { return nil }
 func (i *mockImporter) GetBlock(rnd uint64) (data.BlockData, error) { return data.BlockData{}, nil }
 

@@ -669,10 +669,6 @@ func (e *errorImporter) Init(_ context.Context, _ data.InitProvider, _ plugins.P
 	return e.genesis, nil
 }
 
-// func (e *errorImporter) Config() string {
-// 	return ""
-// }
-
 func (e *errorImporter) Close() error {
 	return nil
 }

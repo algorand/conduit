@@ -46,11 +46,6 @@ func (exp *noopExporter) Init(_ context.Context, initProvider data.InitProvider,
 	return nil
 }
 
-// func (exp *noopExporter) Config() string {
-// 	ret, _ := yaml.Marshal(exp.cfg)
-// 	return string(ret)
-// }
-
 func (exp *noopExporter) Close() error {
 	return nil
 }
