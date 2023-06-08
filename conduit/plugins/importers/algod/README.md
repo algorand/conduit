@@ -18,8 +18,8 @@ When using a follower node, ledger state delta objects are provided to the proce
 
 ## Configuration
 ```yml @sample.yaml
-  name: algod
-  config:
+name: algod
+config:
     # The mode of operation, either "archival" or "follower".
     # * archival mode allows you to start processing on any round but does not
     #   contain the ledger state delta objects required for the postgres writer.
@@ -27,13 +27,13 @@ When using a follower node, ledger state delta objects are provided to the proce
     #   data source. In addition, it will provide ledger state delta objects to
     #   the processors and exporter.
     mode: "follower"
-
+  
     # Algod API address.
     netaddr: "http://url:port"
-
+  
     # Algod API token.
     token: ""
-
+  
     # Algod catchpoint catchup arguments
     catchup-config:
         # Algod Admin API Token. Set the admin token to use fast catchup during

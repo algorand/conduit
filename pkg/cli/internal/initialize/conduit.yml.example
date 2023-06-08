@@ -19,14 +19,13 @@ hide-banner: false
 
 # When enabled prometheus metrics are available on '/metrics'
 metrics:
-  mode: OFF
-  addr: ":9999"
-  prefix: "conduit"
+    mode: OFF
+    addr: ":9999"
+    prefix: "conduit"
 
 # The importer is typically an algod follower node.
 importer:
 %s
-
 # Zero or more processors may be defined to manipulate what data
 # reaches the exporter.
 processors:

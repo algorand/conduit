@@ -27,12 +27,11 @@ var errNoWriter = errors.New("configWriter is required")
 //go:embed conduit.yml.example
 var sampleConfig string
 
-func formatArrayObject(obj string) string {
-
+func formatObject(obj string, isArray bool) string {
 	var ret string
 	lines := strings.Split(obj, "\n")
 	for i, line := range lines {
-		if i == 0 {
+		if i == 0 && isArray {
 			ret += "  - "
 		} else {
 			ret += "    "
@@ -41,7 +40,6 @@ func formatArrayObject(obj string) string {
 	}
 
 	return ret
-
 }
 
 func runConduitInit(path string, importerFlag string, processorsFlag []string, exporterFlag string) error {
@@ -99,6 +97,7 @@ func writeConfigFile(configWriter io.Writer, importerFlag string, processorsFlag
 	if importer == "" {
 		return fmt.Errorf("runConduitInit(): unknown importer name: %v", importerFlag)
 	}
+	importer = formatObject(importer, false)
 
 	var exporter string
 	if exporterFlag == "" {
@@ -113,13 +112,14 @@ func writeConfigFile(configWriter io.Writer, importerFlag string, processorsFlag
 	if exporter == "" {
 		return fmt.Errorf("runConduitInit(): unknown exporter name: %v", exporterFlag)
 	}
+	exporter = formatObject(exporter, false)
 
 	var processors string
 	for _, processorName := range processorsFlag {
 		found := false
 		for _, metadata := range pipeline.ProcessorMetadata() {
 			if metadata.Name == processorName {
-				processors = processors + formatArrayObject(metadata.SampleConfig)
+				processors = processors + formatObject(metadata.SampleConfig, true)
 				found = true
 				break
 			}
