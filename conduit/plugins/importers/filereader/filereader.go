@@ -55,27 +55,29 @@ func init() {
 	}))
 }
 
-func (r *fileReader) Init(ctx context.Context, _ data.InitProvider, cfg plugins.PluginConfig, logger *logrus.Logger) (*sdk.Genesis, error) {
+func (r *fileReader) Init(ctx context.Context, _ data.InitProvider, cfg plugins.PluginConfig, logger *logrus.Logger) error {
 	r.ctx, r.cancel = context.WithCancel(ctx)
 	r.logger = logger
-	var err error
-	err = cfg.UnmarshalConfig(&r.cfg)
+	err := cfg.UnmarshalConfig(&r.cfg)
 	if err != nil {
-		return nil, fmt.Errorf("invalid configuration: %v", err)
+		return fmt.Errorf("invalid configuration: %v", err)
 	}
 
 	if r.cfg.FilenamePattern == "" {
 		r.cfg.FilenamePattern = filewriter.FilePattern
 	}
 
+	return nil
+}
+
+func (r *fileReader) GetGenesis() (*sdk.Genesis, error) {
 	genesisFile := path.Join(r.cfg.BlocksDir, "genesis.json")
 	var genesis sdk.Genesis
-	err = filewriter.DecodeJSONFromFile(genesisFile, &genesis, false)
+	err := filewriter.DecodeJSONFromFile(genesisFile, &genesis, false)
 	if err != nil {
-		return nil, fmt.Errorf("Init(): failed to process genesis file: %w", err)
+		return nil, fmt.Errorf("GetGenesis(): failed to process genesis file: %w", err)
 	}
-
-	return &genesis, err
+	return &genesis, nil
 }
 
 func (r *fileReader) Close() error {

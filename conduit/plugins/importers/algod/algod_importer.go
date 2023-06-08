@@ -54,6 +54,7 @@ type algodImporter struct {
 	ctx     context.Context
 	cancel  context.CancelFunc
 	mode    int
+	genesis *sdk.Genesis
 }
 
 //go:embed sample.yaml
@@ -322,12 +323,12 @@ func (algodImp *algodImporter) catchupNode(network string, targetRound uint64) e
 	return err
 }
 
-func (algodImp *algodImporter) Init(ctx context.Context, initProvider data.InitProvider, cfg plugins.PluginConfig, logger *logrus.Logger) (*sdk.Genesis, error) {
+func (algodImp *algodImporter) Init(ctx context.Context, initProvider data.InitProvider, cfg plugins.PluginConfig, logger *logrus.Logger) error {
 	algodImp.ctx, algodImp.cancel = context.WithCancel(ctx)
 	algodImp.logger = logger
 	err := cfg.UnmarshalConfig(&algodImp.cfg)
 	if err != nil {
-		return nil, fmt.Errorf("connect failure in unmarshalConfig: %v", err)
+		return fmt.Errorf("connect failure in unmarshalConfig: %v", err)
 	}
 
 	// To support backwards compatibility with the daemon we default to archival mode
@@ -341,13 +342,13 @@ func (algodImp *algodImporter) Init(ctx context.Context, initProvider data.InitP
 	case followerModeStr:
 		algodImp.mode = followerMode
 	default:
-		return nil, fmt.Errorf("algod importer was set to a mode (%s) that wasn't supported", algodImp.cfg.Mode)
+		return fmt.Errorf("algod importer was set to a mode (%s) that wasn't supported", algodImp.cfg.Mode)
 	}
 
 	var client *algod.Client
 	u, err := url.Parse(algodImp.cfg.NetAddr)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	if u.Scheme != "http" && u.Scheme != "https" {
@@ -356,13 +357,12 @@ func (algodImp *algodImporter) Init(ctx context.Context, initProvider data.InitP
 	}
 	client, err = algod.MakeClient(algodImp.cfg.NetAddr, algodImp.cfg.Token)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	algodImp.aclient = client
-
-	genesisResponse, err := client.GetGenesis().Do(ctx)
+	genesisResponse, err := algodImp.aclient.GetGenesis().Do(algodImp.ctx)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	genesis := sdk.Genesis{}
@@ -370,15 +370,21 @@ func (algodImp *algodImporter) Init(ctx context.Context, initProvider data.InitP
 	// Don't fail on unknown properties here since the go-algorand and SDK genesis types differ slightly
 	err = json.LenientDecode([]byte(genesisResponse), &genesis)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	if reflect.DeepEqual(genesis, sdk.Genesis{}) {
-		return nil, fmt.Errorf("unable to fetch genesis file from API at %s", algodImp.cfg.NetAddr)
+		return fmt.Errorf("unable to fetch genesis file from API at %s", algodImp.cfg.NetAddr)
 	}
+	algodImp.genesis = &genesis
 
-	err = algodImp.catchupNode(genesis.Network, uint64(initProvider.NextDBRound()))
+	return algodImp.catchupNode(genesis.Network, uint64(initProvider.NextDBRound()))
+}
 
-	return &genesis, err
+func (algodImp *algodImporter) GetGenesis() (*sdk.Genesis, error) {
+	if algodImp.genesis != nil {
+		return algodImp.genesis, nil
+	}
+	return nil, fmt.Errorf("algod importer is missing its genesis: GetGenesis() should be called before Init()")
 }
 
 func (algodImp *algodImporter) Close() error {

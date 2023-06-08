@@ -264,9 +264,13 @@ func (p *pipelineImpl) Init() error {
 		if err != nil {
 			return fmt.Errorf("Pipeline.Init(): could not make %s config: %w", p.cfg.Importer.Name, err)
 		}
-		genesis, err := (*p.importer).Init(p.ctx, *p.initProvider, pluginConfig, importerLogger)
+		err = (*p.importer).Init(p.ctx, *p.initProvider, pluginConfig, importerLogger)
 		if err != nil {
 			return fmt.Errorf("Pipeline.Init(): could not initialize importer (%s): %w", p.cfg.Importer.Name, err)
+		}
+		genesis, err := (*p.importer).GetGenesis()
+		if err != nil {
+			return fmt.Errorf("Pipeline.GetGenesis(): could not obtain Genesis from the importer (%s): %w", p.cfg.Importer.Name, err)
 		}
 		(*p.initProvider).SetGenesis(genesis)
 
