@@ -25,7 +25,11 @@ func (i *mockImporter) Metadata() plugins.Metadata {
 		SampleConfig: "",
 	}
 }
-func (i *mockImporter) Init(ctx context.Context, initProvider data.InitProvider, cfg plugins.PluginConfig, logger *logrus.Logger) (*sdk.Genesis, error) {
+func (i *mockImporter) Init(ctx context.Context, initProvider data.InitProvider, cfg plugins.PluginConfig, logger *logrus.Logger) error {
+	return nil
+}
+
+func (i *mockImporter) GetGenesis() (*sdk.Genesis, error) {
 	return &sdk.Genesis{}, nil
 }
 
