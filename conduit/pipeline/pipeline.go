@@ -336,7 +336,7 @@ func (p *pipelineImpl) Init() error {
 	go func() {
 		for sig := range signals {
 			if sig == os.Interrupt {
-				p.logger.Infof("Received interrupt signal, stopping pipeline")
+				p.logger.Infof("Pipeline received interrupt signal, stopping pipeline. p.pipelineMetadata.NextRound: %d", p.pipelineMetadata.NextRound)
 				p.Stop()
 			}
 		}
