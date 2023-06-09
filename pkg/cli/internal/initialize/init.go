@@ -33,7 +33,7 @@ func formatObject(obj string, isArray bool) string {
 	for i, line := range lines {
 		if i == 0 && isArray {
 			ret += "  - "
-		} else {
+		} else if len(line) > 0 {
 			ret += "    "
 		}
 		ret += line + "\n"
