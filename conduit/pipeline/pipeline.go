@@ -10,6 +10,7 @@ import (
 	"path"
 	"runtime/pprof"
 	"sync"
+	"syscall"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -330,15 +331,12 @@ func (p *pipelineImpl) Init() error {
 		go p.startMetricsServer()
 	}
 
-	signals := make(chan os.Signal, 1)
-	signal.Notify(signals, os.Interrupt)
-
+	stop := make(chan os.Signal, 1)
+	signal.Notify(stop, os.Interrupt, syscall.SIGTERM, syscall.SIGINT)
 	go func() {
-		for sig := range signals {
-			if sig == os.Interrupt {
-				p.logger.Infof("Pipeline received interrupt signal, stopping pipeline. p.pipelineMetadata.NextRound: %d", p.pipelineMetadata.NextRound)
-				p.Stop()
-			}
+		for sig := range stop {
+			p.logger.Infof("Pipeline received stopping signal <%v>, stopping pipeline. p.pipelineMetadata.NextRound: %d", sig, p.pipelineMetadata.NextRound)
+			p.Stop()
 		}
 	}()
 
