@@ -441,7 +441,7 @@ func (algodImp *algodImporter) GetBlock(rnd uint64) (data.BlockData, error) {
 		dt := time.Since(start)
 		getAlgodRawBlockTimeSeconds.Observe(dt.Seconds())
 		if err != nil {
-			algodImp.logger.Infof("importer algod.Close() at round %d", atomic.LoadUint64(&algodImp.round))
+			algodImp.logger.Infof("error getting block for round %d (attempt %d)", rnd, r)
 			continue
 		}
 		tmpBlk := new(models.BlockResponse)
