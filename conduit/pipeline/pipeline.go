@@ -334,10 +334,9 @@ func (p *pipelineImpl) Init() error {
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, os.Interrupt, syscall.SIGTERM, syscall.SIGINT)
 	go func() {
-		for sig := range stop {
-			p.logger.Infof("Pipeline received stopping signal <%v>, stopping pipeline. p.pipelineMetadata.NextRound: %d", sig, p.pipelineMetadata.NextRound)
-			p.Stop()
-		}
+		sig := <-stop
+		p.logger.Infof("Pipeline received stopping signal <%v>, stopping pipeline. p.pipelineMetadata.NextRound: %d", sig, p.pipelineMetadata.NextRound)
+		p.Stop()
 	}()
 
 	return err
