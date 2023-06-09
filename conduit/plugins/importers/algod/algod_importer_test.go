@@ -307,6 +307,7 @@ func TestInitCatchup(t *testing.T) {
 				require.Nil(t, gen)
 				require.ErrorContains(t, errGG, ttest.errGetGen, ttest.errGetGen)
 			} else {
+				require.NotNil(t, gen)
 				require.NoError(t, errGG)
 			}
 
