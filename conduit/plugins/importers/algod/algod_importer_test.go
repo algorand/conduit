@@ -204,8 +204,11 @@ func TestInitCatchup(t *testing.T) {
 				GenesisResponder,
 				MakePostSyncRoundResponder(http.StatusOK),
 				MakeNodeStatusResponder(models.NodeStatus{LastRound: 1235})),
-			logs: []string{"No catchup required. Node round 1235, target round 1235, catchpoint round 1234."},
-		}, {
+			errInit:   "",
+			errGetGen: "",
+			logs:      []string{"No catchup required. Node round 1235, target round 1235, catchpoint round 1234."},
+		},
+		{
 			name:        "start catchpoint catchup failure",
 			adminToken:  "admin",
 			catchpoint:  "1236#abcd",
@@ -233,7 +236,8 @@ func TestInitCatchup(t *testing.T) {
 			errInit:   "received unexpected error getting node status: HTTP 400",
 			errGetGen: "",
 			logs:      []string{},
-		}, {
+		},
+		{
 			name:       "auto catchup used (even if the mocking isn't setup for it)",
 			adminToken: "admin",
 			catchpoint: "",
@@ -242,8 +246,11 @@ func TestInitCatchup(t *testing.T) {
 				MakePostSyncRoundResponder(http.StatusOK),
 				MakeJsonResponderSeries("/v2/status", []int{http.StatusOK, http.StatusBadRequest}, []interface{}{models.NodeStatus{LastRound: 1235}}),
 			),
-			logs: []string{"failed to lookup catchpoint label list"},
-		}, {
+			errInit:   "",
+			errGetGen: "",
+			logs:      []string{"failed to lookup catchpoint label list"},
+		},
+		{
 			name:        "wait for node to catchup error",
 			adminToken:  "admin",
 			targetRound: 1240,
@@ -256,7 +263,8 @@ func TestInitCatchup(t *testing.T) {
 			errInit:   "received unexpected error (StatusAfterBlock) waiting for node to catchup: HTTP 400",
 			errGetGen: "",
 			logs:      []string{},
-		}, {
+		},
+		{
 			name:        "monitor catchup success",
 			adminToken:  "admin",
 			targetRound: 1237,
@@ -273,6 +281,8 @@ func TestInitCatchup(t *testing.T) {
 					models.NodeStatus{LastRound: 1236},
 				}),
 				MakeMsgpStatusResponder("post", "/v2/catchup/", http.StatusOK, "")),
+			errInit:   "",
+			errGetGen: "",
 			logs: []string{
 				"catchup phase Processed Accounts: 1 / 1",
 				"catchup phase Verified Accounts: 1 / 1",
