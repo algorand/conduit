@@ -56,6 +56,7 @@ type algodImporter struct {
 	cancel  context.CancelFunc
 	mode    int
 	genesis *sdk.Genesis
+	round   uint64
 }
 
 //go:embed sample.yaml
