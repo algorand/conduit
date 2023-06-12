@@ -10,6 +10,6 @@ config:
     # The list of filter expressions to use when matching transactions.
     filters:
       - any:
-          - tag: txn.rcv
-            expression-type: equal
+          - tag: "txn.rcv"
+            expression-type: "equal"
             expression: "ADDRESS"
