@@ -168,7 +168,6 @@ func (exp *postgresqlExporter) Receive(exportData data.BlockData) error {
 		return err
 	}
 	atomic.StoreUint64(&exp.round, exportData.Round()+1)
-
 	return nil
 }
 
