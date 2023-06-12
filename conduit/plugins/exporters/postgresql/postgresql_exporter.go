@@ -10,7 +10,6 @@ import (
 	"sync/atomic"
 
 	"github.com/sirupsen/logrus"
-	"gopkg.in/yaml.v3"
 
 	sdk "github.com/algorand/go-algorand-sdk/v2/types"
 	"github.com/algorand/indexer/idb"
@@ -140,11 +139,6 @@ func (exp *postgresqlExporter) Init(ctx context.Context, initProvider data.InitP
 		go exp.dm.DeleteLoop(&exp.wg, &exp.round)
 	}
 	return nil
-}
-
-func (exp *postgresqlExporter) Config() string {
-	ret, _ := yaml.Marshal(exp.cfg)
-	return string(ret)
 }
 
 func (exp *postgresqlExporter) Close() error {

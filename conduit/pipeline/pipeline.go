@@ -267,9 +267,13 @@ func (p *pipelineImpl) Init() error {
 		if err != nil {
 			return fmt.Errorf("Pipeline.Init(): could not make %s config: %w", p.cfg.Importer.Name, err)
 		}
-		genesis, err := (*p.importer).Init(p.ctx, *p.initProvider, pluginConfig, importerLogger)
+		err = (*p.importer).Init(p.ctx, *p.initProvider, pluginConfig, importerLogger)
 		if err != nil {
 			return fmt.Errorf("Pipeline.Init(): could not initialize importer (%s): %w", p.cfg.Importer.Name, err)
+		}
+		genesis, err := (*p.importer).GetGenesis()
+		if err != nil {
+			return fmt.Errorf("Pipeline.GetGenesis(): could not obtain Genesis from the importer (%s): %w", p.cfg.Importer.Name, err)
 		}
 		(*p.initProvider).SetGenesis(genesis)
 
@@ -413,7 +417,7 @@ func (p *pipelineImpl) Start() {
 					}
 					metrics.ImporterTimeSeconds.Observe(time.Since(importStart).Seconds())
 
-					// TODO: Verify that the block was build with a known protocol version.
+					// TODO: Verify that the block was built with a known protocol version.
 
 					// Start time currently measures operations after block fetching is complete.
 					// This is for backwards compatibility w/ Indexer's metrics

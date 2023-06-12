@@ -16,7 +16,6 @@ func RegisterPrometheusMetrics(subsystem string) {
 	instantiateCollectors(subsystem)
 
 	_ = prometheus.Register(BlockImportTimeSeconds)
-	_ = prometheus.Register(BlockImportTimeSeconds)
 	_ = prometheus.Register(ImportedTxnsPerBlock)
 	_ = prometheus.Register(ImportedRoundGauge)
 	_ = prometheus.Register(ImportedTxns)

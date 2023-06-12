@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/sirupsen/logrus"
-	"gopkg.in/yaml.v3"
 
 	sdk "github.com/algorand/go-algorand-sdk/v2/types"
 
@@ -56,32 +55,29 @@ func init() {
 	}))
 }
 
-func (r *fileReader) Init(ctx context.Context, _ data.InitProvider, cfg plugins.PluginConfig, logger *logrus.Logger) (*sdk.Genesis, error) {
+func (r *fileReader) Init(ctx context.Context, _ data.InitProvider, cfg plugins.PluginConfig, logger *logrus.Logger) error {
 	r.ctx, r.cancel = context.WithCancel(ctx)
 	r.logger = logger
-	var err error
-	err = cfg.UnmarshalConfig(&r.cfg)
+	err := cfg.UnmarshalConfig(&r.cfg)
 	if err != nil {
-		return nil, fmt.Errorf("invalid configuration: %v", err)
+		return fmt.Errorf("invalid configuration: %v", err)
 	}
 
 	if r.cfg.FilenamePattern == "" {
 		r.cfg.FilenamePattern = filewriter.FilePattern
 	}
 
-	genesisFile := path.Join(r.cfg.BlocksDir, "genesis.json")
-	var genesis sdk.Genesis
-	err = filewriter.DecodeJSONFromFile(genesisFile, &genesis, false)
-	if err != nil {
-		return nil, fmt.Errorf("Init(): failed to process genesis file: %w", err)
-	}
-
-	return &genesis, err
+	return nil
 }
 
-func (r *fileReader) Config() string {
-	s, _ := yaml.Marshal(r.cfg)
-	return string(s)
+func (r *fileReader) GetGenesis() (*sdk.Genesis, error) {
+	genesisFile := path.Join(r.cfg.BlocksDir, "genesis.json")
+	var genesis sdk.Genesis
+	err := filewriter.DecodeJSONFromFile(genesisFile, &genesis, false)
+	if err != nil {
+		return nil, fmt.Errorf("GetGenesis(): failed to process genesis file: %w", err)
+	}
+	return &genesis, nil
 }
 
 func (r *fileReader) Close() error {
