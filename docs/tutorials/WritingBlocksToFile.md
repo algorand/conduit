@@ -145,7 +145,7 @@ config:
   filters:
     - any:
       - tag: txn.rcv
-        expression-type: exact
+        expression-type: equal
         expression: "ADDRESS"
 ```
 
