@@ -19,7 +19,6 @@ type SubConfig struct {
 	FilterTag string `yaml:"tag"`
 	/* <code>expression-type</code> is the type of comparison applied between the field, identified by the tag, and the expression.<br/>
 	<ul>
-		<li>exact</li>
 		<li>regex</li>
 		<li>less-than</li>
 		<li>less-than-equal</li>
