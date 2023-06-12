@@ -151,16 +151,28 @@ func TestInitCatchup(t *testing.T) {
 		targetRound sdk.Round
 		adminToken  string // to trigger fast-catchup
 		algodServer *httptest.Server
+		netAddr     string
 		errInit     string
 		errGetGen   string
 		logs        []string
 	}{
+		{
+			name:        "get genesis failure - (due to bad netaddr)",
+			targetRound: 1,
+			algodServer: NewAlgodServer(
+				GenesisResponder,
+				MakePostSyncRoundResponder(http.StatusBadRequest)),
+			netAddr:   "this is not a valid netaddr",
+			errInit:   `invalid character " " in host name`,
+			errGetGen: "algod importer is missing its genesis: GetGenesis() should be called only after Init()",
+			logs:      []string{}},
 		{
 			name:        "sync round failure",
 			targetRound: 1,
 			algodServer: NewAlgodServer(
 				GenesisResponder,
 				MakePostSyncRoundResponder(http.StatusBadRequest)),
+			netAddr:   "",
 			errInit:   "received unexpected error setting sync round (1): HTTP 400",
 			errGetGen: "",
 			logs:      []string{}},
@@ -171,6 +183,7 @@ func TestInitCatchup(t *testing.T) {
 			algodServer: NewAlgodServer(
 				GenesisResponder,
 				MakePostSyncRoundResponder(http.StatusOK)),
+			netAddr:   "",
 			errInit:   "unable to parse catchpoint, invalid format",
 			errGetGen: "",
 			logs:      []string{}},
@@ -181,6 +194,7 @@ func TestInitCatchup(t *testing.T) {
 			algodServer: NewAlgodServer(
 				GenesisResponder,
 				MakePostSyncRoundResponder(http.StatusOK)),
+			netAddr:   "",
 			errInit:   "invalid syntax",
 			errGetGen: "",
 			logs:      []string{}},
@@ -192,6 +206,7 @@ func TestInitCatchup(t *testing.T) {
 				GenesisResponder,
 				MakePostSyncRoundResponder(http.StatusOK),
 				MakeMsgpStatusResponder("get", "/v2/status", http.StatusBadRequest, "")),
+			netAddr:   "",
 			errInit:   "received unexpected error failed to get node status: HTTP 400",
 			errGetGen: "",
 			logs:      []string{}},
@@ -204,6 +219,7 @@ func TestInitCatchup(t *testing.T) {
 				GenesisResponder,
 				MakePostSyncRoundResponder(http.StatusOK),
 				MakeNodeStatusResponder(models.NodeStatus{LastRound: 1235})),
+			netAddr:   "",
 			errInit:   "",
 			errGetGen: "",
 			logs:      []string{"No catchup required. Node round 1235, target round 1235, catchpoint round 1234."},
@@ -218,6 +234,7 @@ func TestInitCatchup(t *testing.T) {
 				MakePostSyncRoundResponder(http.StatusOK),
 				MakeNodeStatusResponder(models.NodeStatus{LastRound: 1235}),
 				MakeMsgpStatusResponder("get", "/v2/catchup/", http.StatusBadRequest, "")),
+			netAddr:   "",
 			errInit:   "POST /v2/catchup/1236#abcd received unexpected error: HTTP 400",
 			errGetGen: "",
 			logs:      []string{},
@@ -233,6 +250,7 @@ func TestInitCatchup(t *testing.T) {
 				// OK in 'catchupNode', fail in 'monitorCatchup'
 				MakeJsonResponderSeries("/v2/status", []int{http.StatusOK, http.StatusBadRequest}, []interface{}{models.NodeStatus{LastRound: 1235}}),
 				MakeMsgpStatusResponder("post", "/v2/catchup/", http.StatusOK, "")),
+			netAddr:   "",
 			errInit:   "received unexpected error getting node status: HTTP 400",
 			errGetGen: "",
 			logs:      []string{},
@@ -246,6 +264,7 @@ func TestInitCatchup(t *testing.T) {
 				MakePostSyncRoundResponder(http.StatusOK),
 				MakeJsonResponderSeries("/v2/status", []int{http.StatusOK, http.StatusBadRequest}, []interface{}{models.NodeStatus{LastRound: 1235}}),
 			),
+			netAddr:   "",
 			errInit:   "",
 			errGetGen: "",
 			logs:      []string{"failed to lookup catchpoint label list"},
@@ -260,6 +279,7 @@ func TestInitCatchup(t *testing.T) {
 				MakePostSyncRoundResponder(http.StatusOK),
 				MakeJsonResponderSeries("/v2/status", []int{http.StatusOK, http.StatusOK, http.StatusBadRequest}, []interface{}{models.NodeStatus{LastRound: 1235}}),
 				MakeMsgpStatusResponder("post", "/v2/catchup/", http.StatusOK, nil)),
+			netAddr:   "",
 			errInit:   "received unexpected error (StatusAfterBlock) waiting for node to catchup: HTTP 400",
 			errGetGen: "",
 			logs:      []string{},
@@ -281,6 +301,7 @@ func TestInitCatchup(t *testing.T) {
 					models.NodeStatus{LastRound: 1236},
 				}),
 				MakeMsgpStatusResponder("post", "/v2/catchup/", http.StatusOK, "")),
+			netAddr:   "",
 			errInit:   "",
 			errGetGen: "",
 			logs: []string{
@@ -303,6 +324,9 @@ func TestInitCatchup(t *testing.T) {
 					Catchpoint: ttest.catchpoint,
 					AdminToken: ttest.adminToken,
 				},
+			}
+			if ttest.netAddr != "" {
+				cfg.NetAddr = ttest.netAddr
 			}
 			cfgStr, err := yaml.Marshal(cfg)
 			require.NoError(t, err)
