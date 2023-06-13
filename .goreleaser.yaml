@@ -1,3 +1,6 @@
+env:
+  - DOCKER_NAME=algorand/conduit
+
 before:
   hooks:
     # You may remove this if you don't use go modules.
@@ -11,6 +14,13 @@ universal_binaries:
 
 builds:
   - main: cmd/conduit/main.go
+    binary: conduit
+    ldflags: >
+      -s -w
+      -X github.com/algorand/conduit/version.Hash={{.FullCommit}}
+      -X github.com/algorand/conduit/version.ShortHash={{.ShortCommit}}
+      -X github.com/algorand/conduit/version.CompileTime={{.Timestamp}}
+      -X github.com/algorand/conduit/version.ReleaseVersion={{.Version}}
     env:
       - CGO_ENABLED=0
     goos:
@@ -21,20 +31,14 @@ builds:
     goarch:
       - amd64
       - arm64
-    ldflags: >
-      -s -w
-      -X github.com/algorand/conduit/version.Hash={{.FullCommit}}
-      -X github.com/algorand/conduit/version.ShortHash={{.ShortCommit}}
-      -X github.com/algorand/conduit/version.CompileTime={{.Timestamp}}
-      -X github.com/algorand/conduit/version.ReleaseVersion={{.Version}}
 
 dockers:
   - use: buildx
     goos: linux
     goarch: amd64
     image_templates:
-    - "algorand/conduit:latest{{ if .IsSnapshot }}-snapshot{{ end }}-amd64"
-    - "algorand/conduit:{{ .Version }}-amd64"
+    - "{{ .Env.DOCKER_NAME }}:latest{{ if .IsSnapshot }}-snapshot{{ end }}-amd64"
+    - "{{ .Env.DOCKER_NAME }}:{{ .Version }}-amd64"
     build_flag_templates:
     - --platform=linux/amd64
     - --label=org.opencontainers.image.title={{ .ProjectName }}
@@ -48,8 +52,8 @@ dockers:
     goos: linux
     goarch: arm64
     image_templates:
-    - "algorand/conduit:latest{{ if .IsSnapshot }}-snapshot{{ end }}-arm64"
-    - "algorand/conduit:{{ .Version }}-arm64"
+    - "{{ .Env.DOCKER_NAME }}:latest{{ if .IsSnapshot }}-snapshot{{ end }}-arm64"
+    - "{{ .Env.DOCKER_NAME }}:{{ .Version }}-arm64"
     build_flag_templates:
     - --platform=linux/arm64
     - --label=org.opencontainers.image.title={{ .ProjectName }}
@@ -60,16 +64,16 @@ dockers:
     extra_files:
     - docker/docker-entrypoint.sh
 
-# automatically select amd64/arm64 when requesting "algorand/conduit"
+# automatically select amd64/arm64 when using image.
 docker_manifests:
-  - name_template: "algorand/conduit:{{ .Version }}"
+  - name_template: "{{ .Env.DOCKER_NAME }}:{{ .Version }}"
     image_templates:
-    - "algorand/conduit:{{ .Version }}-amd64"
-    - "algorand/conduit:{{ .Version }}-arm64"
-  - name_template: "algorand/conduit:latest{{ if .IsSnapshot }}-snapshot{{ end }}"
+    - "{{ .Env.DOCKER_NAME }}:{{ .Version }}-amd64"
+    - "{{ .Env.DOCKER_NAME }}:{{ .Version }}-arm64"
+  - name_template: "{{ .Env.DOCKER_NAME }}:latest{{ if .IsSnapshot }}-snapshot{{ end }}"
     image_templates:
-    - "algorand/conduit:latest{{ if .IsSnapshot }}-snapshot{{ end }}-amd64"
-    - "algorand/conduit:latest{{ if .IsSnapshot }}-snapshot{{ end }}-arm64"
+    - "{{ .Env.DOCKER_NAME }}:latest{{ if .IsSnapshot }}-snapshot{{ end }}-amd64"
+    - "{{ .Env.DOCKER_NAME }}:latest{{ if .IsSnapshot }}-snapshot{{ end }}-arm64"
 
 archives:
   - replacements:
