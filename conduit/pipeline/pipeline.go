@@ -6,9 +6,11 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"os/signal"
 	"path"
 	"runtime/pprof"
 	"sync"
+	"syscall"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -329,6 +331,14 @@ func (p *pipelineImpl) Init() error {
 		go p.startMetricsServer()
 	}
 
+	stop := make(chan os.Signal, 1)
+	signal.Notify(stop, os.Interrupt, syscall.SIGTERM, syscall.SIGINT)
+	go func() {
+		sig := <-stop
+		p.logger.Infof("Pipeline received stopping signal <%v>, stopping pipeline. p.pipelineMetadata.NextRound: %d", sig, p.pipelineMetadata.NextRound)
+		p.Stop()
+	}()
+
 	return err
 }
 
@@ -338,31 +348,39 @@ func (p *pipelineImpl) Stop() {
 
 	if p.profFile != nil {
 		if err := p.profFile.Close(); err != nil {
-			p.logger.WithError(err).Errorf("%s: could not close CPUProf file", p.profFile.Name())
+			p.logger.WithError(err).Errorf("Pipeline.Stop(): %s: could not close CPUProf file", p.profFile.Name())
 		}
 		pprof.StopCPUProfile()
 	}
 
 	if p.cfg.PIDFilePath != "" {
 		if err := os.Remove(p.cfg.PIDFilePath); err != nil {
-			p.logger.WithError(err).Errorf("%s: could not remove pid file", p.cfg.PIDFilePath)
+			p.logger.WithError(err).Errorf("Pipeline.Stop(): %s: could not remove pid file", p.cfg.PIDFilePath)
+		} else {
+			p.logger.Infof("Pipeline.Stop(): %s: removed pid file", p.cfg.PIDFilePath)
 		}
 	}
 
 	if err := (*p.importer).Close(); err != nil {
 		// Log and continue on closing the rest of the pipeline
 		p.logger.Errorf("Pipeline.Stop(): Importer (%s) error on close: %v", (*p.importer).Metadata().Name, err)
+	} else {
+		p.logger.Infof("Pipeline.Stop(): Importer (%s) closed without error", (*p.importer).Metadata().Name)
 	}
 
 	for _, processor := range p.processors {
 		if err := (*processor).Close(); err != nil {
 			// Log and continue on closing the rest of the pipeline
 			p.logger.Errorf("Pipeline.Stop(): Processor (%s) error on close: %v", (*processor).Metadata().Name, err)
+		} else {
+			p.logger.Infof("Pipeline.Stop(): Processor (%s) closed without error", (*processor).Metadata().Name)
 		}
 	}
 
 	if err := (*p.exporter).Close(); err != nil {
 		p.logger.Errorf("Pipeline.Stop(): Exporter (%s) error on close: %v", (*p.exporter).Metadata().Name, err)
+	} else {
+		p.logger.Infof("Pipeline.Stop(): Exporter (%s) closed without error", (*p.exporter).Metadata().Name)
 	}
 }
 

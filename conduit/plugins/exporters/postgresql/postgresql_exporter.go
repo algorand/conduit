@@ -148,6 +148,7 @@ func (exp *postgresqlExporter) Close() error {
 
 	exp.cf()
 	exp.wg.Wait()
+	exp.logger.Infof("exporter postgresql.Close() at round %d", atomic.LoadUint64(&exp.round))
 	return nil
 }
 

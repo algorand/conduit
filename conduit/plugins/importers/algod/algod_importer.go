@@ -11,6 +11,7 @@ import (
 	"reflect"
 	"strconv"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -55,6 +56,7 @@ type algodImporter struct {
 	cancel  context.CancelFunc
 	mode    int
 	genesis *sdk.Genesis
+	round   uint64
 }
 
 //go:embed sample.yaml
@@ -396,6 +398,7 @@ func (algodImp *algodImporter) Close() error {
 	if algodImp.cancel != nil {
 		algodImp.cancel()
 	}
+	algodImp.logger.Infof("importer algod.Close() at round %d", algodImp.round)
 	return nil
 }
 
@@ -468,8 +471,8 @@ func (algodImp *algodImporter) GetBlock(rnd uint64) (data.BlockData, error) {
 				blk.Delta = &delta
 			}
 		}
-
-		return blk, err
+		atomic.StoreUint64(&algodImp.round, rnd+1)
+		return blk, nil
 	}
 
 	err = fmt.Errorf("failed to get block for round %d after %d attempts, check node configuration: %s", rnd, retries, err)
