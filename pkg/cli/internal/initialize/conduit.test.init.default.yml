@@ -38,7 +38,7 @@ exporter:
 
 # Enable telemetry for conduit
 telemetry:
-  enabled: true
+  enabled: false
   
   # By default the following fields will be configured to send data to Algorand.
   # To store your own telemetry events, they can be overridden.

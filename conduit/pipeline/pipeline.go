@@ -287,11 +287,12 @@ func (p *pipelineImpl) Init() error {
 		telemetryClient, telemetryErr = p.initializeTelemetry()
 		if telemetryErr != nil {
 			p.logger.Warn("Telemetry initialization failed. Continuing without telemetry.")
-		}
-		// Try sending a startup event. If it fails, log a warning and continue
-		event := telemetryClient.MakeTelemetryStartupEvent()
-		if telemetryErr = telemetryClient.SendEvent(event); telemetryErr != nil {
-			p.logger.Warnf("failed to send telemetry event: %s", telemetryErr)
+		} else {
+			// Try sending a startup event. If it fails, log a warning and continue
+			event := telemetryClient.MakeTelemetryStartupEvent()
+			if telemetryErr = telemetryClient.SendEvent(event); telemetryErr != nil {
+				p.logger.Warnf("failed to send telemetry event: %s", telemetryErr)
+			}
 		}
 	}
 
