@@ -81,15 +81,16 @@ func initializeImporter(t *testing.T, numRounds int) (importer importers.Importe
 	tempdir = t.TempDir()
 	genesisExpected := initializeTestData(t, tempdir, numRounds)
 	importer = New()
-	defer importer.Config()
 	cfg := Config{
 		BlocksDir:     tempdir,
 		RetryDuration: 0,
 	}
 	data, err := yaml.Marshal(cfg)
 	require.NoError(t, err)
-	genesis, err = importer.Init(context.Background(), conduit.MakePipelineInitProvider(&pRound, nil, nil), plugins.MakePluginConfig(string(data)), logger)
+	err = importer.Init(context.Background(), conduit.MakePipelineInitProvider(&pRound, nil, nil), plugins.MakePluginConfig(string(data)), logger)
 	assert.NoError(t, err)
+	genesis, err = importer.GetGenesis()
+	require.NoError(t, err)
 	require.NotNil(t, genesis)
 	require.Equal(t, genesisExpected, *genesis)
 	return
@@ -102,17 +103,10 @@ func TestInitSuccess(t *testing.T) {
 
 func TestInitUnmarshalFailure(t *testing.T) {
 	testImporter = New()
-	_, err := testImporter.Init(context.Background(), conduit.MakePipelineInitProvider(&pRound, nil, nil), plugins.MakePluginConfig("`"), logger)
+	err := testImporter.Init(context.Background(), conduit.MakePipelineInitProvider(&pRound, nil, nil), plugins.MakePluginConfig("`"), logger)
 	assert.Error(t, err)
 	assert.ErrorContains(t, err, "invalid configuration")
 	testImporter.Close()
-}
-
-func TestConfigDefault(t *testing.T) {
-	testImporter = New()
-	expected, err := yaml.Marshal(&Config{})
-	require.NoError(t, err)
-	assert.Equal(t, string(expected), testImporter.Config())
 }
 
 func TestGetBlockSuccess(t *testing.T) {
@@ -133,7 +127,6 @@ func TestRetryAndDuration(t *testing.T) {
 	tempdir := t.TempDir()
 	initializeTestData(t, tempdir, 0)
 	importer := New()
-	defer importer.Config()
 	cfg := Config{
 		BlocksDir:     tempdir,
 		RetryDuration: 10 * time.Millisecond,
@@ -141,7 +134,7 @@ func TestRetryAndDuration(t *testing.T) {
 	}
 	data, err := yaml.Marshal(cfg)
 	require.NoError(t, err)
-	_, err = importer.Init(context.Background(), conduit.MakePipelineInitProvider(&pRound, nil, nil), plugins.MakePluginConfig(string(data)), logger)
+	err = importer.Init(context.Background(), conduit.MakePipelineInitProvider(&pRound, nil, nil), plugins.MakePluginConfig(string(data)), logger)
 	assert.NoError(t, err)
 
 	start := time.Now()
@@ -156,7 +149,6 @@ func TestRetryWithCancel(t *testing.T) {
 	tempdir := t.TempDir()
 	initializeTestData(t, tempdir, 0)
 	importer := New()
-	defer importer.Config()
 	cfg := Config{
 		BlocksDir:     tempdir,
 		RetryDuration: 1 * time.Hour,
@@ -165,7 +157,7 @@ func TestRetryWithCancel(t *testing.T) {
 	data, err := yaml.Marshal(cfg)
 	ctx, cancel := context.WithCancel(context.Background())
 	require.NoError(t, err)
-	_, err = importer.Init(ctx, conduit.MakePipelineInitProvider(&pRound, nil, nil), plugins.MakePluginConfig(string(data)), logger)
+	err = importer.Init(ctx, conduit.MakePipelineInitProvider(&pRound, nil, nil), plugins.MakePluginConfig(string(data)), logger)
 	assert.NoError(t, err)
 
 	// Cancel after delay

@@ -9,7 +9,6 @@ import (
 	"path"
 
 	"github.com/sirupsen/logrus"
-	"gopkg.in/yaml.v3"
 
 	"github.com/algorand/conduit/conduit/data"
 	"github.com/algorand/conduit/conduit/plugins"
@@ -66,11 +65,6 @@ func (exp *fileExporter) Init(_ context.Context, initProvider data.InitProvider,
 	}
 	exp.round = uint64(initProvider.NextDBRound())
 	return err
-}
-
-func (exp *fileExporter) Config() string {
-	ret, _ := yaml.Marshal(exp.cfg)
-	return string(ret)
 }
 
 func (exp *fileExporter) Close() error {

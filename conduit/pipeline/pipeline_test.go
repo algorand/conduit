@@ -53,8 +53,12 @@ type mockImporter struct {
 	rndReqErr       error
 }
 
-func (m *mockImporter) Init(_ context.Context, _ data.InitProvider, cfg plugins.PluginConfig, _ *log.Logger) (*sdk.Genesis, error) {
+func (m *mockImporter) Init(_ context.Context, _ data.InitProvider, cfg plugins.PluginConfig, _ *log.Logger) error {
 	m.cfg = cfg
+	return nil
+}
+
+func (m *mockImporter) GetGenesis() (*sdk.Genesis, error) {
 	return &m.genesis, nil
 }
 
@@ -707,12 +711,12 @@ func (e *errorImporter) Metadata() plugins.Metadata {
 	return errorImporterMetadata
 }
 
-func (e *errorImporter) Init(_ context.Context, _ data.InitProvider, _ plugins.PluginConfig, _ *log.Logger) (*sdk.Genesis, error) {
-	return e.genesis, nil
+func (e *errorImporter) Init(_ context.Context, _ data.InitProvider, _ plugins.PluginConfig, _ *log.Logger) error {
+	return nil
 }
 
-func (e *errorImporter) Config() string {
-	return ""
+func (e *errorImporter) GetGenesis() (*sdk.Genesis, error) {
+	return e.genesis, nil
 }
 
 func (e *errorImporter) Close() error {

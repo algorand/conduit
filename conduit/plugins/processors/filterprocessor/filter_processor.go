@@ -6,7 +6,6 @@ import (
 	"fmt"
 
 	log "github.com/sirupsen/logrus"
-	"gopkg.in/yaml.v3"
 
 	sdk "github.com/algorand/go-algorand-sdk/v2/types"
 
@@ -47,12 +46,6 @@ func (a *FilterProcessor) Metadata() plugins.Metadata {
 		Deprecated:   false,
 		SampleConfig: sampleConfig,
 	}
-}
-
-// Config returns the config
-func (a *FilterProcessor) Config() string {
-	s, _ := yaml.Marshal(a.cfg)
-	return string(s)
 }
 
 // Init initializes the filter processor

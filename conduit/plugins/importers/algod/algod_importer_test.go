@@ -48,7 +48,9 @@ func TestCloseSuccess(t *testing.T) {
 mode: %s
 netaddr: %s
 `, archivalModeStr, ts.URL)
-	gen, err := testImporter.Init(ctx, conduit.MakePipelineInitProvider(&pRound, nil, nil), plugins.MakePluginConfig(cfgStr), logger)
+	err := testImporter.Init(ctx, conduit.MakePipelineInitProvider(&pRound, nil, nil), plugins.MakePluginConfig(cfgStr), logger)
+	assert.NoError(t, err)
+	gen, err := testImporter.GetGenesis()
 	assert.NoError(t, err)
 	assert.NotNil(t, gen)
 	err = testImporter.Close()
@@ -149,17 +151,31 @@ func TestInitCatchup(t *testing.T) {
 		targetRound sdk.Round
 		adminToken  string // to trigger fast-catchup
 		algodServer *httptest.Server
-		err         string
+		netAddr     string
+		errInit     string
+		errGetGen   string
 		logs        []string
 	}{
+		{
+			name:        "get genesis failure - (due to bad netaddr)",
+			targetRound: 1,
+			algodServer: NewAlgodServer(
+				GenesisResponder,
+				MakePostSyncRoundResponder(http.StatusBadRequest)),
+			netAddr:   "this is not a valid netaddr",
+			errInit:   `invalid character " " in host name`,
+			errGetGen: "algod importer is missing its genesis: GetGenesis() should be called only after Init()",
+			logs:      []string{}},
 		{
 			name:        "sync round failure",
 			targetRound: 1,
 			algodServer: NewAlgodServer(
 				GenesisResponder,
 				MakePostSyncRoundResponder(http.StatusBadRequest)),
-			err:  "received unexpected error setting sync round (1): HTTP 400",
-			logs: []string{}},
+			netAddr:   "",
+			errInit:   "received unexpected error setting sync round (1): HTTP 400",
+			errGetGen: "",
+			logs:      []string{}},
 		{
 			name:       "catchpoint parse failure",
 			adminToken: "admin",
@@ -167,8 +183,10 @@ func TestInitCatchup(t *testing.T) {
 			algodServer: NewAlgodServer(
 				GenesisResponder,
 				MakePostSyncRoundResponder(http.StatusOK)),
-			err:  "unable to parse catchpoint, invalid format",
-			logs: []string{}},
+			netAddr:   "",
+			errInit:   "unable to parse catchpoint, invalid format",
+			errGetGen: "",
+			logs:      []string{}},
 		{
 			name:       "invalid catchpoint round uint parsing error",
 			adminToken: "admin",
@@ -176,8 +194,10 @@ func TestInitCatchup(t *testing.T) {
 			algodServer: NewAlgodServer(
 				GenesisResponder,
 				MakePostSyncRoundResponder(http.StatusOK)),
-			err:  "invalid syntax",
-			logs: []string{}},
+			netAddr:   "",
+			errInit:   "invalid syntax",
+			errGetGen: "",
+			logs:      []string{}},
 		{
 			name:       "node status failure",
 			adminToken: "admin",
@@ -186,8 +206,10 @@ func TestInitCatchup(t *testing.T) {
 				GenesisResponder,
 				MakePostSyncRoundResponder(http.StatusOK),
 				MakeMsgpStatusResponder("get", "/v2/status", http.StatusBadRequest, "")),
-			err:  "received unexpected error failed to get node status: HTTP 400",
-			logs: []string{}},
+			netAddr:   "",
+			errInit:   "received unexpected error failed to get node status: HTTP 400",
+			errGetGen: "",
+			logs:      []string{}},
 		{
 			name:        "catchpoint round before node round skips fast catchup",
 			adminToken:  "admin",
@@ -197,8 +219,12 @@ func TestInitCatchup(t *testing.T) {
 				GenesisResponder,
 				MakePostSyncRoundResponder(http.StatusOK),
 				MakeNodeStatusResponder(models.NodeStatus{LastRound: 1235})),
-			logs: []string{"No catchup required. Node round 1235, target round 1235, catchpoint round 1234."},
-		}, {
+			netAddr:   "",
+			errInit:   "",
+			errGetGen: "",
+			logs:      []string{"No catchup required. Node round 1235, target round 1235, catchpoint round 1234."},
+		},
+		{
 			name:        "start catchpoint catchup failure",
 			adminToken:  "admin",
 			catchpoint:  "1236#abcd",
@@ -208,8 +234,10 @@ func TestInitCatchup(t *testing.T) {
 				MakePostSyncRoundResponder(http.StatusOK),
 				MakeNodeStatusResponder(models.NodeStatus{LastRound: 1235}),
 				MakeMsgpStatusResponder("get", "/v2/catchup/", http.StatusBadRequest, "")),
-			err:  "POST /v2/catchup/1236#abcd received unexpected error: HTTP 400",
-			logs: []string{},
+			netAddr:   "",
+			errInit:   "POST /v2/catchup/1236#abcd received unexpected error: HTTP 400",
+			errGetGen: "",
+			logs:      []string{},
 		},
 		{
 			name:        "monitor catchup node status failure",
@@ -222,9 +250,12 @@ func TestInitCatchup(t *testing.T) {
 				// OK in 'catchupNode', fail in 'monitorCatchup'
 				MakeJsonResponderSeries("/v2/status", []int{http.StatusOK, http.StatusBadRequest}, []interface{}{models.NodeStatus{LastRound: 1235}}),
 				MakeMsgpStatusResponder("post", "/v2/catchup/", http.StatusOK, "")),
-			err:  "received unexpected error getting node status: HTTP 400",
-			logs: []string{},
-		}, {
+			netAddr:   "",
+			errInit:   "received unexpected error getting node status: HTTP 400",
+			errGetGen: "",
+			logs:      []string{},
+		},
+		{
 			name:       "auto catchup used (even if the mocking isn't setup for it)",
 			adminToken: "admin",
 			catchpoint: "",
@@ -233,8 +264,12 @@ func TestInitCatchup(t *testing.T) {
 				MakePostSyncRoundResponder(http.StatusOK),
 				MakeJsonResponderSeries("/v2/status", []int{http.StatusOK, http.StatusBadRequest}, []interface{}{models.NodeStatus{LastRound: 1235}}),
 			),
-			logs: []string{"failed to lookup catchpoint label list"},
-		}, {
+			netAddr:   "",
+			errInit:   "",
+			errGetGen: "",
+			logs:      []string{"failed to lookup catchpoint label list"},
+		},
+		{
 			name:        "wait for node to catchup error",
 			adminToken:  "admin",
 			targetRound: 1240,
@@ -244,9 +279,12 @@ func TestInitCatchup(t *testing.T) {
 				MakePostSyncRoundResponder(http.StatusOK),
 				MakeJsonResponderSeries("/v2/status", []int{http.StatusOK, http.StatusOK, http.StatusBadRequest}, []interface{}{models.NodeStatus{LastRound: 1235}}),
 				MakeMsgpStatusResponder("post", "/v2/catchup/", http.StatusOK, nil)),
-			err:  "received unexpected error (StatusAfterBlock) waiting for node to catchup: HTTP 400",
-			logs: []string{},
-		}, {
+			netAddr:   "",
+			errInit:   "received unexpected error (StatusAfterBlock) waiting for node to catchup: HTTP 400",
+			errGetGen: "",
+			logs:      []string{},
+		},
+		{
 			name:        "monitor catchup success",
 			adminToken:  "admin",
 			targetRound: 1237,
@@ -263,6 +301,9 @@ func TestInitCatchup(t *testing.T) {
 					models.NodeStatus{LastRound: 1236},
 				}),
 				MakeMsgpStatusResponder("post", "/v2/catchup/", http.StatusOK, "")),
+			netAddr:   "",
+			errInit:   "",
+			errGetGen: "",
 			logs: []string{
 				"catchup phase Processed Accounts: 1 / 1",
 				"catchup phase Verified Accounts: 1 / 1",
@@ -284,16 +325,26 @@ func TestInitCatchup(t *testing.T) {
 					AdminToken: ttest.adminToken,
 				},
 			}
+			if ttest.netAddr != "" {
+				cfg.NetAddr = ttest.netAddr
+			}
 			cfgStr, err := yaml.Marshal(cfg)
 			require.NoError(t, err)
-			var gen *sdk.Genesis
-			gen, err = testImporter.Init(context.Background(), conduit.MakePipelineInitProvider(&ttest.targetRound, nil, nil), plugins.MakePluginConfig(string(cfgStr)), testLogger)
-			if ttest.err != "" {
-				require.ErrorContains(t, err, ttest.err, ttest.err)
+			err = testImporter.Init(context.Background(), conduit.MakePipelineInitProvider(&ttest.targetRound, nil, nil), plugins.MakePluginConfig(string(cfgStr)), testLogger)
+			if ttest.errInit != "" {
+				require.ErrorContains(t, err, ttest.errInit, ttest.errInit)
 			} else {
 				require.NoError(t, err)
-				assert.NotNil(t, gen)
 			}
+			gen, errGG := testImporter.GetGenesis()
+			if ttest.errGetGen != "" {
+				require.Nil(t, gen)
+				require.ErrorContains(t, errGG, ttest.errGetGen, ttest.errGetGen)
+			} else {
+				require.NotNil(t, gen)
+				require.NoError(t, errGG)
+			}
+
 			_ = testImporter.Close()
 			// Make sure each of the expected log messages are present
 			for _, log := range ttest.logs {
@@ -319,8 +370,10 @@ func TestInitParseUrlFailure(t *testing.T) {
 mode: %s
 netaddr: %s
 `, "follower", url)
-	gen, err := testImporter.Init(ctx, conduit.MakePipelineInitProvider(&pRound, nil, nil), plugins.MakePluginConfig(cfgStr), logger)
+	err := testImporter.Init(ctx, conduit.MakePipelineInitProvider(&pRound, nil, nil), plugins.MakePluginConfig(cfgStr), logger)
 	assert.ErrorContains(t, err, "parse")
+	gen, err := testImporter.GetGenesis()
+	require.ErrorContains(t, err, "algod importer is missing its genesis")
 	assert.Nil(t, gen)
 }
 
@@ -337,8 +390,10 @@ func TestInitModeFailure(t *testing.T) {
 mode: %s
 netaddr: %s
 `, name, ts.URL)
-	gen, err := testImporter.Init(ctx, conduit.MakePipelineInitProvider(&pRound, nil, nil), plugins.MakePluginConfig(cfgStr), logger)
+	err := testImporter.Init(ctx, conduit.MakePipelineInitProvider(&pRound, nil, nil), plugins.MakePluginConfig(cfgStr), logger)
 	assert.EqualError(t, err, fmt.Sprintf("algod importer was set to a mode (%s) that wasn't supported", name))
+	gen, err := testImporter.GetGenesis()
+	require.ErrorContains(t, err, "algod importer is missing its genesis")
 	assert.Nil(t, gen)
 }
 
@@ -354,10 +409,12 @@ func TestInitGenesisFailure(t *testing.T) {
 mode: %s
 netaddr: %s
 `, archivalModeStr, ts.URL)
-	gen, err := testImporter.Init(ctx, conduit.MakePipelineInitProvider(&pRound, nil, nil), plugins.MakePluginConfig(cfgStr), logger)
+	err := testImporter.Init(ctx, conduit.MakePipelineInitProvider(&pRound, nil, nil), plugins.MakePluginConfig(cfgStr), logger)
 	assert.Error(t, err)
 	assert.ErrorContains(t, err, "unable to fetch genesis file")
+	gen, err := testImporter.GetGenesis()
 	assert.Nil(t, gen)
+	require.ErrorContains(t, err, "algod importer is missing its genesis")
 	testImporter.Close()
 }
 
@@ -368,21 +425,13 @@ func TestInitUnmarshalFailure(t *testing.T) {
 	logger := logrus.New()
 
 	testImporter := New()
-	gen, err := testImporter.Init(ctx, conduit.MakePipelineInitProvider(&pRound, nil, nil), plugins.MakePluginConfig("`"), logger)
+	err := testImporter.Init(ctx, conduit.MakePipelineInitProvider(&pRound, nil, nil), plugins.MakePluginConfig("`"), logger)
 	assert.Error(t, err)
 	assert.ErrorContains(t, err, "connect failure in unmarshalConfig")
+	gen, err := testImporter.GetGenesis()
+	require.ErrorContains(t, err, "algod importer is missing its genesis")
 	assert.Nil(t, gen)
 	testImporter.Close()
-}
-
-func TestConfigDefault(t *testing.T) {
-	t.Parallel()
-	testImporter := New()
-	expected, err := yaml.Marshal(&Config{})
-	if err != nil {
-		t.Fatalf("unable to Marshal default algodimporter.Config: %v", err)
-	}
-	assert.Equal(t, string(expected), testImporter.Config())
 }
 
 func TestWaitForBlockBlockFailure(t *testing.T) {
@@ -397,8 +446,10 @@ func TestWaitForBlockBlockFailure(t *testing.T) {
 mode: %s
 netaddr: %s
 `, archivalModeStr, ts.URL)
-	gen, err := testImporter.Init(ctx, conduit.MakePipelineInitProvider(&pRound, nil, nil), plugins.MakePluginConfig(cfgStr), logger)
+	err := testImporter.Init(ctx, conduit.MakePipelineInitProvider(&pRound, nil, nil), plugins.MakePluginConfig(cfgStr), logger)
 	assert.NoError(t, err)
+	gen, err := testImporter.GetGenesis()
+	require.NoError(t, err)
 	assert.NotNil(t, gen)
 	assert.NotEqual(t, testImporter, nil)
 
@@ -453,9 +504,10 @@ func TestGetBlockSuccess(t *testing.T) {
 			defer cancel()
 			testImporter := &algodImporter{}
 
-			var gen *sdk.Genesis
-			gen, err = testImporter.Init(ctx, conduit.MakePipelineInitProvider(&pRound, nil, nil), plugins.MakePluginConfig(string(cfgStr)), logger)
+			err = testImporter.Init(ctx, conduit.MakePipelineInitProvider(&pRound, nil, nil), plugins.MakePluginConfig(string(cfgStr)), logger)
 			assert.NoError(t, err)
+			gen, err := testImporter.GetGenesis()
+			require.NoError(t, err)
 			assert.NotNil(t, gen)
 			assert.NotEqual(t, testImporter, nil)
 
@@ -514,8 +566,10 @@ func TestGetBlockContextCancelled(t *testing.T) {
 mode: %s
 netaddr: %s
 `, ttest.name, ttest.algodServer.URL)
-			gen, err := testImporter.Init(ctx, conduit.MakePipelineInitProvider(&pRound, nil, nil), plugins.MakePluginConfig(cfgStr), logger)
+			err := testImporter.Init(ctx, conduit.MakePipelineInitProvider(&pRound, nil, nil), plugins.MakePluginConfig(cfgStr), logger)
 			assert.NoError(t, err)
+			gen, err := testImporter.GetGenesis()
+			require.NoError(t, err)
 			assert.NotNil(t, gen)
 			assert.NotEqual(t, testImporter, nil)
 
@@ -559,8 +613,10 @@ func TestGetBlockFailure(t *testing.T) {
 mode: %s
 netaddr: %s
 `, ttest.name, ttest.algodServer.URL)
-			gen, err := testImporter.Init(ctx, conduit.MakePipelineInitProvider(&pRound, nil, nil), plugins.MakePluginConfig(cfgStr), logger)
+			err := testImporter.Init(ctx, conduit.MakePipelineInitProvider(&pRound, nil, nil), plugins.MakePluginConfig(cfgStr), logger)
 			assert.NoError(t, err)
+			gen, err := testImporter.GetGenesis()
+			require.NoError(t, err)
 			assert.NotNil(t, gen)
 			assert.NotEqual(t, testImporter, nil)
 
@@ -651,7 +707,9 @@ func TestGetBlockErrors(t *testing.T) {
 
 			testImporter := &algodImporter{}
 			var gen *sdk.Genesis
-			gen, err = testImporter.Init(ctx, conduit.MakePipelineInitProvider(&pRound, nil, nil), pcfg, testLogger)
+			err = testImporter.Init(ctx, conduit.MakePipelineInitProvider(&pRound, nil, nil), pcfg, testLogger)
+			require.NoError(t, err)
+			gen, err = testImporter.GetGenesis()
 			require.NoError(t, err)
 			require.NotNil(t, gen)
 

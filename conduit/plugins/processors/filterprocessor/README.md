@@ -40,13 +40,12 @@ Example:
 ### `expression-type`
 The expression type is a selection of one of the available methods for evaluating the expression. The current list of
 types is
-* `exact`: exact match for string values.
+* `equal`: exact match for string and numeric values.
 * `regex`:  applies regex rules to the matching.
 * `less-than` applies numerical less than expression.
 * `less-than-equal` applies numerical less than or equal expression.
 * `greater-than` applies numerical greater than expression.
 * `greater-than-equal` applies numerical greater than or equal expression.
-* `equal` applies numerical equal expression.
 * `not-equal` applies numerical not equal expression.
 
 You must use the proper expression type for the field your tag identifies based on the type of data stored in that field.
@@ -63,19 +62,19 @@ expression as a regex.
 ```yml @sample.yaml
 name: filter_processor
 config:
-  # Whether or not the expression searches inner transactions for matches.
-  search-inner: true
+    # Whether the expression searches inner transactions for matches.
+    search-inner: true
 
-  # Whether or not to include the entire transaction group when the filter
-  # conditions are met.
-  omit-group-transactions: true
+    # Whether to include the entire transaction group when the filter
+    # conditions are met.
+    omit-group-transactions: true
 
-  # The list of filter expressions to use when matching transactions.
-  filters:
-    - any:
-        - tag: txn.rcv
-          expression-type: exact
-          expression: "ADDRESS"
+    # The list of filter expressions to use when matching transactions.
+    filters:
+      - any:
+          - tag: "txn.rcv"
+            expression-type: "equal"
+            expression: "ADDRESS"
 ```
 
 ## Examples
@@ -94,7 +93,7 @@ Find state proof transactions
 filters:
   - any:
     - tag: "txn.type"
-      expression-type: "exact"
+      expression-type: "equal"
       expression: "stpf"
 ```
 
@@ -103,10 +102,10 @@ Find transactions calling app, "MYAPPID"
 filters:
   - all:
     - tag: "txn.type"
-      expression-type: "exact"
+      expression-type: "equal"
       expression: "appl"
     - tag: "txn.apid"
-      expression-type: "exact"
+      expression-type: "equal"
       expression: "MYAPPID"
 ```
 
@@ -116,7 +115,7 @@ search-inner: true
 filters:
   - all:
     - tag: "txn.snd"
-      expression-type: "exact"
+      expression-type: "equal"
       expression: "FOO"
 ```
 
@@ -126,6 +125,6 @@ omit-group-transactions: true
 filters:
   - all:
     - tag: "txn.type"
-      expression-type: "exact"
+      expression-type: "equal"
       expression: "appl"
 ```

@@ -25,10 +25,14 @@ func (i *mockImporter) Metadata() plugins.Metadata {
 		SampleConfig: "",
 	}
 }
-func (i *mockImporter) Init(ctx context.Context, initProvider data.InitProvider, cfg plugins.PluginConfig, logger *logrus.Logger) (*sdk.Genesis, error) {
+func (i *mockImporter) Init(ctx context.Context, initProvider data.InitProvider, cfg plugins.PluginConfig, logger *logrus.Logger) error {
+	return nil
+}
+
+func (i *mockImporter) GetGenesis() (*sdk.Genesis, error) {
 	return &sdk.Genesis{}, nil
 }
-func (i *mockImporter) Config() string                              { return "" }
+
 func (i *mockImporter) Close() error                                { return nil }
 func (i *mockImporter) GetBlock(rnd uint64) (data.BlockData, error) { return data.BlockData{}, nil }
 
