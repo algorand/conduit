@@ -815,3 +815,58 @@ func TestMetricPrefixApplied(t *testing.T) {
 	pImpl.registerPluginMetricsCallbacks()
 	assert.Equal(t, prefix, mImporter.subsystem)
 }
+
+func TestMetrics(t *testing.T) {
+	// This test cannot run in parallel because the metrics are global.
+	basicTxn := func(t sdk.TxType) sdk.SignedTxnWithAD {
+		return sdk.SignedTxnWithAD{
+			SignedTxn: sdk.SignedTxn{
+				Txn: sdk.Transaction{
+					Type: t,
+				},
+			},
+		}
+	}
+	txnWithInner := func(t sdk.TxType, inner ...sdk.SignedTxnWithAD) sdk.SignedTxnWithAD {
+		result := basicTxn(t)
+		result.EvalDelta.InnerTxns = inner
+		return result
+	}
+	const round = sdk.Round(1234)
+
+	block := data.BlockData{
+		BlockHeader: sdk.BlockHeader{Round: round},
+		Payset: []sdk.SignedTxnInBlock{
+			{
+				SignedTxnWithAD: basicTxn(sdk.PaymentTx),
+			}, {
+				SignedTxnWithAD: basicTxn(sdk.KeyRegistrationTx),
+			}, {
+				SignedTxnWithAD: basicTxn(sdk.AssetConfigTx),
+			}, {
+				SignedTxnWithAD: basicTxn(sdk.AssetTransferTx),
+			}, {
+				SignedTxnWithAD: basicTxn(sdk.AssetFreezeTx),
+			}, {
+				SignedTxnWithAD: basicTxn(sdk.ApplicationCallTx),
+			}, {
+				SignedTxnWithAD: basicTxn(sdk.StateProofTx),
+			}, {
+				// counted as 1 app call and 6 inner txns
+				SignedTxnWithAD: txnWithInner(sdk.ApplicationCallTx,
+					basicTxn(sdk.PaymentTx),
+					txnWithInner(sdk.ApplicationCallTx,
+						basicTxn(sdk.PaymentTx),
+						basicTxn(sdk.PaymentTx)),
+					basicTxn(sdk.PaymentTx),
+					basicTxn(sdk.PaymentTx)),
+			},
+		},
+	}
+
+	assert.Equal(t, 6, numInnerTxn(block.Payset[7].SignedTxnWithAD))
+
+	// was not able to get this part to work.
+	//metrics.RegisterPrometheusMetrics("add_metrics_test")
+	//addMetrics(block, time.Hour)
+}
