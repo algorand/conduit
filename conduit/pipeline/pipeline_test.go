@@ -25,7 +25,7 @@ import (
 
 	"github.com/algorand/conduit/conduit"
 	"github.com/algorand/conduit/conduit/data"
-	_ "github.com/algorand/conduit/conduit/metrics"
+	"github.com/algorand/conduit/conduit/metrics"
 	"github.com/algorand/conduit/conduit/plugins"
 	"github.com/algorand/conduit/conduit/plugins/exporters"
 	"github.com/algorand/conduit/conduit/plugins/importers"
@@ -867,6 +867,42 @@ func TestMetrics(t *testing.T) {
 	assert.Equal(t, 6, numInnerTxn(block.Payset[7].SignedTxnWithAD))
 
 	// was not able to get this part to work.
-	//metrics.RegisterPrometheusMetrics("add_metrics_test")
-	//addMetrics(block, time.Hour)
+	metrics.RegisterPrometheusMetrics("add_metrics_test")
+	addMetrics(block, time.Hour)
+	stats, err := prometheus.DefaultGatherer.Gather()
+	require.NoError(t, err)
+	found := 0
+	for _, stat := range stats {
+		if strings.HasSuffix(*stat.Name, metrics.BlockImportTimeName) {
+			found++
+			// 1 hour in seconds
+			assert.Contains(t, stat.String(), "sample_count:1 sample_sum:3600")
+		}
+		if strings.HasSuffix(*stat.Name, metrics.ImportedRoundGaugeName) {
+			found++
+			assert.Contains(t, stat.String(), "value:1234")
+		}
+		if strings.HasSuffix(*stat.Name, metrics.ImportedTxnsPerBlockName) {
+			found++
+			assert.Contains(t, stat.String(), "sample_count:1 sample_sum:14")
+		}
+		if strings.HasSuffix(*stat.Name, metrics.ImportedTxnsName) {
+			found++
+			str := stat.String()
+			// the 6 single txns
+			assert.Contains(t, str, `label:<name:"txn_type" value:"acfg" > gauge:<value:1 >`)
+			assert.Contains(t, str, `label:<name:"txn_type" value:"afrz" > gauge:<value:1 >`)
+			assert.Contains(t, str, `label:<name:"txn_type" value:"axfer" > gauge:<value:1 >`)
+			assert.Contains(t, str, `label:<name:"txn_type" value:"keyreg" > gauge:<value:1 >`)
+			assert.Contains(t, str, `label:<name:"txn_type" value:"pay" > gauge:<value:1 >`)
+			assert.Contains(t, str, `label:<name:"txn_type" value:"stpf" > gauge:<value:1 >`)
+
+			// 2 app call txns
+			assert.Contains(t, str, `label:<name:"txn_type" value:"appl" > gauge:<value:2 >`)
+
+			// 1 app had 6 inner txns
+			assert.Contains(t, str, `label:<name:"txn_type" value:"inner" > gauge:<value:6 >`)
+		}
+	}
+	assert.Equal(t, 4, found)
 }
