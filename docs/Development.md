@@ -1,6 +1,11 @@
-# Creating A Plugin
+# Conduit Plugins
 
-There are three different interfaces to implement, depending on what sort of functionality you are adding:
+Functionality can be added by implementing plugins. Once a new plugin is registered with
+the framework it can be configured exactly like the built-in Conduit plugins by using
+the `conduit.yml` file.
+
+There are three different interfaces to implement depending on
+what sort of functionality you are adding:
 
 * Importer: for sourcing data into the system.
 * Processor: for manipulating data as it goes through the system.
@@ -13,6 +18,13 @@ For interface details, refer to the godoc:
 * [Importer](https://pkg.go.dev/github.com/algorand/conduit/conduit/plugins/importers)
 * [Processor](https://pkg.go.dev/github.com/algorand/conduit/conduit/plugins/processors)
 * [Exporter](https://pkg.go.dev/github.com/algorand/conduit/conduit/plugins/exporters)
+
+# Creating A Plugin
+
+Plugin templates are available at our
+[conduit-plugin-template](https://github.com/algorand/conduit-plugin-template) repository.
+It is the quickest way to get up and running as it provides you with all the boilerplate
+code and some sample build scripts.
 
 ## Registering a plugin
 
@@ -97,7 +109,7 @@ When all processing has completed for a round, the `OnComplete` function is call
 // finished. It can be used for things like finalizing state.
 type Completed interface {
 	// OnComplete will be called by the Conduit framework when the pipeline
-	// finishes processing a round.	
+	// finishes processing a round.
 	OnComplete(input data.BlockData) error
 }
 ```

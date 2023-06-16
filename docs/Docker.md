@@ -12,7 +12,7 @@ Special locations in the container designed to modify behavior:
 
 | File | Description |
 | ---- | ----------- |
-| /etc/algorand/config.yml | Required. Conduit configuration file. Definition for the pipeline behavior. |
+| /etc/algorand/conduit.yml | Required. Conduit configuration file. Definition for the pipeline behavior. |
 | /data | Optional. Data directory. For persistence you may mount a volume at this location. See volume permissions sections for additional information. |
 
 # Usage

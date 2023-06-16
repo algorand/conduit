@@ -1,10 +1,10 @@
 module github.com/algorand/conduit
 
-go 1.17
+go 1.20
 
 require (
-	github.com/algorand/go-algorand-sdk/v2 v2.0.0-20230531123858-3a0efd6a6398
-	github.com/algorand/go-codec/codec v1.1.8
+	github.com/algorand/go-algorand-sdk/v2 v2.2.0
+	github.com/algorand/go-codec/codec v1.1.10
 	github.com/algorand/indexer v0.0.0-20230601214318-cb2f42818f82
 	github.com/google/uuid v1.3.0
 	github.com/jackc/pgx/v4 v4.13.0

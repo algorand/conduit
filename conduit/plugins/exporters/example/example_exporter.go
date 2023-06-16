@@ -42,7 +42,7 @@ func (exp *exampleExporter) Close() error {
 }
 
 // Receive is the main handler function for blocks
-func (exp *exampleExporter) Receive(exportData data.BlockData) error {
+func (exp *exampleExporter) Receive(_ data.BlockData) error {
 	panic("not implemented")
 }
 
