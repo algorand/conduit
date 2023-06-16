@@ -1,6 +1,6 @@
 module github.com/algorand/conduit
 
-go 1.17
+go 1.20
 
 require (
 	github.com/algorand/go-algorand-sdk/v2 v2.0.0-20230531123858-3a0efd6a6398

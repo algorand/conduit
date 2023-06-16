@@ -6,7 +6,6 @@ import (
 	"go/ast"
 	"go/parser"
 	"go/token"
-	"io/ioutil"
 	"os"
 	"path"
 	"strings"
@@ -20,7 +19,7 @@ const footerPrefix = "Footer\n"
 // and writes a markdown file to the outputDir containing mkdocs-style documentation for the Config struct
 func generateMd(configPath string, outputDir string) error {
 	// parse the config file
-	bytes, err := ioutil.ReadFile(configPath)
+	bytes, err := os.ReadFile(configPath)
 	if err != nil {
 		return err
 	}
@@ -118,7 +117,7 @@ func main() {
 	flag.Parse()
 
 	usage := "USAGE: //go:generate conduit-docs <path-to-output-dir>"
-	// go:generate conduit-docs [path]
+	//go:generate conduit-docs [path]
 	if len(flag.Args()) == 1 {
 		err := generateMd(os.Getenv("GOFILE"), flag.Arg(0))
 		if err != nil {

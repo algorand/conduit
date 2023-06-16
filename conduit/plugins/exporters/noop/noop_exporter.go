@@ -38,7 +38,7 @@ func (exp *noopExporter) Metadata() plugins.Metadata {
 	return metadata
 }
 
-func (exp *noopExporter) Init(_ context.Context, initProvider data.InitProvider, cfg plugins.PluginConfig, _ *logrus.Logger) error {
+func (exp *noopExporter) Init(_ context.Context, _ data.InitProvider, cfg plugins.PluginConfig, _ *logrus.Logger) error {
 	if err := cfg.UnmarshalConfig(&exp.cfg); err != nil {
 		return fmt.Errorf("init failure in unmarshalConfig: %v", err)
 	}

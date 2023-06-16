@@ -5,7 +5,6 @@ import (
 	"compress/gzip"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"strings"
 
@@ -69,7 +68,7 @@ func EncodeJSONToFile(filename string, v interface{}, pretty bool) error {
 // DecodeJSONFromFile is used to decode a file to an object.
 func DecodeJSONFromFile(filename string, v interface{}, strict bool) error {
 	// Streaming into the decoder was slow.
-	fileBytes, err := ioutil.ReadFile(filename)
+	fileBytes, err := os.ReadFile(filename)
 	if err != nil {
 		return fmt.Errorf("DecodeJSONFromFile(): failed to read %s: %w", filename, err)
 	}
