@@ -366,17 +366,30 @@ func (p *pipelineImpl) Stop() {
 	}
 }
 
-func (p *pipelineImpl) addMetrics(block data.BlockData, importTime time.Duration) {
+func numInnerTxn(txn sdk.SignedTxnWithAD) int {
+	result := 0
+	for _, itxn := range txn.ApplyData.EvalDelta.InnerTxns {
+		result += 1 + numInnerTxn(itxn)
+	}
+	return result
+}
+
+func addMetrics(block data.BlockData, importTime time.Duration) {
 	metrics.BlockImportTimeSeconds.Observe(importTime.Seconds())
-	metrics.ImportedTxnsPerBlock.Observe(float64(len(block.Payset)))
 	metrics.ImportedRoundGauge.Set(float64(block.Round()))
 	txnCountByType := make(map[string]int)
+	innerTxn := 0
 	for _, txn := range block.Payset {
 		txnCountByType[string(txn.Txn.Type)]++
+		innerTxn += numInnerTxn(txn.SignedTxnWithAD)
+	}
+	if innerTxn != 0 {
+		txnCountByType["inner"] = innerTxn
 	}
 	for k, v := range txnCountByType {
 		metrics.ImportedTxns.WithLabelValues(k).Set(float64(v))
 	}
+	metrics.ImportedTxnsPerBlock.Observe(float64(len(block.Payset)) + float64(innerTxn))
 }
 
 // Start pushes block data through the pipeline
@@ -465,7 +478,7 @@ func (p *pipelineImpl) Start() {
 					metrics.ExporterTimeSeconds.Observe(time.Since(exporterStart).Seconds())
 					// Ignore round 0 (which is empty).
 					if p.pipelineMetadata.NextRound > 1 {
-						p.addMetrics(blkData, time.Since(start))
+						addMetrics(blkData, time.Since(start))
 					}
 					p.setError(nil)
 					retry = 0
