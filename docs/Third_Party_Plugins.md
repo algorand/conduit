@@ -8,6 +8,13 @@ would like to deploy.
 Over time this process can be automated, but for now it is manual and requres
 writing a little bit of code.
 
+# Third Party Plugins
+
+A listing of third party plugins. If you create a plugin, please make a PR
+and add it to the list.
+
+* [conduit-plugin-template](https://github.com/algorand/conduit-plugin-template): A collection of templates.
+
 # Configuring Your Deployment
 
 As an example, we'll create a custom deployment that combines a subset of the
@@ -96,7 +103,3 @@ GOOS=darwin GOARCH=arm64 go build -o my_custom_conduit-darwin-arm64 main.go
 GOOS=windows GOARCH=amd64 go build -o my_custom_conduit-windows-amd64.exe main.go
 GOOS=windows GOARCH=arm64 go build -o my_custom_conduit-windows-arm64.exe main.go
 ```
-
-# Third Party Plugins
-
-* [conduit-plugin-template](https://github.com/algorand/conduit-plugin-template): A collection of templates.
