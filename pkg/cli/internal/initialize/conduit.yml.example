@@ -33,3 +33,14 @@ processors:
 # An exporter is defined to do something with the data.
 exporter:
 %s
+
+# Enable telemetry for conduit
+telemetry:
+  enabled: false
+
+  # By default the following fields will be configured to send data to Algorand.
+  # To store your own telemetry events, they can be overridden.
+  # uri: ""
+  # index: ""
+  # username: ""
+  # password: ""

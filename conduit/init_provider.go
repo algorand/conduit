@@ -2,19 +2,23 @@ package conduit
 
 import (
 	sdk "github.com/algorand/go-algorand-sdk/v2/types"
+
+	"github.com/algorand/conduit/conduit/telemetry"
 )
 
 // PipelineInitProvider algod based init provider
 type PipelineInitProvider struct {
-	currentRound *sdk.Round
-	genesis      *sdk.Genesis
+	currentRound    *sdk.Round
+	genesis         *sdk.Genesis
+	telemetryClient telemetry.Client
 }
 
 // MakePipelineInitProvider constructs an init provider.
-func MakePipelineInitProvider(currentRound *sdk.Round, genesis *sdk.Genesis) *PipelineInitProvider {
+func MakePipelineInitProvider(currentRound *sdk.Round, genesis *sdk.Genesis, client telemetry.Client) *PipelineInitProvider {
 	return &PipelineInitProvider{
-		currentRound: currentRound,
-		genesis:      genesis,
+		currentRound:    currentRound,
+		genesis:         genesis,
+		telemetryClient: client,
 	}
 }
 
@@ -31,4 +35,9 @@ func (a *PipelineInitProvider) GetGenesis() *sdk.Genesis {
 // NextDBRound provides next database round
 func (a *PipelineInitProvider) NextDBRound() sdk.Round {
 	return *a.currentRound
+}
+
+// GetTelemetryClient gets the telemetry state in the init provider
+func (a *PipelineInitProvider) GetTelemetryClient() telemetry.Client {
+	return a.telemetryClient
 }

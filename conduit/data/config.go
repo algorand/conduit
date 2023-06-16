@@ -41,6 +41,15 @@ type Metrics struct {
 	Prefix string `yaml:"prefix"`
 }
 
+// Telemetry configs for sending Telemetry to OpenSearch
+type Telemetry struct {
+	Enabled  bool   `yaml:"enabled"`
+	URI      string `yaml:"uri"`
+	Index    string `yaml:"index"`
+	UserName string `yaml:"username"`
+	Password string `yaml:"password"`
+}
+
 // Config stores configuration specific to the conduit pipeline
 type Config struct {
 	// ConduitArgs are the program inputs. Should not be serialized for config.
@@ -61,6 +70,8 @@ type Config struct {
 	RetryCount uint64 `yaml:"retry-count"`
 	// RetryDelay is a duration amount interpreted from a string
 	RetryDelay time.Duration `yaml:"retry-delay"`
+
+	Telemetry Telemetry `yaml:"telemetry"`
 }
 
 // Valid validates pipeline config

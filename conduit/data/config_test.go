@@ -85,7 +85,6 @@ exporters:
   name: "noop"
   config:
     connectionstring: ""`, "field exporters not found"},
-
 		{"config not configs", `---
 log-level: info
 importer:

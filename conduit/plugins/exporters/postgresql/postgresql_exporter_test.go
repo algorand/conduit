@@ -41,26 +41,26 @@ func TestExporterMetadata(t *testing.T) {
 func TestConnectDisconnectSuccess(t *testing.T) {
 	pgsqlExp := pgsqlConstructor.New()
 	cfg := plugins.MakePluginConfig("test: true\nconnection-string: ''")
-	assert.NoError(t, pgsqlExp.Init(context.Background(), conduit.MakePipelineInitProvider(&round, &sdk.Genesis{}), cfg, logger))
+	assert.NoError(t, pgsqlExp.Init(context.Background(), conduit.MakePipelineInitProvider(&round, &sdk.Genesis{}, nil), cfg, logger))
 	assert.NoError(t, pgsqlExp.Close())
 }
 
 func TestConnectUnmarshalFailure(t *testing.T) {
 	pgsqlExp := pgsqlConstructor.New()
 	cfg := plugins.MakePluginConfig("'")
-	assert.ErrorContains(t, pgsqlExp.Init(context.Background(), conduit.MakePipelineInitProvider(&round, nil), cfg, logger), "connect failure in unmarshalConfig")
+	assert.ErrorContains(t, pgsqlExp.Init(context.Background(), conduit.MakePipelineInitProvider(&round, nil, nil), cfg, logger), "connect failure in unmarshalConfig")
 }
 
 func TestConnectDbFailure(t *testing.T) {
 	pgsqlExp := pgsqlConstructor.New()
 	cfg := plugins.MakePluginConfig("")
-	assert.ErrorContains(t, pgsqlExp.Init(context.Background(), conduit.MakePipelineInitProvider(&round, nil), cfg, logger), "connection string is empty for postgres")
+	assert.ErrorContains(t, pgsqlExp.Init(context.Background(), conduit.MakePipelineInitProvider(&round, nil, nil), cfg, logger), "connection string is empty for postgres")
 }
 
 func TestReceiveInvalidBlock(t *testing.T) {
 	pgsqlExp := pgsqlConstructor.New()
 	cfg := plugins.MakePluginConfig("test: true")
-	assert.NoError(t, pgsqlExp.Init(context.Background(), conduit.MakePipelineInitProvider(&round, &sdk.Genesis{}), cfg, logger))
+	assert.NoError(t, pgsqlExp.Init(context.Background(), conduit.MakePipelineInitProvider(&round, &sdk.Genesis{}, nil), cfg, logger))
 	invalidBlock := data.BlockData{
 		BlockHeader: sdk.BlockHeader{
 			Round: 1,
@@ -76,7 +76,7 @@ func TestReceiveInvalidBlock(t *testing.T) {
 func TestReceiveAddBlockSuccess(t *testing.T) {
 	pgsqlExp := pgsqlConstructor.New()
 	cfg := plugins.MakePluginConfig("test: true")
-	assert.NoError(t, pgsqlExp.Init(context.Background(), conduit.MakePipelineInitProvider(&round, &sdk.Genesis{}), cfg, logger))
+	assert.NoError(t, pgsqlExp.Init(context.Background(), conduit.MakePipelineInitProvider(&round, &sdk.Genesis{}, nil), cfg, logger))
 
 	block := data.BlockData{
 		BlockHeader: sdk.BlockHeader{},
@@ -92,7 +92,7 @@ func TestPostgresqlExporterInit(t *testing.T) {
 	cfg := plugins.MakePluginConfig("test: true")
 
 	// genesis hash mismatch
-	initProvider := conduit.MakePipelineInitProvider(&round, &sdk.Genesis{})
+	initProvider := conduit.MakePipelineInitProvider(&round, &sdk.Genesis{}, nil)
 	initProvider.SetGenesis(&sdk.Genesis{
 		Network: "test",
 	})
@@ -101,7 +101,7 @@ func TestPostgresqlExporterInit(t *testing.T) {
 
 	// incorrect round
 	round = 1
-	err = pgsqlExp.Init(context.Background(), conduit.MakePipelineInitProvider(&round, &sdk.Genesis{}), cfg, logger)
+	err = pgsqlExp.Init(context.Background(), conduit.MakePipelineInitProvider(&round, &sdk.Genesis{}, nil), cfg, logger)
 	assert.Contains(t, err.Error(), "initializing block round 1 but next round to account is 0")
 }
 

@@ -80,7 +80,7 @@ func TestExporterInitDefaults(t *testing.T) {
 			defer fileExp.Close()
 			pcfg := plugins.MakePluginConfig(fmt.Sprintf("block-dir: %s", tc.blockdir))
 			pcfg.DataDir = tempdir
-			err := fileExp.Init(context.Background(), conduit.MakePipelineInitProvider(&round, nil), pcfg, logger)
+			err := fileExp.Init(context.Background(), conduit.MakePipelineInitProvider(&round, nil, nil), pcfg, logger)
 			require.NoError(t, err)
 		})
 	}
@@ -92,12 +92,12 @@ func TestExporterInit(t *testing.T) {
 	defer fileExp.Close()
 
 	// creates a new output file
-	err := fileExp.Init(context.Background(), conduit.MakePipelineInitProvider(&round, nil), plugins.MakePluginConfig(config), logger)
+	err := fileExp.Init(context.Background(), conduit.MakePipelineInitProvider(&round, nil, nil), plugins.MakePluginConfig(config), logger)
 	assert.NoError(t, err)
 	fileExp.Close()
 
 	// can open existing file
-	err = fileExp.Init(context.Background(), conduit.MakePipelineInitProvider(&round, nil), plugins.MakePluginConfig(config), logger)
+	err = fileExp.Init(context.Background(), conduit.MakePipelineInitProvider(&round, nil, nil), plugins.MakePluginConfig(config), logger)
 	assert.NoError(t, err)
 	fileExp.Close()
 }
@@ -121,7 +121,7 @@ func sendData(t *testing.T, fileExp exporters.Exporter, config string, numRounds
 
 	// initialize
 	rnd := sdk.Round(0)
-	err = fileExp.Init(context.Background(), conduit.MakePipelineInitProvider(&rnd, nil), plugins.MakePluginConfig(config), logger)
+	err = fileExp.Init(context.Background(), conduit.MakePipelineInitProvider(&rnd, nil, nil), plugins.MakePluginConfig(config), logger)
 	require.NoError(t, err)
 
 	// incorrect round
@@ -182,7 +182,7 @@ func TestExporterClose(t *testing.T) {
 	config, _ := getConfig(t)
 	fileExp := fileCons.New()
 	rnd := sdk.Round(0)
-	fileExp.Init(context.Background(), conduit.MakePipelineInitProvider(&rnd, nil), plugins.MakePluginConfig(config), logger)
+	fileExp.Init(context.Background(), conduit.MakePipelineInitProvider(&rnd, nil, nil), plugins.MakePluginConfig(config), logger)
 	require.NoError(t, fileExp.Close())
 }
 

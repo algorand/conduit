@@ -30,6 +30,7 @@ import (
 	"github.com/algorand/conduit/conduit/plugins/exporters"
 	"github.com/algorand/conduit/conduit/plugins/importers"
 	"github.com/algorand/conduit/conduit/plugins/processors"
+	"github.com/algorand/conduit/conduit/telemetry"
 )
 
 // a unique block data to validate with tests
@@ -527,6 +528,44 @@ func TestPipelineMetricsConfigs(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, 200, resp.StatusCode)
 	assert.Equal(t, pImpl.cfg.Metrics.Prefix, prefixOverride)
+}
+
+func TestPipelineTelemetryConfigs(t *testing.T) {
+	pImpl, _, _, _, _ := mockPipeline(t, "")
+
+	// telemetry OFF, check that client is nil
+	pImpl.cfg.Telemetry = data.Telemetry{
+		Enabled: false,
+	}
+	pImpl.Init()
+	baseClient := (*pImpl.initProvider).GetTelemetryClient()
+	assert.Nil(t, baseClient)
+
+	// telemetry ON
+	pImpl.cfg.Telemetry = data.Telemetry{
+		Enabled:  true,
+		URI:      "test-uri",
+		Index:    "test-index",
+		UserName: "test-username",
+		Password: "test-password",
+	}
+	pImpl.Init()
+	baseClient = (*pImpl.initProvider).GetTelemetryClient()
+	client := baseClient.(*telemetry.OpenSearchClient)
+
+	assert.NotNil(t, client)
+	assert.NotNil(t, client.Client)
+	assert.Equal(t, true, client.TelemetryConfig.Enable)
+	assert.Equal(t, "test-uri", client.TelemetryConfig.URI)
+	assert.Equal(t, "test-index", client.TelemetryConfig.Index)
+	assert.Equal(t, "test-username", client.TelemetryConfig.UserName)
+	assert.Equal(t, "test-password", client.TelemetryConfig.Password)
+
+	event := client.MakeTelemetryStartupEvent()
+	assert.Equal(t, "starting conduit", event.Message)
+	assert.NotEmpty(t, event.Time)
+	assert.NotEmpty(t, event.GUID)
+	assert.NotEmpty(t, event.Version)
 }
 
 func TestRoundOverrideValidConflict(t *testing.T) {
