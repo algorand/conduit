@@ -2,20 +2,20 @@
 
 Conduit supports Third Party Plugins, but not in the way you may be used to
 in other pluggable systems. In order to limit adding dependencies, third party
-plugins are enabaled with a custom build that imports exactly the plugins you
+plugins are enabled with a custom build that imports exactly the plugins you
 would like to deploy.
 
-Over time this process can be automated, but for now it is manual and requres
+Over time this process can be automated, but for now it is manual and requires
 writing a little bit of code.
 
 # Third Party Plugins
 
-A listing of third party plugins. If you create a plugin, please make a PR
+A list of third party plugins. If you create a plugin, please make a PR
 and add it to the list.
 
 * [conduit-plugin-template](https://github.com/algorand/conduit-plugin-template): A collection of templates.
 
-# Configuring Your Deployment
+# Configuring a Deployment that Includes Third Party Plugins
 
 As an example, we'll create a custom deployment that combines a subset of the
 built-in Conduit plugins and the plugins from
@@ -24,8 +24,8 @@ built-in Conduit plugins and the plugins from
 ## Initial Setup
 
 To get started, initialize a new directory and setup the project. We'll add two
-dependencies. To include other third party plugins, they would be added in a
-similar way.
+dependencies. To include other third party plugins, they would be added in an
+analogous way.
 ```sh
 go mod init mywebsite.com/my_custom_conduit
 go get github.com/algorand/conduit@latest
@@ -73,6 +73,7 @@ func main() {
 For a simple test, run `main.go` directly to list the plugins. The
 algod importer and file_writer exporter are imported by default, which is why
 you see them included in the list:
+
 ```sh
 $ go run main.go list
 importers:
@@ -90,11 +91,13 @@ exporters:
 ```
 
 Build a binary:
+
 ```go
 go build .
 ```
 
 Cross-compile to different operating systems or architectures:
+
 ```go
 GOOS=linux GOARCH=amd64 go build -o my_custom_conduit-linux-amd64 main.go
 GOOS=linux GOARCH=arm64 go build -o my_custom_conduit-linux-arm64 main.go
