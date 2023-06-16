@@ -866,7 +866,6 @@ func TestMetrics(t *testing.T) {
 
 	assert.Equal(t, 6, numInnerTxn(block.Payset[7].SignedTxnWithAD))
 
-	// was not able to get this part to work.
 	metrics.RegisterPrometheusMetrics("add_metrics_test")
 	addMetrics(block, time.Hour)
 	stats, err := prometheus.DefaultGatherer.Gather()
