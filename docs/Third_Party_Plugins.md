@@ -8,12 +8,13 @@ would like to deploy.
 Over time this process can be automated, but for now it is manual and requires
 writing a little bit of code.
 
-# Third Party Plugins
+# External Plugins
 
-A list of third party plugins. If you create a plugin, please make a PR
-and add it to the list.
+This is where external and third party plugins will be listed. If you create a
+plugin, please make a PR adding a bullet for it below.
 
 * [conduit-plugin-template](https://github.com/algorand/conduit-plugin-template): A collection of templates.
+*
 
 # Configuring a Deployment that Includes Third Party Plugins
 
