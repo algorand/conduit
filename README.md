@@ -30,6 +30,10 @@ Run `make` to build Conduit, the binary is located at `cmd/conduit/conduit`.
 
 See the [Configuration](./docs/Configuration.md) page.
 
+# Third Party Plugins
+
+See the [Third Party Plugins](./docs/Third_Party_Plugins.md) page.
+
 # Develoment
 
 See the [Development](./docs/Development.md) page for building a plugin.
