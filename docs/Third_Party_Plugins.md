@@ -26,6 +26,7 @@ built-in Conduit plugins and the plugins from
 To get started, initialize a new directory and setup the project. We'll add two
 dependencies. To include other third party plugins, they would be added in an
 analogous way.
+
 ```sh
 go mod init mywebsite.com/my_custom_conduit
 go get github.com/algorand/conduit@latest
@@ -55,6 +56,7 @@ import (
   _ "github.com/algorand/conduit-plugin-template/plugin/importer"
   _ "github.com/algorand/conduit-plugin-template/plugin/processor"
 
+  // The cli package is used to start Conduit
   "github.com/algorand/conduit/pkg/cli"
 )
 
