@@ -1,7 +1,7 @@
 # Conduit Plugins
 
 Functionality can be added by implementing plugins. Once a new plugin is registered with
-the framework they can be configured exactly like the built-in Conduit plugins by using
+the framework it can be configured exactly like the built-in Conduit plugins by using
 the `conduit.yml` file.
 
 There are three different interfaces to implement depending on
