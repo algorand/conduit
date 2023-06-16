@@ -286,7 +286,7 @@ func (p *pipelineImpl) Init() error {
 		var telemetryErr error
 		telemetryClient, telemetryErr = p.initializeTelemetry()
 		if telemetryErr != nil {
-			p.logger.Warn("Telemetry initialization failed. Continuing without telemetry.")
+			p.logger.Warnf("Telemetry initialization failed, continuing without telemetry: %s", telemetryErr)
 		} else {
 			// Try sending a startup event. If it fails, log a warning and continue
 			event := telemetryClient.MakeTelemetryStartupEvent()
