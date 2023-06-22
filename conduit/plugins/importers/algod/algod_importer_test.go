@@ -775,7 +775,7 @@ func TestNeedsCatchup(t *testing.T) {
 			mode:       followerMode,
 			round:      1234,
 			responders: []algodCustomHandler{},
-			logMsg:     "Unable to fetch state delta for round",
+			logMsg:     "State Delta for round 1234 is unavailable on the configured node.",
 			result:     true,
 		},
 		{
@@ -791,7 +791,7 @@ func TestNeedsCatchup(t *testing.T) {
 			mode:       followerMode,
 			round:      0,
 			responders: []algodCustomHandler{},
-			logMsg:     "Unable to fetch block for round 0",
+			logMsg:     "Block for round 0 is unavailable on the configured node.",
 			result:     true,
 		},
 		{
@@ -807,7 +807,7 @@ func TestNeedsCatchup(t *testing.T) {
 			mode:       archivalMode,
 			round:      1234,
 			responders: []algodCustomHandler{},
-			logMsg:     "Unable to fetch block for round",
+			logMsg:     "Block for round 1234 is unavailable on the configured node.",
 			result:     true,
 		},
 		{
