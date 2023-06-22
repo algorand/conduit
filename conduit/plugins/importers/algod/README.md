@@ -21,11 +21,11 @@ When using a follower node, ledger state delta objects are provided to the proce
 name: algod
 config:
     # The mode of operation, either "archival" or "follower".
-    # * archival mode allows you to start processing on any round but does not
-    #   contain the ledger state delta objects required for the postgres writer.
     # * follower mode allows you to use a lightweight non-archival node as the
     #   data source. In addition, it will provide ledger state delta objects to
     #   the processors and exporter.
+    # * archival mode allows you to start processing on any round but does not
+    #   contain the ledger state delta objects required for the postgres writer.
     mode: "follower"
   
     # Algod API address.
@@ -36,16 +36,7 @@ config:
   
     # Algod catchpoint catchup arguments
     catchup-config:
-        # Algod Admin API Token. Set the admin token to use fast catchup during
-        # startup. The importer checks to see if a catchup would help and if so
-        # the catchpoint label will be used. If no catchpoint is provided, the
-        # importer will automatically select one.
+        # Algod Admin API Token. Used for running fast catchup during startup
+        # if the node needs to be initialized.
         admin-token: ""
-        # The catchpoint to use when running fast catchup. If this is set it
-        # overrides 'auto: true'. To select an appropriate catchpoint for your
-        # deployment, see the list of available catchpoints for each network:
-        #   mainnet: https://algorand-catchpoints.s3.us-east-2.amazonaws.com/consolidated/mainnet_catchpoints.txt
-        #   betanet: https://algorand-catchpoints.s3.us-east-2.amazonaws.com/consolidated/betanet_catchpoints.txt
-        #   testnet: https://algorand-catchpoints.s3.us-east-2.amazonaws.com/consolidated/testnet_catchpoints.txt
-        catchpoint: ""
 ```

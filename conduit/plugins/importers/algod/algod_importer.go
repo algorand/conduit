@@ -236,7 +236,7 @@ func (algodImp *algodImporter) needsCatchup(targetRound uint64) bool {
 		// If we are in follower mode, check if the round delta is available.
 		_, err := algodImp.getDelta(targetRound)
 		if err != nil {
-			algodImp.logger.Infof("Unable to fetch state delta for round %d: %s", targetRound, err)
+			algodImp.logger.Infof("State Delta for round %d is unavailable on the configured node. Fast catchup is requested. API Response: %s", targetRound, err)
 		}
 		return err != nil
 	}
@@ -245,7 +245,7 @@ func (algodImp *algodImporter) needsCatchup(targetRound uint64) bool {
 	_, err := algodImp.aclient.Block(targetRound).Do(algodImp.ctx)
 	algodImp.logger.Tracef("importer algod.needsCatchup() called Block(targetRound=%d) err: %v", targetRound, err)
 	if err != nil {
-		algodImp.logger.Infof("Unable to fetch block for round %d: %s", targetRound, err)
+		algodImp.logger.Infof("Block for round %d is unavailable on the configured node. Fast catchup is requested. API Response: %s", targetRound, err)
 	}
 	// If the block is not available, we must catchup.
 	return err != nil
