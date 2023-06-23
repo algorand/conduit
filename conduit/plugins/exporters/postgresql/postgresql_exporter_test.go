@@ -11,7 +11,7 @@ import (
 	"gopkg.in/yaml.v3"
 
 	sdk "github.com/algorand/go-algorand-sdk/v2/types"
-	_ "github.com/algorand/indexer/idb/dummy"
+	_ "github.com/algorand/indexer/v3/idb/dummy"
 
 	"github.com/algorand/conduit/conduit"
 	"github.com/algorand/conduit/conduit/data"

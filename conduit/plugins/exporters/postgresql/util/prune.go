@@ -7,7 +7,7 @@ import (
 
 	"github.com/sirupsen/logrus"
 
-	"github.com/algorand/indexer/idb"
+	"github.com/algorand/indexer/v3/idb"
 )
 
 // Interval determines how often to delete data
