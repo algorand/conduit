@@ -2,6 +2,8 @@ package data
 
 import (
 	sdk "github.com/algorand/go-algorand-sdk/v2/types"
+
+	"github.com/algorand/conduit/conduit/telemetry"
 )
 
 // RoundProvider is the interface which all data types sent to Exporters should implement
@@ -16,6 +18,7 @@ type InitProvider interface {
 	GetGenesis() *sdk.Genesis
 	SetGenesis(*sdk.Genesis)
 	NextDBRound() sdk.Round
+	GetTelemetryClient() telemetry.Client
 }
 
 // BlockData is provided to the Exporter on each round.

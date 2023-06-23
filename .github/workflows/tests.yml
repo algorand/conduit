@@ -44,8 +44,6 @@ jobs:
 
       - name: Run e2e tests
         run: |
-          FILENAME="f99e7b0c/rel-nightly"
-          export CI_E2E_FILENAME="$FILENAME"
           make e2e-conduit
 
       - name: Upload codecov report

@@ -2,6 +2,9 @@ SRCPATH		:= $(shell pwd)
 export GOPATH := $(shell go env GOPATH)
 GOPATH1 := $(firstword $(subst :, ,$(GOPATH)))
 
+# pinned filename can be overridden in CI with an env variable.
+CI_E2E_FILENAME ?= f99e7b0c/rel-nightly
+
 GOLDFLAGS += -X github.com/algorand/conduit/version.Hash=$(shell git log -n 1 --pretty="%H")
 GOLDFLAGS += -X github.com/algorand/conduit/version.ShortHash=$(shell git log -n 1 --pretty="%h")
 GOLDFLAGS += -X github.com/algorand/conduit/version.CompileTime=$(shell date -u +%Y-%m-%dT%H:%M:%S%z)
@@ -21,9 +24,8 @@ conduit:
 install:
 	cd cmd/conduit && go install -ldflags='${GOLDFLAGS}'
 
-# note: when running e2e tests manually be sure to set the e2e filename: 'export CI_E2E_FILENAME=rel-nightly'
 e2e-conduit: conduit
-	export PATH=$(GOPATH1)/bin:$(PATH); pip3 install e2e_tests/ && e2econduit --s3-source-net ${CI_E2E_FILENAME} --conduit-bin cmd/conduit/conduit
+	export PATH=$(GOPATH1)/bin:$(PATH); pip3 install e2e_tests/ && e2econduit --s3-source-net $(CI_E2E_FILENAME) --conduit-bin cmd/conduit/conduit
 
 # check that all packages (except tests) compile
 check:

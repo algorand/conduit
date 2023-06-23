@@ -18,6 +18,7 @@ type state struct {
 	GenesisHash string `json:"genesis-hash"`
 	Network     string `json:"network"`
 	NextRound   uint64 `json:"next-round"`
+	TelemetryID string `json:"telemetry-id,omitempty"`
 }
 
 // encodeToFile writes the state object to the dataDir

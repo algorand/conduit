@@ -36,4 +36,13 @@ exporter:
     # DropCertificate is used to remove the vote certificate from the block data before writing files.
     drop-certificate: true
 
-
+# Enable telemetry for conduit
+telemetry:
+  enabled: false
+  
+  # By default the following fields will be configured to send data to Algorand.
+  # To store your own telemetry events, they can be overridden.
+  # uri: ""
+  # index: ""
+  # username: ""
+  # password: ""

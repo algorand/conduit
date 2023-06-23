@@ -54,10 +54,12 @@ func TestBlockMetaDataFile(t *testing.T) {
 	assert.Equal(t, pipelineMetadata.GenesisHash, metaData.GenesisHash)
 	assert.Equal(t, pipelineMetadata.NextRound, metaData.NextRound)
 	assert.Equal(t, pipelineMetadata.Network, metaData.Network)
+	assert.Equal(t, pipelineMetadata.TelemetryID, metaData.TelemetryID)
 
 	// Test that file encodes correctly
 	pipelineMetadata.GenesisHash = "HASH"
 	pipelineMetadata.NextRound = 7
+	pipelineMetadata.TelemetryID = "SOME_ID"
 	err = pipelineMetadata.encodeToFile(datadir)
 	assert.NoError(t, err)
 	metaData, err = readBlockMetadata(datadir)
@@ -65,4 +67,5 @@ func TestBlockMetaDataFile(t *testing.T) {
 	assert.Equal(t, "HASH", metaData.GenesisHash)
 	assert.Equal(t, uint64(7), metaData.NextRound)
 	assert.Equal(t, pipelineMetadata.Network, metaData.Network)
+	assert.Equal(t, pipelineMetadata.TelemetryID, metaData.TelemetryID)
 }
