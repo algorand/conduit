@@ -12,10 +12,10 @@ import (
 	"github.com/sirupsen/logrus"
 
 	sdk "github.com/algorand/go-algorand-sdk/v2/types"
-	"github.com/algorand/indexer/idb"
-	_ "github.com/algorand/indexer/idb/postgres" // register driver
-	"github.com/algorand/indexer/types"
-	iutil "github.com/algorand/indexer/util"
+	"github.com/algorand/indexer/v3/idb"
+	_ "github.com/algorand/indexer/v3/idb/postgres" // register driver
+	"github.com/algorand/indexer/v3/types"
+	iutil "github.com/algorand/indexer/v3/util"
 
 	"github.com/algorand/conduit/conduit/data"
 	"github.com/algorand/conduit/conduit/plugins"

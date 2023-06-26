@@ -14,9 +14,9 @@ import (
 	"github.com/sirupsen/logrus/hooks/test"
 	"github.com/stretchr/testify/assert"
 
-	"github.com/algorand/indexer/idb"
-	"github.com/algorand/indexer/idb/postgres"
-	pgtest "github.com/algorand/indexer/idb/postgres/testing"
+	"github.com/algorand/indexer/v3/idb"
+	"github.com/algorand/indexer/v3/idb/postgres"
+	pgtest "github.com/algorand/indexer/v3/idb/postgres/testing"
 )
 
 var logger *logrus.Logger
