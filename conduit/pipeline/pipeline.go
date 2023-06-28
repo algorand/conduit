@@ -354,7 +354,7 @@ func (p *pipelineImpl) Init() error {
 		}
 		err = (*p.exporter).Init(p.ctx, *p.initProvider, config, logger)
 		if err != nil {
-			return fmt.Errorf("Pipeline.Start(): could not initialize Exporter (%s): %w", p.cfg.Exporter.Name, err)
+			return fmt.Errorf("Pipeline.Init(): could not initialize Exporter (%s): %w", p.cfg.Exporter.Name, err)
 		}
 		p.logger.Infof("Initialized Exporter: %s", p.cfg.Exporter.Name)
 	}
