@@ -56,7 +56,7 @@ Generally speaking, you can follow the code in one of the existing plugins.
 
 ### Init
 
-Each plugin will have its `Init` function called once as the pipline is constructed.
+Each plugin will have its `Init` function called once as the pipeline is constructed.
 
 The context provided to this function should be saved, and used to terminate any long-running operations if necessary.
 
