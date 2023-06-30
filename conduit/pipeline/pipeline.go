@@ -569,12 +569,12 @@ func MakePipeline(ctx context.Context, cfg *data.Config, logger *log.Logger) (Pi
 
 	importerName := cfg.Importer.Name
 
-	importerBuilder, err := importers.ImporterBuilderByName(importerName)
+	importerConstructor, err := importers.ImporterConstructorByName(importerName)
 	if err != nil {
 		return nil, fmt.Errorf("MakePipeline(): could not build importer '%s': %w", importerName, err)
 	}
 
-	pipeline.importer = importerBuilder.New()
+	pipeline.importer = importerConstructor.New()
 	logger.Infof("Found Importer: %s", importerName)
 
 	// ---
@@ -582,12 +582,12 @@ func MakePipeline(ctx context.Context, cfg *data.Config, logger *log.Logger) (Pi
 	for _, processorConfig := range cfg.Processors {
 		processorName := processorConfig.Name
 
-		processorBuilder, err := processors.ProcessorBuilderByName(processorName)
+		processorConstructor, err := processors.ProcessorConstructorByName(processorName)
 		if err != nil {
 			return nil, fmt.Errorf("MakePipeline(): could not build processor '%s': %w", processorName, err)
 		}
 
-		pipeline.processors = append(pipeline.processors, processorBuilder.New())
+		pipeline.processors = append(pipeline.processors, processorConstructor.New())
 		logger.Infof("Found Processor: %s", processorName)
 	}
 
@@ -595,12 +595,12 @@ func MakePipeline(ctx context.Context, cfg *data.Config, logger *log.Logger) (Pi
 
 	exporterName := cfg.Exporter.Name
 
-	exporterBuilder, err := exporters.ExporterBuilderByName(exporterName)
+	exporterConstructor, err := exporters.ExporterConstructorByName(exporterName)
 	if err != nil {
 		return nil, fmt.Errorf("MakePipeline(): could not build exporter '%s': %w", exporterName, err)
 	}
 
-	pipeline.exporter = exporterBuilder.New()
+	pipeline.exporter = exporterConstructor.New()
 	logger.Infof("Found Exporter: %s", exporterName)
 
 	return pipeline, nil

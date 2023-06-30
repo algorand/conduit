@@ -21,7 +21,7 @@ var ne = nc.New()
 func TestExporterBuilderByName(t *testing.T) {
 	// init() has already registered the noop exporter
 	assert.Contains(t, exporters.Exporters, metadata.Name)
-	neBuilder, err := exporters.ExporterBuilderByName(metadata.Name)
+	neBuilder, err := exporters.ExporterConstructorByName(metadata.Name)
 	assert.NoError(t, err)
 	ne := neBuilder.New()
 	assert.Implements(t, (*exporters.Exporter)(nil), ne)

@@ -34,8 +34,8 @@ func Register(name string, constructor ExporterConstructor) {
 	Exporters[name] = constructor
 }
 
-// ExporterBuilderByName returns a Processor constructor for the name provided
-func ExporterBuilderByName(name string) (ExporterConstructor, error) {
+// ExporterConstructorByName returns a Processor constructor for the name provided
+func ExporterConstructorByName(name string) (ExporterConstructor, error) {
 	constructor, ok := Exporters[name]
 	if !ok {
 		return nil, fmt.Errorf("no Exporter Constructor for %s", name)

@@ -42,14 +42,14 @@ func TestProcessorBuilderByNameSuccess(t *testing.T) {
 	me := mockProcessor{}
 	Register("foobar", &mockProcessorConstructor{&me})
 
-	expBuilder, err := ProcessorBuilderByName("foobar")
+	expBuilder, err := ProcessorConstructorByName("foobar")
 	assert.NoError(t, err)
 	exp := expBuilder.New()
 	assert.Implements(t, (*Processor)(nil), exp)
 }
 
 func TestProcessorBuilderByNameNotFound(t *testing.T) {
-	_, err := ProcessorBuilderByName("barfoo")
+	_, err := ProcessorConstructorByName("barfoo")
 	expectedErr := "no Processor Constructor for barfoo"
 	assert.EqualError(t, err, expectedErr)
 }
