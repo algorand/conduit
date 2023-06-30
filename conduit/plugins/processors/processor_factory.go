@@ -33,8 +33,8 @@ func Register(name string, constructor ProcessorConstructor) {
 	Processors[name] = constructor
 }
 
-// ProcessorBuilderByName returns a Processor constructor for the name provided
-func ProcessorBuilderByName(name string) (ProcessorConstructor, error) {
+// ProcessorConstructorByName returns a Processor constructor for the name provided
+func ProcessorConstructorByName(name string) (ProcessorConstructor, error) {
 	constructor, ok := Processors[name]
 	if !ok {
 		return nil, fmt.Errorf("no Processor Constructor for %s", name)

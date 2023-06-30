@@ -37,14 +37,14 @@ func TestExporterByNameSuccess(t *testing.T) {
 	me := mockExporter{}
 	Register("foobar", &mockExporterConstructor{&me})
 
-	expC, err := ExporterBuilderByName("foobar")
+	expC, err := ExporterConstructorByName("foobar")
 	assert.NoError(t, err)
 	exp := expC.New()
 	assert.Implements(t, (*Exporter)(nil), exp)
 }
 
 func TestExporterByNameNotFound(t *testing.T) {
-	_, err := ExporterBuilderByName("barfoo")
+	_, err := ExporterConstructorByName("barfoo")
 	expectedErr := "no Exporter Constructor for barfoo"
 	assert.EqualError(t, err, expectedErr)
 }
