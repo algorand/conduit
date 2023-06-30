@@ -431,7 +431,7 @@ func addMetrics(block data.BlockData, importTime time.Duration) {
 	metrics.ImportedTxnsPerBlock.Observe(float64(len(block.Payset)) + float64(innerTxn))
 }
 
-// Start is what Start was before the beginning of this branch
+// Start pushes block data through the pipeline
 func (p *pipelineImpl) Start() {
 	p.wg.Add(1)
 	retry := uint64(0)
