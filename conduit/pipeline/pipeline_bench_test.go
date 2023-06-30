@@ -19,7 +19,6 @@ import (
 )
 
 type sleepingImporter struct {
-	// importers.Importer
 	cfg             plugins.PluginConfig
 	genesis         sdk.Genesis
 	finalRound      sdk.Round
@@ -78,7 +77,6 @@ func (m *sleepingImporter) RoundRequest(_ plugins.PluginConfig) (uint64, error) 
 }
 
 type sleepingProcessor struct {
-	// processors.Processor
 	cfg             plugins.PluginConfig
 	finalRound      sdk.Round
 	processSleep    time.Duration // when non-0, sleep when Process() even in the case of an error
@@ -129,7 +127,6 @@ func (m *sleepingProcessor) OnComplete(input data.BlockData) error {
 }
 
 type sleepingExporter struct {
-	// exporters.Exporter
 	cfg             plugins.PluginConfig
 	finalRound      sdk.Round
 	receiveSleep    time.Duration // when non-0, sleep when Receive() even in the case of an error
@@ -178,12 +175,6 @@ func (m *sleepingExporter) OnComplete(input data.BlockData) error {
 	return err
 }
 
-// func pipeline100ms(i int) int {
-// 	// your code here
-// 	time.Sleep(1 * time.Millisecond)
-// 	return i // dummy return
-// }
-
 type benchmarkCase struct {
 	name            string
 	importerSleep   time.Duration
@@ -211,7 +202,6 @@ func pipeline5sec(b *testing.B, bcCase benchmarkCase) int {
 		importer:     simp,
 		processors:   sprocs,
 		exporter:     slexpo,
-		// completeCallback: []conduit.OnCompleteFunc{cbComplete.OnComplete},
 		pipelineMetadata: state{
 			NextRound:   0,
 			GenesisHash: "",
