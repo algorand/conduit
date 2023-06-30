@@ -51,9 +51,9 @@ type pipelineImpl struct {
 
 	initProvider *data.InitProvider
 
-	importer         *importers.Importer
-	processors       []*processors.Processor
-	exporter         *exporters.Exporter
+	importer         importers.Importer
+	processors       []processors.Processor
+	exporter         exporters.Exporter
 	completeCallback []conduit.OnCompleteFunc
 
 	pipelineMetadata state
@@ -72,30 +72,30 @@ func (p *pipelineImpl) setError(err error) {
 }
 
 func (p *pipelineImpl) registerLifecycleCallbacks() {
-	if v, ok := (*p.importer).(conduit.Completed); ok {
+	if v, ok := p.importer.(conduit.Completed); ok {
 		p.completeCallback = append(p.completeCallback, v.OnComplete)
 	}
 	for _, processor := range p.processors {
-		if v, ok := (*processor).(conduit.Completed); ok {
+		if v, ok := processor.(conduit.Completed); ok {
 			p.completeCallback = append(p.completeCallback, v.OnComplete)
 		}
 	}
-	if v, ok := (*p.exporter).(conduit.Completed); ok {
+	if v, ok := p.exporter.(conduit.Completed); ok {
 		p.completeCallback = append(p.completeCallback, v.OnComplete)
 	}
 }
 
 func (p *pipelineImpl) registerPluginMetricsCallbacks() {
 	var collectors []prometheus.Collector
-	if v, ok := (*p.importer).(conduit.PluginMetrics); ok {
+	if v, ok := p.importer.(conduit.PluginMetrics); ok {
 		collectors = append(collectors, v.ProvideMetrics(p.cfg.Metrics.Prefix)...)
 	}
 	for _, processor := range p.processors {
-		if v, ok := (*processor).(conduit.PluginMetrics); ok {
+		if v, ok := processor.(conduit.PluginMetrics); ok {
 			collectors = append(collectors, v.ProvideMetrics(p.cfg.Metrics.Prefix)...)
 		}
 	}
-	if v, ok := (*p.exporter).(conduit.PluginMetrics); ok {
+	if v, ok := p.exporter.(conduit.PluginMetrics); ok {
 		collectors = append(collectors, v.ProvideMetrics(p.cfg.Metrics.Prefix)...)
 	}
 	for _, c := range collectors {
@@ -143,7 +143,7 @@ func (p *pipelineImpl) pluginRoundOverride() (uint64, error) {
 	}
 	var parts []overridePart
 
-	if v, ok := (*p.importer).(conduit.RoundRequestor); ok {
+	if v, ok := p.importer.(conduit.RoundRequestor); ok {
 		parts = append(parts, overridePart{
 			RoundRequest: v.RoundRequest,
 			cfg:          p.cfg.Importer,
@@ -151,7 +151,7 @@ func (p *pipelineImpl) pluginRoundOverride() (uint64, error) {
 		})
 	}
 	for idx, processor := range p.processors {
-		if v, ok := (*processor).(conduit.RoundRequestor); ok {
+		if v, ok := processor.(conduit.RoundRequestor); ok {
 			parts = append(parts, overridePart{
 				RoundRequest: v.RoundRequest,
 				cfg:          p.cfg.Processors[idx],
@@ -159,7 +159,7 @@ func (p *pipelineImpl) pluginRoundOverride() (uint64, error) {
 			})
 		}
 	}
-	if v, ok := (*p.exporter).(conduit.RoundRequestor); ok {
+	if v, ok := p.exporter.(conduit.RoundRequestor); ok {
 		parts = append(parts, overridePart{
 			RoundRequest: v.RoundRequest,
 			cfg:          p.cfg.Exporter,
@@ -306,11 +306,11 @@ func (p *pipelineImpl) Init() error {
 		if err != nil {
 			return fmt.Errorf("Pipeline.Init(): could not make %s config: %w", p.cfg.Importer.Name, err)
 		}
-		err = (*p.importer).Init(p.ctx, *p.initProvider, pluginConfig, importerLogger)
+		err = p.importer.Init(p.ctx, *p.initProvider, pluginConfig, importerLogger)
 		if err != nil {
 			return fmt.Errorf("Pipeline.Init(): could not initialize importer (%s): %w", p.cfg.Importer.Name, err)
 		}
-		genesis, err := (*p.importer).GetGenesis()
+		genesis, err := p.importer.GetGenesis()
 		if err != nil {
 			return fmt.Errorf("Pipeline.GetGenesis(): could not obtain Genesis from the importer (%s): %w", p.cfg.Importer.Name, err)
 		}
@@ -339,7 +339,7 @@ func (p *pipelineImpl) Init() error {
 		if err != nil {
 			return fmt.Errorf("Pipeline.Init(): could not initialize processor (%s): %w", ncPair, err)
 		}
-		err = (*processor).Init(p.ctx, *p.initProvider, config, logger)
+		err = processor.Init(p.ctx, *p.initProvider, config, logger)
 		if err != nil {
 			return fmt.Errorf("Pipeline.Init(): could not initialize processor (%s): %w", ncPair.Name, err)
 		}
@@ -352,7 +352,7 @@ func (p *pipelineImpl) Init() error {
 		if err != nil {
 			return fmt.Errorf("Pipeline.Init(): could not initialize processor (%s): %w", p.cfg.Exporter.Name, err)
 		}
-		err = (*p.exporter).Init(p.ctx, *p.initProvider, config, logger)
+		err = p.exporter.Init(p.ctx, *p.initProvider, config, logger)
 		if err != nil {
 			return fmt.Errorf("Pipeline.Init(): could not initialize Exporter (%s): %w", p.cfg.Exporter.Name, err)
 		}
@@ -388,20 +388,20 @@ func (p *pipelineImpl) Stop() {
 		}
 	}
 
-	if err := (*p.importer).Close(); err != nil {
+	if err := p.importer.Close(); err != nil {
 		// Log and continue on closing the rest of the pipeline
-		p.logger.Errorf("Pipeline.Stop(): Importer (%s) error on close: %v", (*p.importer).Metadata().Name, err)
+		p.logger.Errorf("Pipeline.Stop(): Importer (%s) error on close: %v", p.importer.Metadata().Name, err)
 	}
 
 	for _, processor := range p.processors {
-		if err := (*processor).Close(); err != nil {
+		if err := processor.Close(); err != nil {
 			// Log and continue on closing the rest of the pipeline
-			p.logger.Errorf("Pipeline.Stop(): Processor (%s) error on close: %v", (*processor).Metadata().Name, err)
+			p.logger.Errorf("Pipeline.Stop(): Processor (%s) error on close: %v", processor.Metadata().Name, err)
 		}
 	}
 
-	if err := (*p.exporter).Close(); err != nil {
-		p.logger.Errorf("Pipeline.Stop(): Exporter (%s) error on close: %v", (*p.exporter).Metadata().Name, err)
+	if err := p.exporter.Close(); err != nil {
+		p.logger.Errorf("Pipeline.Stop(): Exporter (%s) error on close: %v", p.exporter.Metadata().Name, err)
 	}
 }
 
@@ -460,7 +460,7 @@ func (p *pipelineImpl) Start() {
 					p.logger.Infof("Pipeline round: %v", p.pipelineMetadata.NextRound)
 					// fetch block
 					importStart := time.Now()
-					blkData, err := (*p.importer).GetBlock(p.pipelineMetadata.NextRound)
+					blkData, err := p.importer.GetBlock(p.pipelineMetadata.NextRound)
 					if err != nil {
 						p.logger.Errorf("%v", err)
 						p.setError(err)
@@ -477,18 +477,18 @@ func (p *pipelineImpl) Start() {
 					start := time.Now()
 					for _, proc := range p.processors {
 						processorStart := time.Now()
-						blkData, err = (*proc).Process(blkData)
+						blkData, err = proc.Process(blkData)
 						if err != nil {
 							p.logger.Errorf("%v", err)
 							p.setError(err)
 							retry++
 							goto pipelineRun
 						}
-						metrics.ProcessorTimeSeconds.WithLabelValues((*proc).Metadata().Name).Observe(time.Since(processorStart).Seconds())
+						metrics.ProcessorTimeSeconds.WithLabelValues(proc.Metadata().Name).Observe(time.Since(processorStart).Seconds())
 					}
 					// run through exporter
 					exporterStart := time.Now()
-					err = (*p.exporter).Receive(blkData)
+					err = p.exporter.Receive(blkData)
 					if err != nil {
 						p.logger.Errorf("%v", err)
 						p.setError(err)
@@ -563,19 +563,18 @@ func MakePipeline(ctx context.Context, cfg *data.Config, logger *log.Logger) (Pi
 		logger:       logger,
 		initProvider: nil,
 		importer:     nil,
-		processors:   []*processors.Processor{},
+		processors:   []processors.Processor{},
 		exporter:     nil,
 	}
 
 	importerName := cfg.Importer.Name
 
-	importerBuilder, err := importers.ImporterBuilderByName(importerName)
+	importerConstructor, err := importers.ImporterConstructorByName(importerName)
 	if err != nil {
 		return nil, fmt.Errorf("MakePipeline(): could not build importer '%s': %w", importerName, err)
 	}
 
-	importer := importerBuilder.New()
-	pipeline.importer = &importer
+	pipeline.importer = importerConstructor.New()
 	logger.Infof("Found Importer: %s", importerName)
 
 	// ---
@@ -583,13 +582,12 @@ func MakePipeline(ctx context.Context, cfg *data.Config, logger *log.Logger) (Pi
 	for _, processorConfig := range cfg.Processors {
 		processorName := processorConfig.Name
 
-		processorBuilder, err := processors.ProcessorBuilderByName(processorName)
+		processorConstructor, err := processors.ProcessorConstructorByName(processorName)
 		if err != nil {
 			return nil, fmt.Errorf("MakePipeline(): could not build processor '%s': %w", processorName, err)
 		}
 
-		processor := processorBuilder.New()
-		pipeline.processors = append(pipeline.processors, &processor)
+		pipeline.processors = append(pipeline.processors, processorConstructor.New())
 		logger.Infof("Found Processor: %s", processorName)
 	}
 
@@ -597,13 +595,12 @@ func MakePipeline(ctx context.Context, cfg *data.Config, logger *log.Logger) (Pi
 
 	exporterName := cfg.Exporter.Name
 
-	exporterBuilder, err := exporters.ExporterBuilderByName(exporterName)
+	exporterConstructor, err := exporters.ExporterConstructorByName(exporterName)
 	if err != nil {
 		return nil, fmt.Errorf("MakePipeline(): could not build exporter '%s': %w", exporterName, err)
 	}
 
-	exporter := exporterBuilder.New()
-	pipeline.exporter = &exporter
+	pipeline.exporter = exporterConstructor.New()
 	logger.Infof("Found Exporter: %s", exporterName)
 
 	return pipeline, nil

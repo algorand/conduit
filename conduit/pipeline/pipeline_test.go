@@ -233,9 +233,9 @@ func mockPipeline(t *testing.T, dataDir string) (*pipelineImpl, *test.Hook, *moc
 		},
 		logger:       l,
 		initProvider: nil,
-		importer:     &pImporter,
-		processors:   []*processors.Processor{&pProcessor},
-		exporter:     &pExporter,
+		importer:     pImporter,
+		processors:   []processors.Processor{pProcessor},
+		exporter:     pExporter,
 		pipelineMetadata: state{
 			GenesisHash: "",
 			Network:     "",
@@ -271,9 +271,9 @@ func TestPipelineRun(t *testing.T) {
 		cf:               cf,
 		logger:           l,
 		initProvider:     nil,
-		importer:         &pImporter,
-		processors:       []*processors.Processor{&pProcessor},
-		exporter:         &pExporter,
+		importer:         pImporter,
+		processors:       []processors.Processor{pProcessor},
+		exporter:         pExporter,
 		completeCallback: []conduit.OnCompleteFunc{cbComplete.OnComplete},
 		pipelineMetadata: state{
 			NextRound:   0,
@@ -371,9 +371,9 @@ func TestPipelineErrors(t *testing.T) {
 		},
 		logger:           l,
 		initProvider:     nil,
-		importer:         &pImporter,
-		processors:       []*processors.Processor{&pProcessor},
-		exporter:         &pExporter,
+		importer:         pImporter,
+		processors:       []processors.Processor{pProcessor},
+		exporter:         pExporter,
 		completeCallback: []conduit.OnCompleteFunc{cbComplete.OnComplete},
 		pipelineMetadata: state{},
 	}
@@ -440,9 +440,9 @@ func Test_pipelineImpl_registerLifecycleCallbacks(t *testing.T) {
 		cfg:          &data.Config{},
 		logger:       l,
 		initProvider: nil,
-		importer:     &pImporter,
-		processors:   []*processors.Processor{&pProcessor, &pProcessor},
-		exporter:     &pExporter,
+		importer:     pImporter,
+		processors:   []processors.Processor{pProcessor, pProcessor},
+		exporter:     pExporter,
 	}
 
 	// Each plugin implements the Completed interface, so there should be 4
@@ -485,7 +485,7 @@ func TestGenesisHash(t *testing.T) {
 
 	// mock a different genesis hash
 	var pImporter importers.Importer = &mockImporter{genesis: sdk.Genesis{Network: "dev"}}
-	pImpl.importer = &pImporter
+	pImpl.importer = pImporter
 	err = pImpl.Init()
 	assert.Contains(t, err.Error(), "genesis hash in metadata does not match")
 }
@@ -797,9 +797,9 @@ func TestPipelineRetryVariables(t *testing.T) {
 				},
 				logger:       l,
 				initProvider: nil,
-				importer:     &pImporter,
-				processors:   []*processors.Processor{&pProcessor},
-				exporter:     &pExporter,
+				importer:     pImporter,
+				processors:   []processors.Processor{pProcessor},
+				exporter:     pExporter,
 				pipelineMetadata: state{
 					GenesisHash: "",
 					Network:     "",
