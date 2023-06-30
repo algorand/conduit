@@ -46,6 +46,7 @@ type mockImporter struct {
 	cfg             plugins.PluginConfig
 	genesis         sdk.Genesis
 	finalRound      sdk.Round
+	getBlockSleep   time.Duration // when non-0, sleep when GetBlock() even in the case of an error
 	returnError     bool
 	onCompleteError bool
 	subsystem       string
@@ -71,12 +72,18 @@ func (m *mockImporter) Metadata() plugins.Metadata {
 }
 
 func (m *mockImporter) GetBlock(rnd uint64) (data.BlockData, error) {
+	if m.getBlockSleep > 0 {
+		time.Sleep(m.getBlockSleep)
+	}
 	var err error
 	if m.returnError {
 		err = fmt.Errorf("importer")
 	}
+	// fmt.Printf("GetBlock() finished for rnd: %d\n", rnd)
 	m.Called(rnd)
-	// Return an error to make sure we
+	// Return an error to make sure we are handling it correctly
+	blk := data.BlockData{BlockHeader: uniqueBlockData.BlockHeader}
+	blk.BlockHeader.Round = sdk.Round(rnd)
 	return uniqueBlockData, err
 }
 
@@ -104,6 +111,7 @@ type mockProcessor struct {
 	processors.Processor
 	cfg             plugins.PluginConfig
 	finalRound      sdk.Round
+	processSleep    time.Duration // when non-0, sleep when Process() even in the case of an error
 	returnError     bool
 	onCompleteError bool
 	rndOverride     uint64
@@ -130,6 +138,9 @@ func (m *mockProcessor) Metadata() plugins.Metadata {
 }
 
 func (m *mockProcessor) Process(input data.BlockData) (data.BlockData, error) {
+	if m.processSleep > 0 {
+		time.Sleep(m.processSleep)
+	}
 	var err error
 	if m.returnError {
 		err = fmt.Errorf("process")
@@ -154,6 +165,7 @@ type mockExporter struct {
 	exporters.Exporter
 	cfg             plugins.PluginConfig
 	finalRound      sdk.Round
+	receiveSleep    time.Duration // when non-0, sleep when Receive() even in the case of an error
 	returnError     bool
 	onCompleteError bool
 	rndOverride     uint64
@@ -180,6 +192,9 @@ func (m *mockExporter) Close() error {
 }
 
 func (m *mockExporter) Receive(exportData data.BlockData) error {
+	if m.receiveSleep > 0 {
+		time.Sleep(m.receiveSleep)
+	}
 	var err error
 	if m.returnError {
 		err = fmt.Errorf("receive")
@@ -233,9 +248,9 @@ func mockPipeline(t *testing.T, dataDir string) (*pipelineImpl, *test.Hook, *moc
 		},
 		logger:       l,
 		initProvider: nil,
-		importer:     &pImporter,
-		processors:   []*processors.Processor{&pProcessor},
-		exporter:     &pExporter,
+		importer:     pImporter,
+		processors:   []processors.Processor{pProcessor},
+		exporter:     pExporter,
 		pipelineMetadata: state{
 			GenesisHash: "",
 			Network:     "",
@@ -246,7 +261,8 @@ func mockPipeline(t *testing.T, dataDir string) (*pipelineImpl, *test.Hook, *moc
 	return &pImpl, hook, mImporter, mProcessor, mExporter
 }
 
-// TestPipelineRun tests that running the pipeline calls the correct functions with mocking
+// TestPipelineRun tests that running the pipeline calls the correct functions with mocking.
+// It cancels the context after 1 second.
 func TestPipelineRun(t *testing.T) {
 	mImporter := mockImporter{}
 	mImporter.On("GetBlock", mock.Anything).Return(uniqueBlockData, nil)
@@ -271,9 +287,9 @@ func TestPipelineRun(t *testing.T) {
 		cf:               cf,
 		logger:           l,
 		initProvider:     nil,
-		importer:         &pImporter,
-		processors:       []*processors.Processor{&pProcessor},
-		exporter:         &pExporter,
+		importer:         pImporter,
+		processors:       []processors.Processor{pProcessor},
+		exporter:         pExporter,
 		completeCallback: []conduit.OnCompleteFunc{cbComplete.OnComplete},
 		pipelineMetadata: state{
 			NextRound:   0,
@@ -288,6 +304,7 @@ func TestPipelineRun(t *testing.T) {
 		},
 	}
 
+	// cancel the pipeline after 1 second
 	go func() {
 		time.Sleep(1 * time.Second)
 		cf()
@@ -371,9 +388,9 @@ func TestPipelineErrors(t *testing.T) {
 		},
 		logger:           l,
 		initProvider:     nil,
-		importer:         &pImporter,
-		processors:       []*processors.Processor{&pProcessor},
-		exporter:         &pExporter,
+		importer:         pImporter,
+		processors:       []processors.Processor{pProcessor},
+		exporter:         pExporter,
 		completeCallback: []conduit.OnCompleteFunc{cbComplete.OnComplete},
 		pipelineMetadata: state{},
 	}
@@ -440,9 +457,9 @@ func Test_pipelineImpl_registerLifecycleCallbacks(t *testing.T) {
 		cfg:          &data.Config{},
 		logger:       l,
 		initProvider: nil,
-		importer:     &pImporter,
-		processors:   []*processors.Processor{&pProcessor, &pProcessor},
-		exporter:     &pExporter,
+		importer:     pImporter,
+		processors:   []processors.Processor{pProcessor, pProcessor},
+		exporter:     pExporter,
 	}
 
 	// Each plugin implements the Completed interface, so there should be 4
@@ -485,7 +502,7 @@ func TestGenesisHash(t *testing.T) {
 
 	// mock a different genesis hash
 	var pImporter importers.Importer = &mockImporter{genesis: sdk.Genesis{Network: "dev"}}
-	pImpl.importer = &pImporter
+	pImpl.importer = pImporter
 	err = pImpl.Init()
 	assert.Contains(t, err.Error(), "genesis hash in metadata does not match")
 }
@@ -797,9 +814,9 @@ func TestPipelineRetryVariables(t *testing.T) {
 				},
 				logger:       l,
 				initProvider: nil,
-				importer:     &pImporter,
-				processors:   []*processors.Processor{&pProcessor},
-				exporter:     &pExporter,
+				importer:     pImporter,
+				processors:   []processors.Processor{pProcessor},
+				exporter:     pExporter,
 				pipelineMetadata: state{
 					GenesisHash: "",
 					Network:     "",
