@@ -477,7 +477,7 @@ func (p *pipelineImpl) Start() {
 					start := time.Now()
 					for _, proc := range p.processors {
 						processorStart := time.Now()
-						blkData, err = (proc).Process(blkData)
+						blkData, err = proc.Process(blkData)
 						if err != nil {
 							p.logger.Errorf("%v", err)
 							p.setError(err)
