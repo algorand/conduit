@@ -528,32 +528,6 @@ func (p *pipelineImpl) Start() {
 	}()
 }
 
-// OriginalStart pushes block data through the pipeline
-/*
-func (p *pipelineImpl) FutureStart() {
-	fetchBlocks := make(chan *data.BlockData, 10)
-	processedBlocks := make(chan *data.BlockData, 10)
-
-	// Fetch Blocks
-	go func() {
-		defer close(fetchBlocks)
-		for {
-			select {
-			case <-p.ctx.Done():
-				return
-			default:
-				blkData, err := (*p.importer).GetBlock(p.pipelineMetadata.NextRound)
-				if err != nil {
-					p.logger.Errorf("%v", err)
-					p.setError(err)
-					// Retry logic
-					continue
-				}
-				fetchBlocks <- &blkData
-			}
-		}
-	}()
-
 	p.wg.Add(1)
 	retry := uint64(0)
 	go func() {
