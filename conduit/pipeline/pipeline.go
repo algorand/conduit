@@ -484,7 +484,7 @@ func (p *pipelineImpl) Start() {
 							retry++
 							goto pipelineRun
 						}
-						metrics.ProcessorTimeSeconds.WithLabelValues((proc).Metadata().Name).Observe(time.Since(processorStart).Seconds())
+						metrics.ProcessorTimeSeconds.WithLabelValues(proc.Metadata().Name).Observe(time.Since(processorStart).Seconds())
 					}
 					// run through exporter
 					exporterStart := time.Now()
