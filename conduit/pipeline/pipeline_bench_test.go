@@ -189,7 +189,6 @@ func pipeline5sec(b *testing.B, bcCase benchmarkCase) int {
 		sprocs[i] = &sleepingProcessor{processSleep: pSleep}
 	}
 	slexpo := &sleepingExporter{receiveSleep: bcCase.exporterSleep}
-	// var cbComplete conduit.Completed = &mProcessor
 
 	ctx, cf := context.WithCancel(context.Background())
 

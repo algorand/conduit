@@ -3,6 +3,7 @@ package pipeline
 import (
 	"context"
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"net/http"
 	"os"
@@ -39,6 +40,28 @@ type Pipeline interface {
 	Wait()
 }
 
+type timedBlockData struct {
+	start time.Time
+	block *data.BlockData
+}
+
+type pipelineRoundError struct {
+	err   error
+	round uint64
+}
+
+func (e *pipelineRoundError) Error() string {
+	return fmt.Sprintf("pipeline round %d: %v", e.round, e.err)
+}
+
+func (e *pipelineRoundError) Unwrap() error {
+	return e.err
+}
+
+func newPipelineRoundError(err error, round uint64) *pipelineRoundError {
+	return &pipelineRoundError{err: err, round: round}
+}
+
 type pipelineImpl struct {
 	ctx      context.Context
 	cf       context.CancelFunc
@@ -47,12 +70,15 @@ type pipelineImpl struct {
 	logger   *log.Logger
 	profFile *os.File
 	err      error
-	mu       sync.RWMutex
+	errMu    sync.RWMutex
 
 	initProvider *data.InitProvider
 
 	importer         importers.Importer
+	chanBuffSize     int
+	importerChan     chan timedBlockData
 	processors       []processors.Processor
+	processorChans   []chan timedBlockData
 	exporter         exporters.Exporter
 	completeCallback []conduit.OnCompleteFunc
 
@@ -60,15 +86,21 @@ type pipelineImpl struct {
 }
 
 func (p *pipelineImpl) Error() error {
-	p.mu.RLock()
-	defer p.mu.RUnlock()
+	p.errMu.RLock()
+	defer p.errMu.RUnlock()
 	return p.err
 }
 
 func (p *pipelineImpl) setError(err error) {
-	p.mu.Lock()
-	defer p.mu.Unlock()
+	p.errMu.Lock()
+	defer p.errMu.Unlock()
 	p.err = err
+}
+
+func (p *pipelineImpl) joinError(err error) {
+	p.errMu.Lock()
+	defer p.errMu.Unlock()
+	p.err = errors.Join(p.err, err)
 }
 
 func (p *pipelineImpl) registerLifecycleCallbacks() {
@@ -392,12 +424,14 @@ func (p *pipelineImpl) Stop() {
 		// Log and continue on closing the rest of the pipeline
 		p.logger.Errorf("Pipeline.Stop(): Importer (%s) error on close: %v", p.importer.Metadata().Name, err)
 	}
+	// TODO: close importChannel[0]
 
 	for _, processor := range p.processors {
 		if err := processor.Close(); err != nil {
 			// Log and continue on closing the rest of the pipeline
 			p.logger.Errorf("Pipeline.Stop(): Processor (%s) error on close: %v", processor.Metadata().Name, err)
 		}
+		// TODO: close procChannels[i]
 	}
 
 	if err := p.exporter.Close(); err != nil {
@@ -431,8 +465,148 @@ func addMetrics(block data.BlockData, importTime time.Duration) {
 	metrics.ImportedTxnsPerBlock.Observe(float64(len(block.Payset)) + float64(innerTxn))
 }
 
-// Start pushes block data through the pipeline
 func (p *pipelineImpl) Start() {
+	impHandler := func(round uint64) (uint64 /* round */, error) {
+		imp := p.importer
+		output := p.importerChan
+		for {
+			select {
+			case <-p.ctx.Done():
+				return round, nil
+			default:
+				p.logger.Infof("Importer round: %v", round)
+				importStart := time.Now()
+
+				if blk, err := imp.GetBlock(round); err != nil {
+					return round, err
+				} else {
+					hRound := blk.BlockHeader.Round
+					if hRound != sdk.Round(round) {
+						return round, fmt.Errorf("importer %s: unexpected round from block: %d", imp.Metadata().Name, hRound)
+					}
+					metrics.ImporterTimeSeconds.Observe(time.Since(importStart).Seconds())
+
+					// Start time currently measures operations after block fetching is complete.
+					// This is for backwards compatibility w/ Indexer's metrics
+					// run through processors
+					output <- timedBlockData{time.Now(), &blk}
+					// TODO: observe the duration waiting to send
+				}
+			}
+			round++
+		}
+	}
+
+	procHandler := func(round uint64, procIdx int) (uint64 /* round */, error) {
+		proc := p.processors[procIdx]
+
+		var input chan timedBlockData
+		if procIdx == 0 {
+			input = p.importerChan
+		} else {
+			input = p.processorChans[procIdx-1]
+		}
+		output := p.processorChans[procIdx]
+
+		for {
+			// TODO: observe duration waiting to receive
+			select {
+			case <-p.ctx.Done():
+				return round, nil
+			case timedBlock, ok := <-input:
+				if !ok {
+					return round, nil
+				}
+				processorStart := time.Now()
+				blk := timedBlock.block
+				hRound := blk.BlockHeader.Round
+				if hRound != sdk.Round(round) {
+					return round, fmt.Errorf("processor[%d] (%s): unexpected round in channel block: %d", procIdx, proc.Metadata().Name, hRound)
+				}
+				if blk, err := proc.Process(*blk); err != nil {
+					return round, err
+				} else {
+					hRound = blk.BlockHeader.Round
+					if hRound != sdk.Round(round) {
+						return round, fmt.Errorf("processor[%d] (%s): unexpected round in processed block: %d", procIdx, proc.Metadata().Name, hRound)
+					}
+					timedBlock.block = &blk
+					metrics.ProcessorTimeSeconds.WithLabelValues(proc.Metadata().Name).Observe(time.Since(processorStart).Seconds())
+					output <- timedBlock
+					// TODO: observe the duration waiting to send
+				}
+			}
+			round++
+		}
+	}
+
+	expHandler := func(round uint64) (uint64, error) {
+		input := p.processorChans[len(p.processors)-1]
+		exp := p.exporter
+
+		for {
+			// TODO: observe duration waiting to receive
+			var timedBlock timedBlockData
+			var exporterStart time.Time
+			select {
+			case <-p.ctx.Done():
+				return round, nil
+			case timedBlock, ok := <-input:
+				if !ok {
+					return round, nil
+				}
+				exporterStart = time.Now()
+				blk := timedBlock.block
+				hRound := blk.BlockHeader.Round
+				if hRound != sdk.Round(round) {
+					return round, fmt.Errorf("exporter %s: unexpected round from block: %d", exp.Metadata().Name, hRound)
+				}
+				if err := exp.Receive(*blk); err != nil {
+					return round, err
+				}
+			}
+			err := p.finishRound(*timedBlock.block, timedBlock.start, exporterStart)
+			if err != nil {
+				return round, err
+			}
+			round++
+		}
+	}
+
+	p.importerChan = make(chan timedBlockData, p.chanBuffSize)
+	p.wg.Add(1)
+	go func() {
+		defer p.wg.Done()
+		exitRound, err := impHandler(p.pipelineMetadata.NextRound)
+		if err != nil {
+			p.joinError(newPipelineRoundError(err, exitRound))
+		}
+	}()
+
+	for i := 0; i < len(p.processors); i++ {
+		i := i
+		p.wg.Add(1)
+		go func() {
+			defer p.wg.Done()
+			exitRound, err := procHandler(p.pipelineMetadata.NextRound, i)
+			if err != nil {
+				p.joinError(newPipelineRoundError(err, exitRound))
+			}
+		}()
+	}
+
+	p.wg.Add(1)
+	go func() {
+		defer p.wg.Done()
+		exitRound, err := expHandler(p.pipelineMetadata.NextRound)
+		if err != nil {
+			p.joinError(newPipelineRoundError(err, exitRound))
+		}
+	}()
+}
+
+// OStart pushes block data through the pipeline
+func (p *pipelineImpl) OStart() {
 	p.wg.Add(1)
 	retry := uint64(0)
 	go func() {
@@ -495,37 +669,43 @@ func (p *pipelineImpl) Start() {
 						retry++
 						goto pipelineRun
 					}
-					p.logger.Infof("round r=%d (%d txn) exported in %s", p.pipelineMetadata.NextRound, len(blkData.Payset), time.Since(start))
-
-					// Increment Round, update metadata
-					p.pipelineMetadata.NextRound++
-					err = p.pipelineMetadata.encodeToFile(p.cfg.ConduitArgs.ConduitDataDir)
-					if err != nil {
-						p.logger.Errorf("%v", err)
-					}
-
-					// Callback Processors
-					for _, cb := range p.completeCallback {
-						err = cb(blkData)
-						if err != nil {
-							p.logger.Errorf("%v", err)
-							p.setError(err)
-							retry++
-							goto pipelineRun
-						}
-					}
-					metrics.ExporterTimeSeconds.Observe(time.Since(exporterStart).Seconds())
-					// Ignore round 0 (which is empty).
-					if p.pipelineMetadata.NextRound > 1 {
-						addMetrics(blkData, time.Since(start))
-					}
-					p.setError(nil)
+					p.finishRound(blkData, start, exporterStart)
 					retry = 0
 				}
 			}
 
 		}
 	}()
+}
+
+func (p *pipelineImpl) finishRound(blkData data.BlockData, start time.Time, exporterStart time.Time) error {
+	p.logger.Infof("round r=%d (%d txn) exported in %s", p.pipelineMetadata.NextRound, len(blkData.Payset), time.Since(start))
+
+	p.pipelineMetadata.NextRound++
+	err := p.pipelineMetadata.encodeToFile(p.cfg.ConduitArgs.ConduitDataDir)
+	if err != nil {
+		p.logger.Errorf("%v", err)
+	}
+
+	// TODO: handle these retries
+	// Callback Processors
+	for _, cb := range p.completeCallback {
+		err = cb(blkData)
+		if err != nil {
+			p.logger.Errorf("%v", err)
+			return err
+			// p.joinError(err)
+			// retry++
+			// goto pipelineRun
+		}
+	}
+	metrics.ExporterTimeSeconds.Observe(time.Since(exporterStart).Seconds())
+
+	if p.pipelineMetadata.NextRound > 1 {
+		addMetrics(blkData, time.Since(start))
+	}
+	p.setError(nil)
+	return nil
 }
 
 func (p *pipelineImpl) Wait() {
