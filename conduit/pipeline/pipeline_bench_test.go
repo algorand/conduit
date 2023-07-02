@@ -13,7 +13,6 @@ import (
 	sdk "github.com/algorand/go-algorand-sdk/v2/types"
 	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
-	"github.com/sirupsen/logrus/hooks/test"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -177,6 +176,7 @@ func (m *sleepingExporter) OnComplete(input data.BlockData) error {
 
 type benchmarkCase struct {
 	name            string
+	channelBuffSize int
 	importerSleep   time.Duration
 	processorsSleep []time.Duration
 	exporterSleep   time.Duration
@@ -192,12 +192,14 @@ func pipeline5sec(b *testing.B, bcCase benchmarkCase) int {
 
 	ctx, cf := context.WithCancel(context.Background())
 
-	l, _ := test.NewNullLogger()
+	logger := log.New()
+	logger.SetLevel(log.DebugLevel)
 	pImpl := pipelineImpl{
 		ctx:          ctx,
 		cf:           cf,
-		logger:       l,
+		logger:       logger,
 		initProvider: nil,
+		chanBuffSize: bcCase.channelBuffSize,
 		importer:     simp,
 		processors:   sprocs,
 		exporter:     slexpo,
@@ -216,7 +218,7 @@ func pipeline5sec(b *testing.B, bcCase benchmarkCase) int {
 
 	pImpl.registerLifecycleCallbacks()
 
-	// cancel the pipeline after 1 second
+	// cancel the pipeline after 5 seconds
 	go func() {
 		time.Sleep(5 * time.Second)
 		cf()
@@ -272,16 +274,19 @@ func BenchmarkPipeline(b *testing.B) {
 			exporterSleep:   time.Millisecond,
 		},
 	}
-	for _, bc := range benchCases {
-		b.Run(bc.name, func(b *testing.B) {
-			rounds := 0
-			for i := 0; i < b.N; i++ {
-				rounds += pipeline5sec(b, bc)
-			}
-			secs := b.Elapsed().Seconds()
-			rps := float64(rounds) / secs
-			// fmt.Printf("benchmark warmup results. N: %d, elapsed: %f, rounds/sec: %f\n", b.N, secs, rps)
-			b.ReportMetric(rps, "rounds/sec")
-		})
+	for _, buffSize := range []int{1} {
+		for _, bc := range benchCases {
+			bc.channelBuffSize = buffSize
+			b.Run(fmt.Sprintf("%s-size-%d", bc.name, bc.channelBuffSize), func(b *testing.B) {
+				rounds := 0
+				for i := 0; i < b.N; i++ {
+					rounds += pipeline5sec(b, bc)
+				}
+				secs := b.Elapsed().Seconds()
+				rps := float64(rounds) / secs
+				// fmt.Printf("benchmark warmup results. N: %d, elapsed: %f, rounds/sec: %f\n", b.N, secs, rps)
+				b.ReportMetric(rps, "rounds/sec")
+			})
+		}
 	}
 }

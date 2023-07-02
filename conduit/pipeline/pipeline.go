@@ -76,9 +76,7 @@ type pipelineImpl struct {
 
 	importer         importers.Importer
 	chanBuffSize     int
-	importerChan     chan timedBlockData
 	processors       []processors.Processor
-	processorChans   []chan timedBlockData
 	exporter         exporters.Exporter
 	completeCallback []conduit.OnCompleteFunc
 
@@ -466,12 +464,24 @@ func addMetrics(block data.BlockData, importTime time.Duration) {
 }
 
 func (p *pipelineImpl) Start() {
+	p.logger.Debugf("making channels of size %d", p.chanBuffSize)
+	importerChan := make(chan timedBlockData, p.chanBuffSize)
+	processorChans := make([]chan timedBlockData, len(p.processors))
+	for i := 0; i < len(p.processors); i++ {
+		processorChans[i] = make(chan timedBlockData, p.chanBuffSize)
+	}
+	p.logger.Debugf("making exporterChan")
+	exporterChan := make(chan timedBlockData)
+
 	impHandler := func(round uint64) (uint64 /* round */, error) {
+		p.logger.Debugf("Importer starting with round: %v", round)
 		imp := p.importer
-		output := p.importerChan
+		output := importerChan
+		defer close(output)
 		for {
 			select {
 			case <-p.ctx.Done():
+				p.logger.Debugf("Importer Done @ round: %v", round)
 				return round, nil
 			default:
 				p.logger.Infof("Importer round: %v", round)
@@ -489,8 +499,13 @@ func (p *pipelineImpl) Start() {
 					// Start time currently measures operations after block fetching is complete.
 					// This is for backwards compatibility w/ Indexer's metrics
 					// run through processors
-					output <- timedBlockData{time.Now(), &blk}
-					// TODO: observe the duration waiting to send
+					select {
+					case <-p.ctx.Done():
+						p.logger.Debugf("Importer Done before sending @ round: %v", round)
+						return round, nil
+					case output <- timedBlockData{time.Now(), &blk}:
+						// TODO: observe the duration waiting to send
+					}
 				}
 			}
 			round++
@@ -498,61 +513,89 @@ func (p *pipelineImpl) Start() {
 	}
 
 	procHandler := func(round uint64, procIdx int) (uint64 /* round */, error) {
+		p.logger.Debugf("Processor[%d] starting with round: %v", procIdx, round)
 		proc := p.processors[procIdx]
 
 		var input chan timedBlockData
 		if procIdx == 0 {
-			input = p.importerChan
+			input = importerChan
 		} else {
-			input = p.processorChans[procIdx-1]
+			input = processorChans[procIdx-1]
 		}
-		output := p.processorChans[procIdx]
+		output := processorChans[procIdx]
+		defer close(output)
 
 		for {
 			// TODO: observe duration waiting to receive
 			select {
 			case <-p.ctx.Done():
+				p.logger.Debugf("Processor[%d] Done @ round: %v", procIdx, round)
 				return round, nil
 			case timedBlock, ok := <-input:
+				p.logger.Infof("Processor[%d] round: %v", procIdx, round)
 				if !ok {
+					p.logger.Debugf("Processor[%d] channel closed @ round: %v", procIdx, round)
 					return round, nil
 				}
 				processorStart := time.Now()
 				blk := timedBlock.block
 				hRound := blk.BlockHeader.Round
 				if hRound != sdk.Round(round) {
-					return round, fmt.Errorf("processor[%d] (%s): unexpected round in channel block: %d", procIdx, proc.Metadata().Name, hRound)
+					msg := fmt.Sprintf("processor[%d] (%s): unexpected round in channel block: %d", procIdx, proc.Metadata().Name, hRound)
+					p.logger.Debug(msg)
+					return round, fmt.Errorf(msg)
 				}
 				if blk, err := proc.Process(*blk); err != nil {
+					p.logger.Debugf("processor[%d]: unexpected err (%v) in round: %d", procIdx, err, hRound)
 					return round, err
 				} else {
 					hRound = blk.BlockHeader.Round
 					if hRound != sdk.Round(round) {
-						return round, fmt.Errorf("processor[%d] (%s): unexpected round in processed block: %d", procIdx, proc.Metadata().Name, hRound)
+						msg := fmt.Sprintf(
+							"processor[%d] (%s): unexpected round (%d) in processed block for round: %d",
+							procIdx,
+							proc.Metadata().Name,
+							hRound,
+							round,
+						)
+						p.logger.Debug(msg)
+						return round, fmt.Errorf(msg)
 					}
 					timedBlock.block = &blk
 					metrics.ProcessorTimeSeconds.WithLabelValues(proc.Metadata().Name).Observe(time.Since(processorStart).Seconds())
-					output <- timedBlock
-					// TODO: observe the duration waiting to send
+					select {
+					case <-p.ctx.Done():
+						p.logger.Debugf("Processor[%d] Done before sending @ round: %v", procIdx, round)
+						return round, nil
+					case output <- timedBlock:
+						// TODO: observe the duration waiting to send
+					}
 				}
+				// default:
+				// 	time.Sleep(time.Millisecond)
 			}
 			round++
 		}
 	}
 
 	expHandler := func(round uint64) (uint64, error) {
-		input := p.processorChans[len(p.processors)-1]
-		exp := p.exporter
+		p.logger.Debugf("Exporter starting with round: %v", round)
+		input := processorChans[len(p.processors)-1]
+		defer close(exporterChan)
 
+		exp := p.exporter
 		for {
 			// TODO: observe duration waiting to receive
 			var timedBlock timedBlockData
 			var exporterStart time.Time
 			select {
 			case <-p.ctx.Done():
+				p.logger.Debugf("Exporter Done @ round: %v", round)
 				return round, nil
 			case timedBlock, ok := <-input:
+				p.logger.Infof("Exporter round: %v", round)
 				if !ok {
+					p.logger.Debugf("Exporter channel closed @ round: %v", round)
 					return round, nil
 				}
 				exporterStart = time.Now()
@@ -573,10 +616,10 @@ func (p *pipelineImpl) Start() {
 		}
 	}
 
-	p.importerChan = make(chan timedBlockData, p.chanBuffSize)
 	p.wg.Add(1)
 	go func() {
 		defer p.wg.Done()
+		defer HandlePanic(p.logger)
 		exitRound, err := impHandler(p.pipelineMetadata.NextRound)
 		if err != nil {
 			p.joinError(newPipelineRoundError(err, exitRound))
@@ -588,6 +631,7 @@ func (p *pipelineImpl) Start() {
 		p.wg.Add(1)
 		go func() {
 			defer p.wg.Done()
+			defer HandlePanic(p.logger)
 			exitRound, err := procHandler(p.pipelineMetadata.NextRound, i)
 			if err != nil {
 				p.joinError(newPipelineRoundError(err, exitRound))
@@ -598,9 +642,25 @@ func (p *pipelineImpl) Start() {
 	p.wg.Add(1)
 	go func() {
 		defer p.wg.Done()
+		defer HandlePanic(p.logger)
 		exitRound, err := expHandler(p.pipelineMetadata.NextRound)
 		if err != nil {
 			p.joinError(newPipelineRoundError(err, exitRound))
+		}
+	}()
+
+	p.wg.Add(1)
+	go func() {
+		defer p.wg.Done()
+		defer HandlePanic(p.logger)
+		select {
+		case <-p.ctx.Done():
+			p.logger.Debugf("Start() Done with err %v @ round: %d", p.ctx.Err(), p.pipelineMetadata.NextRound)
+			return
+		case <-exporterChan:
+			p.logger.Debugf("Start() finished with err <%v> @ round: %d", p.err, p.pipelineMetadata.NextRound)
+			p.cf()
+			return
 		}
 	}()
 }
@@ -734,7 +794,7 @@ func MakePipeline(ctx context.Context, cfg *data.Config, logger *log.Logger) (Pi
 		return nil, fmt.Errorf("MakePipeline(): logger was empty")
 	}
 
-	cancelContext, cancelFunc := context.WithCancel(ctx)
+	cancelContext, cancelFunc := context.WithCancel(ctx) // TODO: WithCancelCause()
 
 	pipeline := &pipelineImpl{
 		ctx:          cancelContext,
