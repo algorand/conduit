@@ -464,6 +464,12 @@ func addMetrics(block data.BlockData, importTime time.Duration) {
 }
 
 func (p *pipelineImpl) Start() {
+	p.wg.Add(1)
+	defer p.wg.Done()
+
+	startWg := sync.WaitGroup{}
+	startCtx, cancelStart := context.WithCancelCause(p.ctx)
+
 	p.logger.Debugf("making channels of size %d", p.chanBuffSize)
 	importerChan := make(chan timedBlockData, p.chanBuffSize)
 	processorChans := make([]chan timedBlockData, len(p.processors))
@@ -471,17 +477,20 @@ func (p *pipelineImpl) Start() {
 		processorChans[i] = make(chan timedBlockData, p.chanBuffSize)
 	}
 	p.logger.Debugf("making exporterChan")
-	exporterChan := make(chan timedBlockData)
+	exporterDoneSig := make(chan bool)
 
-	impHandler := func(round uint64) (uint64 /* round */, error) {
+	importerHandler := func(round uint64) (uint64 /* round */, error) {
 		p.logger.Debugf("Importer starting with round: %v", round)
 		imp := p.importer
 		output := importerChan
 		defer close(output)
 		for {
 			select {
-			case <-p.ctx.Done():
+			case <-startCtx.Done():
 				p.logger.Debugf("Importer Done @ round: %v", round)
+				return round, nil
+			case <-exporterDoneSig:
+				p.logger.Debugf("Importer exiting due to exporterDoneSig @ round: %v", round)
 				return round, nil
 			default:
 				p.logger.Infof("Importer round: %v", round)
@@ -500,7 +509,7 @@ func (p *pipelineImpl) Start() {
 					// This is for backwards compatibility w/ Indexer's metrics
 					// run through processors
 					select {
-					case <-p.ctx.Done():
+					case <-startCtx.Done():
 						p.logger.Debugf("Importer Done before sending @ round: %v", round)
 						return round, nil
 					case output <- timedBlockData{time.Now(), &blk}:
@@ -528,7 +537,7 @@ func (p *pipelineImpl) Start() {
 		for {
 			// TODO: observe duration waiting to receive
 			select {
-			case <-p.ctx.Done():
+			case <-startCtx.Done():
 				p.logger.Debugf("Processor[%d] Done @ round: %v", procIdx, round)
 				return round, nil
 			case timedBlock, ok := <-input:
@@ -564,15 +573,13 @@ func (p *pipelineImpl) Start() {
 					timedBlock.block = &blk
 					metrics.ProcessorTimeSeconds.WithLabelValues(proc.Metadata().Name).Observe(time.Since(processorStart).Seconds())
 					select {
-					case <-p.ctx.Done():
+					case <-startCtx.Done():
 						p.logger.Debugf("Processor[%d] Done before sending @ round: %v", procIdx, round)
 						return round, nil
 					case output <- timedBlock:
 						// TODO: observe the duration waiting to send
 					}
 				}
-				// default:
-				// 	time.Sleep(time.Millisecond)
 			}
 			round++
 		}
@@ -581,15 +588,16 @@ func (p *pipelineImpl) Start() {
 	expHandler := func(round uint64) (uint64, error) {
 		p.logger.Debugf("Exporter starting with round: %v", round)
 		input := processorChans[len(p.processors)-1]
-		defer close(exporterChan)
+		defer close(exporterDoneSig)
 
 		exp := p.exporter
+		var blk *data.BlockData
 		for {
 			// TODO: observe duration waiting to receive
 			var timedBlock timedBlockData
 			var exporterStart time.Time
 			select {
-			case <-p.ctx.Done():
+			case <-startCtx.Done():
 				p.logger.Debugf("Exporter Done @ round: %v", round)
 				return round, nil
 			case timedBlock, ok := <-input:
@@ -599,7 +607,7 @@ func (p *pipelineImpl) Start() {
 					return round, nil
 				}
 				exporterStart = time.Now()
-				blk := timedBlock.block
+				blk = timedBlock.block
 				hRound := blk.BlockHeader.Round
 				if hRound != sdk.Round(round) {
 					return round, fmt.Errorf("exporter %s: unexpected round from block: %d", exp.Metadata().Name, hRound)
@@ -608,7 +616,10 @@ func (p *pipelineImpl) Start() {
 					return round, err
 				}
 			}
-			err := p.finishRound(*timedBlock.block, timedBlock.start, exporterStart)
+			if blk == nil {
+				return round, fmt.Errorf("this should never happen!!! exporter %s: unexpected nil block - cannot finishRound", exp.Metadata().Name)
+			}
+			err := p.finishRound(*blk, timedBlock.start, exporterStart)
 			if err != nil {
 				return round, err
 			}
@@ -616,53 +627,58 @@ func (p *pipelineImpl) Start() {
 		}
 	}
 
-	p.wg.Add(1)
+	// only expHandler modifies round and it hasn't yet launched
+	nextRound := p.pipelineMetadata.NextRound
+
+	// importer goroutine
+	startWg.Add(1)
 	go func() {
-		defer p.wg.Done()
+		defer startWg.Done()
 		defer HandlePanic(p.logger)
-		exitRound, err := impHandler(p.pipelineMetadata.NextRound)
+		exitRound, err := importerHandler(nextRound)
 		if err != nil {
 			p.joinError(newPipelineRoundError(err, exitRound))
 		}
+		cancelStart(fmt.Errorf("Start() cancelled by importer @ round %d: %w", exitRound, err))
 	}()
 
+	// processor goroutines
 	for i := 0; i < len(p.processors); i++ {
 		i := i
-		p.wg.Add(1)
+		startWg.Add(1)
 		go func() {
-			defer p.wg.Done()
+			defer startWg.Done()
 			defer HandlePanic(p.logger)
-			exitRound, err := procHandler(p.pipelineMetadata.NextRound, i)
+			exitRound, err := procHandler(nextRound, i)
 			if err != nil {
 				p.joinError(newPipelineRoundError(err, exitRound))
 			}
+			cancelStart(fmt.Errorf("Start() cancelled by processor %d @ round %d: %w", i, exitRound, err))
 		}()
 	}
 
-	p.wg.Add(1)
+	// exporter goroutine
+	startWg.Add(1)
 	go func() {
-		defer p.wg.Done()
+		defer startWg.Done()
 		defer HandlePanic(p.logger)
-		exitRound, err := expHandler(p.pipelineMetadata.NextRound)
+		exitRound, err := expHandler(nextRound)
 		if err != nil {
 			p.joinError(newPipelineRoundError(err, exitRound))
 		}
+		cancelStart(fmt.Errorf("Start() cancelled by exporter @ round %d: %w", exitRound, err))
 	}()
 
-	p.wg.Add(1)
-	go func() {
-		defer p.wg.Done()
-		defer HandlePanic(p.logger)
-		select {
-		case <-p.ctx.Done():
-			p.logger.Debugf("Start() Done with err %v @ round: %d", p.ctx.Err(), p.pipelineMetadata.NextRound)
-			return
-		case <-exporterChan:
-			p.logger.Debugf("Start() finished with err <%v> @ round: %d", p.err, p.pipelineMetadata.NextRound)
-			p.cf()
-			return
-		}
-	}()
+	// TODO: add retry logic here:
+	// count how many startContexts have been cancelled consecutively
+	// with an error cause. Try again up to p.cfg.RetryCount times
+	startWg.Wait()
+	p.logger.Infof(
+		"Start() finished because of <%v> with err <%v> @ Metadata.NextRound: %d",
+		context.Cause(startCtx),
+		p.err,
+		p.pipelineMetadata.NextRound,
+	)
 }
 
 // OStart pushes block data through the pipeline

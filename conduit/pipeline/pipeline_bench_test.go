@@ -17,6 +17,10 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+const (
+	logLevel = log.ErrorLevel
+)
+
 type sleepingImporter struct {
 	cfg             plugins.PluginConfig
 	genesis         sdk.Genesis
@@ -112,7 +116,6 @@ func (m *sleepingProcessor) Process(input data.BlockData) (data.BlockData, error
 	if m.returnError {
 		err = fmt.Errorf("process")
 	}
-	input.BlockHeader.Round++
 	return input, err
 }
 
@@ -182,27 +185,29 @@ type benchmarkCase struct {
 	exporterSleep   time.Duration
 }
 
-func pipeline5sec(b *testing.B, bcCase benchmarkCase) int {
-	simp := &sleepingImporter{getBlockSleep: bcCase.importerSleep}
-	sprocs := make([]processors.Processor, len(bcCase.processorsSleep))
-	for i, pSleep := range bcCase.processorsSleep {
-		sprocs[i] = &sleepingProcessor{processSleep: pSleep}
+func pipeline5sec(b *testing.B, testCase benchmarkCase) int {
+	benchmarkDuration := 5 * time.Second
+
+	importer := &sleepingImporter{getBlockSleep: testCase.importerSleep}
+	processors := make([]processors.Processor, len(testCase.processorsSleep))
+	for i, procSleep := range testCase.processorsSleep {
+		processors[i] = &sleepingProcessor{processSleep: procSleep}
 	}
-	slexpo := &sleepingExporter{receiveSleep: bcCase.exporterSleep}
+	exporter := &sleepingExporter{receiveSleep: testCase.exporterSleep}
 
 	ctx, cf := context.WithCancel(context.Background())
 
 	logger := log.New()
-	logger.SetLevel(log.DebugLevel)
+	logger.SetLevel(logLevel)
 	pImpl := pipelineImpl{
 		ctx:          ctx,
 		cf:           cf,
 		logger:       logger,
 		initProvider: nil,
-		chanBuffSize: bcCase.channelBuffSize,
-		importer:     simp,
-		processors:   sprocs,
-		exporter:     slexpo,
+		chanBuffSize: testCase.channelBuffSize,
+		importer:     importer,
+		processors:   processors,
+		exporter:     exporter,
 		pipelineMetadata: state{
 			NextRound:   0,
 			GenesisHash: "",
@@ -220,7 +225,7 @@ func pipeline5sec(b *testing.B, bcCase benchmarkCase) int {
 
 	// cancel the pipeline after 5 seconds
 	go func() {
-		time.Sleep(5 * time.Second)
+		time.Sleep(benchmarkDuration)
 		cf()
 	}()
 
