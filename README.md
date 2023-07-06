@@ -46,94 +46,64 @@ The latest `conduit` binary can be downloaded from the [GitHub releases page](ht
 
 ## Usage
 
-Conduit is configured with a file named `conduit.yml`. Generate a config file template with `./conduit init > conduit.yml`. Place the `conduit.yml` file in a new directory, conventionally it is named `data` and will be referred to later on as "the data directory".
+Conduit is configured with a YAML file named `conduit.yml`. This file defines the pipeline behavior by enabling and configuring different plugins.
 
-<!-- TODO: select plugins with init options? -->
-You will need to manually edit the config file before running Conduit.
+### Create the configuration
 
-Here is an example configuration:
-
-```yaml
-# optional: level to use for logging.
-log-level: "INFO, WARN, ERROR"
-
-# optional: path to log file
-log-file: "<path>"
-
-# optional: maintain a pidfile for the life of the conduit process.
-pid-filepath: "path to pid file."
-
-# Define one importer.
-importer:
-    name:
-    config:
-
-# Define one or more processors.
-processors:
-  - name:
-    config:
-  - name:
-    config:
-
-# Define one exporter.
-exporter:
-    name:
-    config:
+The `conduit init` subcommand can be used to create a configuration template. It should be place in a new data directory. By convention the directory is named `data` and is often referred to as "the data directory".
+```
+mkdir data
+./conduit init > data/conduit.yml
 ```
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 A Conduit pipeline is composed of 3 components, [Importers](./conduit/plugins/importers/), [Processors](./conduit/plugins/processors/), and [Exporters](./conduit/plugins/exporters/).
-Every pipeline must define exactly 1 Importer, exactly 1 Exporter, and can optionally define a series of 0 or more Processors.
+Every pipeline must define exactly 1 Importer, exactly 1 Exporter, and can optionally define a series of 0 or more Processors. A full list of available plugins with `conduit list` and the [plugin documentation page](TODO: plugin docs).
 
+Here is an example configuration that configures several plugins:
+```
+importer:
+    name: algod
+    config:
+        mode: "follower"
+        netaddr: "http://your-follower-node:1234"
+        token: "your API token"
 
+# no processors defined for this configuration
+processors:
 
+exporter:
+    name: "file_writer"
+    config:
+        # the default config writes block data to the data directory.
+```
 
+The `conduit init` command can also be used to select which plugins to include in the template. For example the following command creates a configuration template to populate an Indexer database.
+```
+docker run algorand/conduit init --importer algod --processors filter_processor --exporter postgresql > conduit.yml
+```
 
-Once you have a valid config file in a directory, `config_directory`, launch conduit with `./conduit -d config_directory`.
+The config file must be edited before running Conduit.
 
+### Run Conduit
 
-### Plugins
+Once configured, start Conduit with your data directory:
+```
+./conduit -d data
+```
 
+# Third Party Plugins
 
-Conduit comes with an initial set of plugins available for use in pipelines. For more information on the possible
-plugins and how to include them in your pipeline's configuration file see [Configuration.md](Configuration.md).
+<!-- TODO: "Third Party Plugins" or "External Plugins"? -->
+Conduit supports Third Party Plugins, but not in the way you may be used to in other pluggable systems. In order to limit adding dependencies, third party plugins are enabled with a custom build that imports exactly the plugins you would like to deploy.
 
-There are also third party plugins available on the [Third Party Plugins](./docs/Third_Party_Plugins.md) page.
+Over time this process can be automated, but for now it is manual and requires a go development environment and a little bit of code.
 
+For a list of available plugins and instructions on how to use them, see the [Third Party Plugins](./docs/Third_Party_Plugins.md) page.
 
 # Develoment
 
+<!-- TODO: take the first section from docs/Development.md and put it here, similar to what was done with the above section -->
 See the [Development](./docs/Development.md) page for building a plugin.
-
-
-
-
-
-
-
-
-
-<!-- from here down is good -->
 
 # Contributing
 

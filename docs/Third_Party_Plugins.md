@@ -1,13 +1,3 @@
-# Third Party Plugins
-
-Conduit supports Third Party Plugins, but not in the way you may be used to
-in other pluggable systems. In order to limit adding dependencies, third party
-plugins are enabled with a custom build that imports exactly the plugins you
-would like to deploy.
-
-Over time this process can be automated, but for now it is manual and requires
-writing a little bit of code.
-
 # External Plugins
 
 This is where external and third party plugins will be listed. If you create a
