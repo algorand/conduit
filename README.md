@@ -50,7 +50,7 @@ Conduit is configured with a YAML file named `conduit.yml`. This file defines th
 
 ### Create the configuration
 
-The `conduit init` subcommand can be used to create a configuration template. It should be place in a new data directory. By convention the directory is named `data` and is often referred to as "the data directory".
+The `conduit init` subcommand can be used to create a configuration template. It should be place in a new data directory. By convention the directory is named `data` and is referred to as the data directory.
 ```
 mkdir data
 ./conduit init > data/conduit.yml
