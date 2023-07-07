@@ -59,7 +59,7 @@ mkdir data
 A Conduit pipeline is composed of 3 components, [Importers](./conduit/plugins/importers/), [Processors](./conduit/plugins/processors/), and [Exporters](./conduit/plugins/exporters/).
 Every pipeline must define exactly 1 Importer, exactly 1 Exporter, and can optionally define a series of 0 or more Processors. A full list of available plugins with `conduit list` and the [plugin documentation page](TODO: plugin docs).
 
-Here is an example configuration that configures several plugins:
+Here is an example that configures two plugins:
 ```yaml
 importer:
     name: algod
