@@ -60,7 +60,7 @@ A Conduit pipeline is composed of 3 components, [Importers](./conduit/plugins/im
 Every pipeline must define exactly 1 Importer, exactly 1 Exporter, and can optionally define a series of 0 or more Processors. A full list of available plugins with `conduit list` and the [plugin documentation page](TODO: plugin docs).
 
 Here is an example configuration that configures several plugins:
-```
+```yaml
 importer:
     name: algod
     config:
@@ -78,7 +78,7 @@ exporter:
 ```
 
 The `conduit init` command can also be used to select which plugins to include in the template. For example the following command creates a configuration template to populate an Indexer database.
-```
+```sh
 docker run algorand/conduit init --importer algod --processors filter_processor --exporter postgresql > conduit.yml
 ```
 
@@ -87,7 +87,7 @@ The config file must be edited before running Conduit.
 ### Run Conduit
 
 Once configured, start Conduit with your data directory:
-```
+```sh
 ./conduit -d data
 ```
 
