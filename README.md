@@ -51,7 +51,8 @@ Conduit is configured with a YAML file named `conduit.yml`. This file defines th
 ### Create the configuration
 
 The `conduit init` subcommand can be used to create a configuration template. It should be place in a new data directory. By convention the directory is named `data` and is referred to as the data directory.
-```
+
+```sh
 mkdir data
 ./conduit init > data/conduit.yml
 ```
@@ -60,6 +61,7 @@ A Conduit pipeline is composed of 3 components, [Importers](./conduit/plugins/im
 Every pipeline must define exactly 1 Importer, exactly 1 Exporter, and can optionally define a series of 0 or more Processors. A full list of available plugins with `conduit list` and the [plugin documentation page](TODO: plugin docs).
 
 Here is an example that configures two plugins:
+
 ```yaml
 importer:
     name: algod
@@ -78,6 +80,7 @@ exporter:
 ```
 
 The `conduit init` command can also be used to select which plugins to include in the template. For example the following command creates a configuration template to populate an Indexer database.
+
 ```sh
 docker run algorand/conduit init --importer algod --processors filter_processor --exporter postgresql > conduit.yml
 ```
