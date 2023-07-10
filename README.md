@@ -48,9 +48,9 @@ The latest `conduit` binary can be downloaded from the [GitHub releases page](ht
 
 Conduit is configured with a YAML file named `conduit.yml`. This file defines the pipeline behavior by enabling and configuring different plugins.
 
-### Create the configuration
+### Create `conduit.yml` configuration file
 
-The `conduit init` subcommand can be used to create a configuration template. It should be place in a new data directory. By convention the directory is named `data` and is referred to as the data directory.
+Use the `conduit init` subcommand to create a configuration template. Place the configuration template in a new data directory. By convention the directory is named `data` and is referred to as the data directory.
 
 ```sh
 mkdir data
@@ -60,7 +60,7 @@ mkdir data
 A Conduit pipeline is composed of 3 components, [Importers](./conduit/plugins/importers/), [Processors](./conduit/plugins/processors/), and [Exporters](./conduit/plugins/exporters/).
 Every pipeline must define exactly 1 Importer, exactly 1 Exporter, and can optionally define a series of 0 or more Processors. A full list of available plugins with `conduit list` and the [plugin documentation page](TODO: plugin docs).
 
-Here is an example that configures two plugins:
+Here is an example `conduit.yml` that configures two plugins:
 
 ```yaml
 importer:
@@ -79,42 +79,37 @@ exporter:
         # the default config writes block data to the data directory.
 ```
 
-The `conduit init` command can also be used to select which plugins to include in the template. For example the following command creates a configuration template to populate an Indexer database.
-
+The `conduit init` command can also be used to select which plugins to include in the template that uses the standard algod importer and sends the data to PostgreSQL. This example does not use any processor plugins.
 ```sh
-docker run algorand/conduit init --importer algod --processors filter_processor --exporter postgresql > conduit.yml
+./conduit init --importer algod --exporter postgresql > conduit.yml
 ```
 
-The config file must be edited before running Conduit.
+Before running Conduit you need to review and modify `conduit.yml` according to your environment.
 
 ### Run Conduit
 
-Once configured, start Conduit with your data directory:
+Once configured, start Conduit with your data directory as an argument:
 ```sh
 ./conduit -d data
 ```
 
-# Third Party Plugins
+# External Plugins
 
-<!-- TODO: "Third Party Plugins" or "External Plugins"? -->
-Conduit supports Third Party Plugins, but not in the way you may be used to in other pluggable systems. In order to limit adding dependencies, third party plugins are enabled with a custom build that imports exactly the plugins you would like to deploy.
+Conduit supports external plugins which can be developed by anyone.
 
-Over time this process can be automated, but for now it is manual and requires a go development environment and a little bit of code.
+For a list of available plugins and instructions on how to use them, see the [External Plugins](./docs/External_Plugins.md) page.
 
-For a list of available plugins and instructions on how to use them, see the [Third Party Plugins](./docs/Third_Party_Plugins.md) page.
+## External Plugin Development
 
-# Develoment
-
-<!-- TODO: take the first section from docs/Development.md and put it here, similar to what was done with the above section -->
-See the [Development](./docs/Development.md) page for building a plugin.
+See the [Plugin Development](./docs/Plugin_Development.md) page for building a plugin.
 
 # Contributing
 
-Contributions are welcome! Please refer to our [CONTRIBUTING](https://github.com/algorand/go-algorand/blob/master/CONTRIBUTING.md) document for general contribution guidelines, and individual plugin documentation for contributing to new and existing Conduit plugins.
+Contributions are welcome! Please refer to our [CONTRIBUTING](https://github.com/algorand/go-algorand/blob/master/CONTRIBUTING.md) document for general contribution guidelines.
 
 # Migrating from Indexer 2.x
 
-Conduit can be used to populate data from an existing Indexer 2.x deployment as part of upgrading to Indexer 3.x.
+Conduit can be used to populate data from an existing [Indexer 2.x](https://github.com/algorand/indexer/) deployment as part of upgrading to Indexer 3.x.
 
 We will continue to maintain Indexer 2.x for the time being, but encourage users to move to Conduit. It provides cost benefits for most deployments in addition to greater flexibility.
 

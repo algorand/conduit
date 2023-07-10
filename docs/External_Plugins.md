@@ -1,12 +1,18 @@
 # External Plugins
 
+Conduit supports external plugins, but not in the way you may be used to in other pluggable systems. In order to limit adding dependencies, external plugins are enabled with a custom build that imports exactly the plugins you would like to deploy.
+
+Over time this process can be automated, but for now it is manual and requires a go development environment and a little bit of code.
+
+# Plugin list
+
 This is where external and third party plugins will be listed. If you create a
 plugin, please make a PR adding a bullet for it below.
 
 * [conduit-plugin-template](https://github.com/algorand/conduit-plugin-template): A collection of templates.
 *
 
-# Configuring a Deployment that Includes Third Party Plugins
+# Configuring a Deployment that Includes External Plugins
 
 As an example, we'll create a custom deployment that combines a subset of the
 built-in Conduit plugins and the plugins from
