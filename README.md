@@ -14,8 +14,6 @@
 
 Conduit is a framework for ingesting blocks from the Algorand blockchain into external applications. It is designed as modular plugin system that allows users to configure their own data pipelines for filtering, aggregation, and storage of blockchain data.
 
-<!-- TODO: a section here that explains that you select plugins to configure behavior and how data goes through the system -->
-
 <!-- TODO: a cool diagram here that clearly demonstrates data moving through the system -->
 
 For example, use conduit to:
@@ -58,7 +56,9 @@ mkdir data
 ```
 
 A Conduit pipeline is composed of 3 components, [Importers](./conduit/plugins/importers/), [Processors](./conduit/plugins/processors/), and [Exporters](./conduit/plugins/exporters/).
-Every pipeline must define exactly 1 Importer, exactly 1 Exporter, and can optionally define a series of 0 or more Processors. A full list of available plugins with `conduit list` and the [plugin documentation page](TODO: plugin docs).
+Every pipeline must define exactly 1 Importer, exactly 1 Exporter, and can optionally define a series of 0 or more Processors. A full list of available plugins with `conduit list` and the [plugin documentation page](./conduit/plugins).
+
+<!-- TODO: a better page listing all of the built-in plugins. -->
 
 Here is an example `conduit.yml` that configures two plugins:
 
