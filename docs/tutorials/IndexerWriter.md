@@ -117,9 +117,7 @@ mkdir conduit_data
 ```
 
 This will set up a new Conduit data directory with a configuration template.
-To finish configuring Conduit, edit `conduit_data/conduit.yml`.
-
-We'll use dot notation to indicate a path in the config file. For example,
+The template needs to be edited. We'll use dot notation to indicate a path in the config file. For example,
 `importer.config.netaddr` refers to:
 ```yaml
 importer:
@@ -127,42 +125,42 @@ importer:
     netaddr: "this is the field we are referring to"
 ```
 
-Configuration:
+Finish configuring Conduit by setting the following values in `conduit_data/conduit.yml`:
 * `importer.config.netaddr`: the contents of `algod_data/algod.net`, with a `http://` prefix. Typically this defaults to `http://127.0.0.1:8080`.
 * `importer.config.token`: the contents of `algod_data/algod.token`
 * `exporter.config.connection-string`: `host=localhost port=5555 user=algorand password=pgpass dbname=conduit`
 
 If you are connecting to an existing PostgreSQL database, you can also set
-the admin token and enable `auto`.  You can optionally
-specify the catchup label directly. If those are configured, Conduit will
-coordinate initializing the node by using fast catchup.
+the admin token at `importer.config.catchup-config.admin-token` to the contents of `algod_data/algod.admin.token`.
+ When the admin token is configured, Conduit will initial the node by using fast catchup.
 
 Review the inline documentation in `conduit.yml` and decide if there are any
 other settings you would like to update.
 
-At this point you may start Conduit with:
+Start Conduit with:
 ```bash
 ./conduit -d conduit_data
 ```
 
 ## Indexer API
 
-With data in the PostgreSQL DB, you are now able to start a [read only Indexer API](indexer-read-only).
+With data in PostgreSQL, you can now start the [Indexer API](indexer-read-only).
 
-Download the `algorand-indexer` command [from the releases page](indexer-release). Put
-the binary in the current working directory, or install it to your path and use
+Download Indexer 3.x [from the releases page](indexer-release). Put
+the `algorand-indexer` binary in the current working directory, or install it to your path and use
 normally.
 
+Start Indexer with:
 ```bash
-./algorand-indexer daemon -S ":8980" --data-dir /tmp --no-algod --postgres "host=localhost port=5555 user=algorand password=pgpass dbname=conduit"
+./algorand-indexer daemon -S ":8980" --data-dir /tmp --postgres "host=localhost port=5555 user=algorand password=pgpass dbname=conduit"
 ```
 
-And use it:
+To test that it's working, here is an example API call:
 ```bash
 curl http://localhost:8980/v2/accounts
 ```
 
-For details see the [Indexer README](indexer-readme) and the [Indexer API documentation](indexer-rest-api).
+More information about Indexer can be found in the [Indexer README](indexer-readme) and the [Indexer API documentation](indexer-rest-api).
 
 [follow-mode-doc]: https://github.com/algorand/go-algorand/blob/master/docs/follower_node.md
 [node-install-doc]: https://developer.algorand.org/docs/run-a-node/setup/install/
