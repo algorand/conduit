@@ -31,7 +31,7 @@ func TestSamples(t *testing.T) {
 func TestBlockMetaDataFile(t *testing.T) {
 	datadir := t.TempDir()
 	pipelineMetadata := state{
-		NextRound: 3,
+		NextRoundDEPRECATED: 3,
 	}
 
 	// Test the file is not created yet
@@ -52,20 +52,20 @@ func TestBlockMetaDataFile(t *testing.T) {
 	metaData, err := readBlockMetadata(datadir)
 	assert.NoError(t, err)
 	assert.Equal(t, pipelineMetadata.GenesisHash, metaData.GenesisHash)
-	assert.Equal(t, pipelineMetadata.NextRound, metaData.NextRound)
+	assert.Equal(t, pipelineMetadata.NextRoundDEPRECATED, metaData.NextRoundDEPRECATED)
 	assert.Equal(t, pipelineMetadata.Network, metaData.Network)
 	assert.Equal(t, pipelineMetadata.TelemetryID, metaData.TelemetryID)
 
 	// Test that file encodes correctly
 	pipelineMetadata.GenesisHash = "HASH"
-	pipelineMetadata.NextRound = 7
+	pipelineMetadata.NextRoundDEPRECATED = 7
 	pipelineMetadata.TelemetryID = "SOME_ID"
 	err = pipelineMetadata.encodeToFile(datadir)
 	assert.NoError(t, err)
 	metaData, err = readBlockMetadata(datadir)
 	assert.NoError(t, err)
 	assert.Equal(t, "HASH", metaData.GenesisHash)
-	assert.Equal(t, uint64(7), metaData.NextRound)
+	assert.Equal(t, uint64(7), metaData.NextRoundDEPRECATED)
 	assert.Equal(t, pipelineMetadata.Network, metaData.Network)
 	assert.Equal(t, pipelineMetadata.TelemetryID, metaData.TelemetryID)
 }

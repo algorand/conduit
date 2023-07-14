@@ -3,7 +3,6 @@ package pipeline
 import (
 	"context"
 	"fmt"
-	"math"
 	"testing"
 	"time"
 
@@ -18,7 +17,8 @@ import (
 )
 
 const (
-	logLevel = log.ErrorLevel
+	logLevel   = log.ErrorLevel // log.DebugLevel //
+	retryCount = 3              // math.MaxUint64
 )
 
 type sleepingImporter struct {
@@ -209,12 +209,12 @@ func pipeline5sec(b *testing.B, testCase benchmarkCase) int {
 		processors:   processors,
 		exporter:     exporter,
 		pipelineMetadata: state{
-			NextRound:   0,
-			GenesisHash: "",
+			NextRoundDEPRECATED: 0,
+			GenesisHash:         "",
 		},
 		cfg: &data.Config{
 			RetryDelay: 0 * time.Second,
-			RetryCount: math.MaxUint64,
+			RetryCount: retryCount,
 			ConduitArgs: &data.Args{
 				ConduitDataDir: b.TempDir(),
 			},

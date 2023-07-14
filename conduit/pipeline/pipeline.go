@@ -27,6 +27,7 @@ import (
 	"github.com/algorand/conduit/conduit/plugins/importers"
 	"github.com/algorand/conduit/conduit/plugins/processors"
 	"github.com/algorand/conduit/conduit/telemetry"
+	"github.com/algorand/conduit/conduit/types"
 )
 
 // Pipeline is a struct that orchestrates the entire
@@ -48,6 +49,16 @@ type timedBlockData struct {
 type pipelineRoundError struct {
 	err   error
 	round uint64
+}
+
+type RoundBroadcaster struct {
+	types.Broadcaster[uint64]
+}
+
+func NewRoundBroadcaster(logger *log.Logger) *RoundBroadcaster {
+	return &RoundBroadcaster{
+		Broadcaster: *types.NewBroadcaster[uint64](logger),
+	}
 }
 
 func (e *pipelineRoundError) Error() string {
@@ -298,15 +309,15 @@ func (p *pipelineImpl) Init() error {
 	if err != nil {
 		return fmt.Errorf("Pipeline.Init(): error resolving plugin round override: %w", err)
 	}
-	if pluginRoundOverride > 0 && pluginRoundOverride != p.pipelineMetadata.NextRound {
-		p.logger.Infof("Overriding default next round from %d to %d.", p.pipelineMetadata.NextRound, pluginRoundOverride)
-		p.pipelineMetadata.NextRound = pluginRoundOverride
+	if pluginRoundOverride > 0 && pluginRoundOverride != p.pipelineMetadata.NextRoundDEPRECATED {
+		p.logger.Infof("Overriding default next round from %d to %d.", p.pipelineMetadata.NextRoundDEPRECATED, pluginRoundOverride)
+		p.pipelineMetadata.NextRoundDEPRECATED = pluginRoundOverride
 	} else {
-		p.logger.Infof("Initializing to pipeline round %d.", p.pipelineMetadata.NextRound)
+		p.logger.Infof("Initializing to pipeline round %d.", p.pipelineMetadata.NextRoundDEPRECATED)
 	}
 
 	// InitProvider
-	round := sdk.Round(p.pipelineMetadata.NextRound)
+	round := sdk.Round(p.pipelineMetadata.NextRoundDEPRECATED)
 
 	// Initialize Telemetry
 	var telemetryClient telemetry.Client
@@ -463,7 +474,542 @@ func addMetrics(block data.BlockData, importTime time.Duration) {
 	metrics.ImportedTxnsPerBlock.Observe(float64(len(block.Payset)) + float64(innerTxn))
 }
 
+// oneRound attempts to complete one round of the pipeline given a particular
+// partial state of type roundState.
+// It should only be called after the importer.GetBlock() pre-condition is met.
+// Before attempting export, it blocks until the exorter.Receive() pre-condition is met.
+// The state machine works as follows:
+// - beforePlugins: regardless of plugin call history, try importer.Get(), processors.Process(), exporter.Export()
+// - roundStateNeedsCallbacks: plugins have succeeded and regardless of callback history, try calling all of the completeCallback's
+// - roundStateNeedsSaveMetadata: pipeline's NextRound is updated, try importer.SaveMetadata()
+// - completed: this is the final state
+func (p *pipelineImpl) oneRound(round uint64, state roundState, prevBlk *data.BlockData, ctx context.Context, waitSig, doneSig roundComplete) (roundState, *data.BlockData, error) {
+	p.logger.Debugf("Pipeline.oneRound(): round %d, state %d", round, state)
+
+	if state >= completed {
+		return state, prevBlk, fmt.Errorf("Pipeline.oneRound(): received state >= roundStateComplete @ round=%d state=%d", round, state)
+	}
+
+	var blk data.BlockData
+	if prevBlk != nil {
+		if state <= beforePlugins {
+			return state, prevBlk, fmt.Errorf("Pipeline.oneRound(): received non-nil prevBlk @ round=%d state=%d", round, state)
+		}
+		blk = *prevBlk
+	}
+
+	if state <= beforePlugins {
+		p.logger.Debugf("Pipeline.oneRound(): round %d, state %d: beforePlugins", round, state)
+		var err error
+		select {
+		case <-p.ctx.Done():
+			p.logger.Debugf("Pipeline.oneRound(): round %d, state %d: <-p.ctx.Done() before importer", round, state)
+			return state, &blk, p.ctx.Err()
+		default:
+			if blk, err = p.importer.GetBlock(round); err != nil {
+				return state, &blk, err
+			}
+		}
+		for _, proc := range p.processors {
+			select {
+			case <-p.ctx.Done():
+				p.logger.Debugf("Pipeline.oneRound(): round %d, state %d: <-p.ctx.Done() before processor %s", round, state, proc.Metadata().Name)
+				return state, &blk, p.ctx.Err()
+			default:
+				if blk, err = proc.Process(blk); err != nil {
+					return state, &blk, err
+				}
+			}
+		}
+		select {
+		case <-p.ctx.Done():
+			p.logger.Debugf("Pipeline.oneRound(): round %d, state %d: <-p.ctx.Done() before exporter", round, state)
+			return state, &blk, p.ctx.Err()
+		case <-waitSig:
+			// the Receive() pre-condition has been met
+			if err = p.exporter.Receive(blk); err != nil {
+				return state, &blk, err
+			}
+			state = beforeCallbacks
+		}
+	}
+
+	if state <= beforeCallbacks {
+		p.logger.Debugf("Pipeline.oneRound(): round %d, state %d: beforeCallbacks", round, state)
+		for _, cb := range p.completeCallback {
+			// TODO: I'm assuming that the callbacks are idempotent.
+			// Is this assumption correct?
+			err := cb(blk)
+			if err != nil {
+				return state, &blk, err
+			}
+		}
+		p.pipelineMetadata.NextRound.Store(round + 1)
+		state = beforeMetadataSave
+	}
+
+	if state <= beforeMetadataSave {
+		p.logger.Debugf("Pipeline.oneRound(%d): attempt save pipeline metadata", round)
+		// return state, &blk, fmt.Errorf("ARTIFICIAL ERROR round %d", round)
+		err := p.pipelineMetadata.encodeToFile(p.cfg.ConduitArgs.ConduitDataDir)
+		if err != nil {
+			p.logger.WithError(err).Errorf("Pipeline.oneRound(): could not save pipeline metadata")
+			return state, &blk, err
+		}
+		state = completed
+	}
+
+	// only a successful run can close the output roundSignal
+	close(doneSig)
+
+	// if we got here, we've succeeded and there's no need to provide the block to the caller
+	// for a retry so let it be garbage collected ASAP
+	return state, nil, nil
+}
+
+// oneRoundWithRetries is a goroutine for retrying oneRound() up to p.cfg.RetryCount times
+func (p *pipelineImpl) oneRoundWithRetries(round uint64, exportSig roundComplete, ctx context.Context, cf context.CancelCauseFunc) roundComplete {
+	p.logger.Debugf("Pipeline.oneRoundWithRetries(%d)", round)
+
+	roundSig := make(roundComplete)
+	p.wg.Add(1)
+	go func() {
+		defer p.wg.Done()
+
+		var state roundState
+		var blk *data.BlockData
+		var err error
+		maxRetries := p.cfg.RetryCount
+		for retry := uint64(0); retry <= maxRetries; retry++ {
+			select {
+			case <-ctx.Done():
+				p.logger.Debugf("Pipeline.oneRoundWithRetries(%d): context cancelled", round)
+				return
+			default:
+				p.logger.Debugf("Pipeline.oneRoundWithRetries(%d): retry=%d/%d", round, retry, maxRetries)
+				var roundErr error
+				state, blk, roundErr = p.oneRound(round, state, blk, ctx, exportSig, roundSig)
+				if roundErr == nil {
+					return
+				}
+				roundErr = fmt.Errorf("retry=%d/%d roundState=%d: %w", retry, maxRetries, state, roundErr)
+				p.logger.Debugf(roundErr.Error())
+				err = errors.Join(err, roundErr)
+			}
+			// TODO: what's the best delay here?
+			time.Sleep(100 * time.Millisecond)
+		}
+		err = fmt.Errorf("Pipeline.oneRoundWithRetries(%d): gave up after %d attempts: %v", round, maxRetries, err)
+		p.logger.Debug(err.Error())
+		p.joinError(err)
+		cf(newPipelineRoundError(err, round))
+	}()
+
+	return roundSig
+}
+
+type roundComplete chan struct{}
+
+// Start pushes block data through the pipeline
 func (p *pipelineImpl) Start() {
+	p.logger.Debug("Pipeline.Start()")
+
+	concurrentRounds := uint64(11) // TODO: make this configurable
+
+	startCtx, cancelStart := context.WithCancelCause(p.ctx)
+
+	roundSigs := make(chan roundComplete, concurrentRounds)
+
+	round := p.pipelineMetadata.NextRound.Load()
+	// initialize to a closed channel so the initial exporter is unblocked
+	exportSig := make(roundComplete)
+	close(exportSig)
+	for i := uint64(0); i < concurrentRounds; i++ {
+		exportSig = p.oneRoundWithRetries(round, exportSig, startCtx, cancelStart)
+		roundSigs <- exportSig
+		round++
+	}
+
+loop:
+	for ; ; round++ {
+		select {
+		case <-p.ctx.Done():
+			p.logger.Debugf("Pipeline.Start(): select <-p.ctx.Done()")
+			break loop
+		case importSig, ok := <-roundSigs:
+			if !ok {
+				p.logger.Debugf("Pipeline.Start(): select <-roundSigs: !ok")
+				break loop
+			}
+			p.logger.Debugf("Pipeline.Start(): select <-roundSigs: ok")
+			select {
+			case <-p.ctx.Done():
+				p.logger.Debugf("Pipeline.Start(): select <-roundSigs select <-p.ctx.Done()")
+				break loop
+			case <-importSig:
+				p.logger.Debugf("Pipeline.Start()  select <-roundSigs select <-importSig")
+				exportSig = p.oneRoundWithRetries(round, exportSig, startCtx, cancelStart)
+				roundSigs <- exportSig
+			}
+		}
+	}
+
+	p.logger.Infof(
+		"Start() finished because of <%v> with err <%v> @ Metadata.NextRound: %d",
+		context.Cause(startCtx),
+		p.err,
+		p.pipelineMetadata.NextRound.Load(),
+	)
+}
+
+func (p *pipelineImpl) oneRoundBDEPRECATED(round uint64, state roundState, prevBlk *data.BlockData, roundBcast *RoundBroadcaster) (roundState, *data.BlockData, error) {
+	p.logger.Debugf("Pipeline.oneRound(): round %d, state %d", round, state)
+
+	if state >= completed {
+		return state, prevBlk, fmt.Errorf("Pipeline.oneRound(): this should never happen!!! round %d already complete: %d", round, state)
+	}
+
+	var blk data.BlockData
+
+	if prevBlk != nil {
+		blk = *prevBlk
+	}
+
+	if state <= beforePlugins {
+		var err error
+		// if we got here, we've already satisfied the GetBlock() pre-condition:
+		if blk, err = p.importer.GetBlock(round); err != nil {
+			return state, &blk, err
+		}
+		for _, proc := range p.processors {
+			if blk, err = proc.Process(blk); err != nil {
+				return state, &blk, err
+			}
+		}
+
+		// only export if round @ NextRound
+		// TODO: use atomic.LoadUint64()...
+		p.pipelineMetadata.RoundLock()
+		_ = p.pipelineMetadata.NextRoundDEPRECATED
+		p.pipelineMetadata.RoundUnlock()
+
+		roundCond := p.pipelineMetadata.roundCond
+		roundCond.L.Lock()
+		// Receive() constraint:
+		for round > p.pipelineMetadata.NextRoundDEPRECATED {
+			select {
+			case <-p.ctx.Done():
+				return state, &blk, p.ctx.Err()
+			default:
+				roundCond.Wait()
+			}
+		}
+		roundCond.L.Unlock()
+
+		if err = p.exporter.Receive(blk); err != nil {
+			return state, &blk, err
+		}
+		state = beforeCallbacks
+	}
+
+	if state <= beforeCallbacks {
+		for _, cb := range p.completeCallback {
+			// TODO: I'm assuming that the callbacks are idempotent.
+			// Is this assumption correct?
+			err := cb(blk)
+			if err != nil {
+				return state, &blk, err
+			}
+		}
+		roundCond := p.pipelineMetadata.roundCond
+		roundCond.L.Lock()
+		p.pipelineMetadata.NextRoundDEPRECATED++ // ignoring consistency checks with round
+		p.logger.Debugf("Pipeline.oneRound(): round %d complete - Broadcast", round)
+		roundCond.Broadcast()
+		roundCond.L.Unlock()
+
+		state = beforeMetadataSave
+	}
+
+	if state <= beforeMetadataSave {
+		p.logger.Debugf("Pipeline.oneRound(%d): attempt save pipeline metadata", round)
+		return state, &blk, fmt.Errorf("ARTIFICIAL ERROR round %d", round)
+		// err := p.pipelineMetadata.encodeToFile(p.cfg.ConduitArgs.ConduitDataDir)
+		// if err != nil {
+		// 	p.logger.WithError(err).Errorf("Pipeline.oneRound(): could not save pipeline metadata")
+		// 	return state, &blk, err
+		// }
+		// state = roundStateComplete
+	}
+
+	// if we got here, we've succeeded and there's no need to provide the block to the caller
+	// for a retry so let it be garbage collected ASAP
+	return state, nil, nil
+}
+
+// oneRoundWithRetriesBDEPRECATED is a goroutine for retrying oneRound() up to p.cfg.RetryCount times
+func (p *pipelineImpl) oneRoundWithRetriesBDEPRECATED(round uint64, roundBcast *RoundBroadcaster, ctx context.Context, cf context.CancelCauseFunc) {
+	p.logger.Debugf("Pipeline.oneRoundWithRetries(%d)", round)
+
+	p.logger.Debugf("Pipeline.oneRoundWithRetries(%d)", round)
+	var state roundState
+	var blk *data.BlockData
+	var err error
+	maxRetries := p.cfg.RetryCount
+	for retry := uint64(0); retry <= maxRetries; retry++ {
+		select {
+		case <-ctx.Done():
+			p.logger.Debugf("Pipeline.oneRoundWithRetries(%d): context cancelled", round)
+			return
+		default:
+			var roundErr error
+			state, blk, roundErr = p.oneRoundBDEPRECATED(round, state, blk, roundBcast)
+			if roundErr == nil {
+				return
+			}
+			p.logger.WithError(roundErr).Errorf("Pipeline.oneRoundWithRetries(%d): retry=%d/%d roundState=%d", round, retry, maxRetries, state)
+			err = errors.Join(err, fmt.Errorf("retry=%d/%d roundState=%d: %w", retry, maxRetries, state, roundErr))
+		}
+		// TODO: what's the best delay here?
+		time.Sleep(100 * time.Millisecond)
+	}
+	err = fmt.Errorf("Pipeline.oneRoundWithRetries(%d): gave up after %d attempts: %v", round, maxRetries, err)
+	p.logger.Debug(err.Error())
+	cf(newPipelineRoundError(err, round))
+
+	// these critical sections "own" the syncRound / metadata.NextRound
+	// p.pipelineMetadata.RoundLock()
+	// p.pipelineMetadata.NextRoundDEPRECATED = round + 1
+	// p.pipelineMetadata.RoundUnlock()
+	// atomic.StoreUint64(&p.pipelineMetadata.NextRoundDEPRECATED, round+1)
+	// UInt64.Store(&p.pipelineMetadata.NextRoundDEPRECATED, round+1)
+	p.pipelineMetadata.NextRound.Store(round + 1)
+	roundBcast.Broadcast(round)
+}
+
+// Start pushes block data through the pipeline
+// NOTE: this abandoned version uses the generic Broadcaster type
+func (p *pipelineImpl) BStart() {
+	p.logger.Debug("Pipeline.Start()")
+
+	roundBcast := NewRoundBroadcaster(p.logger)
+
+	startWg := sync.WaitGroup{}
+	startCtx, cancelStart := context.WithCancelCause(p.ctx)
+
+	// TODO: is this too cavelier? I.e., should I be locking the mutex?
+	syncRound := p.pipelineMetadata.NextRoundDEPRECATED
+	loopSubscriber := roundBcast.Subscribe()
+	lookAhead := uint64(1) // TODO: make this configurable
+
+	stop := false // TODO: is break'ing to a label more idiomatic?
+	for importRound := syncRound; !stop; {
+		if importRound <= syncRound+lookAhead { // launch case - update importRound
+			select {
+			case <-startCtx.Done():
+				p.logger.Debugf("Pipeline.Start() for-if: startCtx.Done()")
+				stop = true
+			default:
+				p.logger.Debugf("Pipeline.Start() for-if: launch oneRoundWithRetries(%d)", importRound)
+				startWg.Add(1)
+				go func() {
+					p.oneRoundWithRetriesBDEPRECATED(importRound, roundBcast, startCtx, cancelStart)
+					startWg.Done()
+				}()
+				importRound++
+			}
+		} else { // wait case - update syncRound
+			var ok bool
+			select {
+			case <-startCtx.Done():
+				p.logger.Debugf("Pipeline.Start() for-else startCtx.Done()")
+				loopSubscriber.Close()
+				stop = true
+			case syncRound, ok = <-loopSubscriber.Chan:
+				p.logger.Debugf("Pipeline.Start() for-else syncRound=%d ok=%t", syncRound, ok)
+				if !ok {
+					p.logger.Debugf("Pipeline.Start() loop round=%d: loopSubscriber closed", syncRound)
+					cancelStart(newPipelineRoundError(fmt.Errorf("loopSubscriber closed"), syncRound))
+					stop = true
+				}
+			}
+		}
+	}
+
+	p.logger.Debugf("Pipeline.Start(): waiting for all goroutines to finish")
+	startWg.Wait()
+	p.logger.Infof(
+		"Start() finished because of <%v> with err <%v> @ Metadata.NextRound: %d",
+		context.Cause(startCtx),
+		p.err,
+		p.pipelineMetadata.NextRoundDEPRECATED,
+	)
+}
+
+// oneRoundWithRetriesDEPRECATED is a goroutine for retrying oneRoundDEPRECATED() up to p.cfg.RetryCount times
+func (p *pipelineImpl) oneRoundWithRetriesDEPRECATED(round uint64, ctx context.Context, cf context.CancelCauseFunc) {
+	p.logger.Debugf("Pipeline.oneRoundWithRetriesDEPRECATED(%d)", round)
+	var state roundState
+	var blk *data.BlockData
+	var err error
+	maxRetries := p.cfg.RetryCount
+	for retry := uint64(0); retry <= maxRetries; retry++ {
+		select {
+		case <-ctx.Done():
+			p.logger.Debugf("Pipeline.oneRoundWithRetriesDEPRECATED(%d): context cancelled", round)
+			return
+		default:
+			var roundErr error
+			state, blk, roundErr = p.oneRoundDEPRECATED(round, state, blk)
+			if roundErr == nil {
+				return
+			}
+			p.logger.WithError(roundErr).Errorf("Pipeline.oneRoundWithRetriesDEPRECATED(%d): retry=%d/%d roundState=%d", round, retry, maxRetries, state)
+			err = errors.Join(err, fmt.Errorf("retry=%d/%d roundState=%d: %w", retry, maxRetries, state, roundErr))
+		}
+		// TODO: add a sleep delay because of the error
+	}
+	p.logger.Debugf("Pipeline.oneRoundWithRetriesDEPRECATED(%d): gave up after %d attempts: %v", round, maxRetries, err)
+	cf(newPipelineRoundError(fmt.Errorf("oneRoundWithRetriesDEPRECATED gave up after %d attempts: %w", maxRetries, err), round))
+	// free up any goroutines waiting on this round
+	roundCond := p.pipelineMetadata.roundCond
+	roundCond.L.Lock()
+	p.logger.Debugf("Pipeline.oneRoundWithRetriesDEPRECATED(%d): Broadcast for free", round)
+	roundCond.Broadcast()
+	roundCond.L.Unlock()
+}
+
+func (p *pipelineImpl) oneRoundDEPRECATED(round uint64, state roundState, prevBlk *data.BlockData) (roundState, *data.BlockData, error) {
+	p.logger.Debugf("Pipeline.oneRoundDEPRECATED(): round %d, state %d", round, state)
+	if state >= completed {
+		return state, prevBlk, fmt.Errorf("Pipeline.oneRoundDEPRECATED(): this should never happen!!! round %d already complete: %d", round, state)
+	}
+	var blk data.BlockData
+	if prevBlk != nil {
+		blk = *prevBlk
+	}
+
+	if state <= beforePlugins {
+		var err error
+		// if we got here, we've already satisfied the GetBlock() constraint:
+		if blk, err = p.importer.GetBlock(round); err != nil {
+			return state, &blk, err
+		}
+		for _, proc := range p.processors {
+			if blk, err = proc.Process(blk); err != nil {
+				return state, &blk, err
+			}
+		}
+
+		roundCond := p.pipelineMetadata.roundCond
+		roundCond.L.Lock()
+		// Receive() constraint:
+		for round > p.pipelineMetadata.NextRoundDEPRECATED {
+			select {
+			case <-p.ctx.Done():
+				return state, &blk, p.ctx.Err()
+			default:
+				roundCond.Wait()
+			}
+		}
+		roundCond.L.Unlock()
+
+		if err = p.exporter.Receive(blk); err != nil {
+			return state, &blk, err
+		}
+		state = beforeCallbacks
+	}
+
+	if state <= beforeCallbacks {
+		for _, cb := range p.completeCallback {
+			// TODO: I'm assuming that the callbacks are idempotent.
+			// Is this assumption correct?
+			err := cb(blk)
+			if err != nil {
+				return state, &blk, err
+			}
+		}
+		roundCond := p.pipelineMetadata.roundCond
+		roundCond.L.Lock()
+		p.pipelineMetadata.NextRoundDEPRECATED++ // ignoring consistency checks with round
+		p.logger.Debugf("Pipeline.oneRoundDEPRECATED(): round %d complete - Broadcast", round)
+		roundCond.Broadcast()
+		roundCond.L.Unlock()
+
+		state = beforeMetadataSave
+	}
+
+	if state <= beforeMetadataSave {
+		p.logger.Debugf("Pipeline.oneRoundDEPRECATED(%d): attempt save pipeline metadata", round)
+		return state, &blk, fmt.Errorf("ARTIFICIAL ERROR round %d", round)
+		// err := p.pipelineMetadata.encodeToFile(p.cfg.ConduitArgs.ConduitDataDir)
+		// if err != nil {
+		// 	p.logger.WithError(err).Errorf("Pipeline.oneRoundDEPRECATED(): could not save pipeline metadata")
+		// 	return state, &blk, err
+		// }
+		// state = roundStateComplete
+	}
+
+	// if we got here, we've succeeded and there's no need to provide the block to the caller
+	// for a retry so let it be garbage collected ASAP
+	return state, nil, nil
+}
+
+// Start pushes block data through the pipeline
+func (p *pipelineImpl) DStart() {
+	p.logger.Debug("Pipeline.Start()")
+	p.pipelineMetadata.roundCond = sync.NewCond(&sync.Mutex{})
+	defer func() {
+		p.pipelineMetadata.roundCond = nil
+	}()
+	roundCond := p.pipelineMetadata.roundCond
+
+	startWg := sync.WaitGroup{}
+	startCtx, cancelStart := context.WithCancelCause(p.ctx)
+
+	startWg.Add(1)
+	go func() {
+		p.logger.Debug("Pipeline.Start() oneRoundDEPRECATED() launcher")
+		defer startWg.Done()
+
+		roundCond.L.Lock()
+		defer roundCond.L.Unlock()
+		for round := p.pipelineMetadata.NextRoundDEPRECATED; true; round++ {
+			round := round
+			p.logger.Debugf("Pipeline.Start() oneRoundDEPRECATED() launcher loop round=%d", round)
+			select {
+			case <-p.ctx.Done():
+				p.logger.Debugf("Pipeline.Start() oneRoundDEPRECATED() launcher loop round=%d: ctx.Done()", round)
+				return
+			default:
+				// check the GetBlock() constraint:
+				if round <= p.pipelineMetadata.NextRoundDEPRECATED+1 {
+					startWg.Add(1)
+					go func() {
+						defer startWg.Done()
+						p.oneRoundWithRetriesDEPRECATED(round, startCtx, cancelStart)
+					}()
+				} else {
+					// for those unfamiliar with sync.Cond: Wait() unlocks the mutex
+					// upon entry, only to relock it when the wait is completed
+					roundCond.Wait()
+				}
+			}
+		}
+	}()
+
+	startWg.Wait()
+	p.logger.Infof(
+		"Start() finished because of <%v> with err <%v> @ Metadata.NextRound: %d",
+		context.Cause(startCtx),
+		p.err,
+		p.pipelineMetadata.NextRoundDEPRECATED,
+	)
+}
+
+// CStart pushes block data through the pipeline
+// "C" stands for "channel"
+func (p *pipelineImpl) CStart() {
 	p.wg.Add(1)
 	defer p.wg.Done()
 
@@ -477,6 +1023,10 @@ func (p *pipelineImpl) Start() {
 		processorChans[i] = make(chan timedBlockData, p.chanBuffSize)
 	}
 	p.logger.Debugf("making exporterChan")
+
+	// TODO: instead of exporterDoneSig we should: cancelStart(exporterCancelErr)
+	// exporterCancelErr should be a type so that can use `errors.As` while conveying
+	// more information than a hardcoded error value
 	exporterDoneSig := make(chan bool)
 
 	importerHandler := func(round uint64) (uint64 /* round */, error) {
@@ -489,7 +1039,8 @@ func (p *pipelineImpl) Start() {
 			case <-startCtx.Done():
 				p.logger.Debugf("Importer Done @ round: %v", round)
 				return round, nil
-			case <-exporterDoneSig:
+			// TODO: won't need this signal if we follow the TODO: in exporterHandler
+			case <-exporterDoneSig: // revisit, maybe just use startContext
 				p.logger.Debugf("Importer exiting due to exporterDoneSig @ round: %v", round)
 				return round, nil
 			default:
@@ -628,7 +1179,7 @@ func (p *pipelineImpl) Start() {
 	}
 
 	// only expHandler modifies round and it hasn't yet launched
-	nextRound := p.pipelineMetadata.NextRound
+	nextRound := p.pipelineMetadata.NextRoundDEPRECATED
 
 	// importer goroutine
 	startWg.Add(1)
@@ -677,11 +1228,12 @@ func (p *pipelineImpl) Start() {
 		"Start() finished because of <%v> with err <%v> @ Metadata.NextRound: %d",
 		context.Cause(startCtx),
 		p.err,
-		p.pipelineMetadata.NextRound,
+		p.pipelineMetadata.NextRoundDEPRECATED,
 	)
 }
 
 // OStart pushes block data through the pipeline
+// "O" stands for "original"
 func (p *pipelineImpl) OStart() {
 	p.wg.Add(1)
 	retry := uint64(0)
@@ -707,10 +1259,10 @@ func (p *pipelineImpl) OStart() {
 				return
 			default:
 				{
-					p.logger.Infof("Pipeline round: %v", p.pipelineMetadata.NextRound)
+					p.logger.Infof("Pipeline round: %v", p.pipelineMetadata.NextRoundDEPRECATED)
 					// fetch block
 					importStart := time.Now()
-					blkData, err := p.importer.GetBlock(p.pipelineMetadata.NextRound)
+					blkData, err := p.importer.GetBlock(p.pipelineMetadata.NextRoundDEPRECATED)
 					if err != nil {
 						p.logger.Errorf("%v", err)
 						p.setError(err)
@@ -754,10 +1306,14 @@ func (p *pipelineImpl) OStart() {
 	}()
 }
 
+// TODO: should probably be AFTER the processor not owned by it
 func (p *pipelineImpl) finishRound(blkData data.BlockData, start time.Time, exporterStart time.Time) error {
-	p.logger.Infof("round r=%d (%d txn) exported in %s", p.pipelineMetadata.NextRound, len(blkData.Payset), time.Since(start))
+	p.logger.Infof("round r=%d (%d txn) exported in %s", p.pipelineMetadata.NextRoundDEPRECATED, len(blkData.Payset), time.Since(start))
 
-	p.pipelineMetadata.NextRound++
+	// mutex?
+	p.pipelineMetadata.NextRoundDEPRECATED++
+
+	// shouldn't this happen AFTER p.CompleteCallback?
 	err := p.pipelineMetadata.encodeToFile(p.cfg.ConduitArgs.ConduitDataDir)
 	if err != nil {
 		p.logger.Errorf("%v", err)
@@ -777,7 +1333,7 @@ func (p *pipelineImpl) finishRound(blkData data.BlockData, start time.Time, expo
 	}
 	metrics.ExporterTimeSeconds.Observe(time.Since(exporterStart).Seconds())
 
-	if p.pipelineMetadata.NextRound > 1 {
+	if p.pipelineMetadata.NextRoundDEPRECATED > 1 {
 		addMetrics(blkData, time.Since(start))
 	}
 	p.setError(nil)
@@ -785,7 +1341,10 @@ func (p *pipelineImpl) finishRound(blkData data.BlockData, start time.Time, expo
 }
 
 func (p *pipelineImpl) Wait() {
+	p.logger.Debugf("Waiting for pipeline to finish")
+	start := time.Now()
 	p.wg.Wait()
+	p.logger.Infof("Waited for pipeline to finish for %v", time.Since(start))
 }
 
 // start a http server serving /metrics

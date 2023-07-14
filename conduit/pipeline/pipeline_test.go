@@ -237,9 +237,9 @@ func mockPipeline(t *testing.T, dataDir string) (*pipelineImpl, *test.Hook, *moc
 		processors:   []processors.Processor{pProcessor},
 		exporter:     pExporter,
 		pipelineMetadata: state{
-			GenesisHash: "",
-			Network:     "",
-			NextRound:   3,
+			GenesisHash:         "",
+			Network:             "",
+			NextRoundDEPRECATED: 3,
 		},
 	}
 
@@ -276,8 +276,8 @@ func TestPipelineRun(t *testing.T) {
 		exporter:         pExporter,
 		completeCallback: []conduit.OnCompleteFunc{cbComplete.OnComplete},
 		pipelineMetadata: state{
-			NextRound:   0,
-			GenesisHash: "",
+			NextRoundDEPRECATED: 0,
+			GenesisHash:         "",
 		},
 		cfg: &data.Config{
 			RetryDelay: 0 * time.Second,
@@ -662,7 +662,7 @@ func TestRoundOverride(t *testing.T) {
 			pImpl.cfg.ConduitArgs.NextRoundOverride = uint64(i)
 			err := pImpl.Init()
 			assert.Nil(t, err)
-			assert.Equal(t, uint64(i), pImpl.pipelineMetadata.NextRound)
+			assert.Equal(t, uint64(i), pImpl.pipelineMetadata.NextRoundDEPRECATED)
 		})
 	}
 
@@ -672,7 +672,7 @@ func TestRoundOverride(t *testing.T) {
 		mImporter.rndOverride = 10
 		err := pImpl.Init()
 		assert.Nil(t, err)
-		assert.Equal(t, uint64(10), pImpl.pipelineMetadata.NextRound)
+		assert.Equal(t, uint64(10), pImpl.pipelineMetadata.NextRoundDEPRECATED)
 	})
 
 	t.Run("processor round override", func(t *testing.T) {
@@ -681,7 +681,7 @@ func TestRoundOverride(t *testing.T) {
 		mProcessor.rndOverride = 10
 		err := pImpl.Init()
 		assert.Nil(t, err)
-		assert.Equal(t, uint64(10), pImpl.pipelineMetadata.NextRound)
+		assert.Equal(t, uint64(10), pImpl.pipelineMetadata.NextRoundDEPRECATED)
 	})
 
 	t.Run("exporter round override", func(t *testing.T) {
@@ -690,7 +690,7 @@ func TestRoundOverride(t *testing.T) {
 		mExporter.rndOverride = 10
 		err := pImpl.Init()
 		assert.Nil(t, err)
-		assert.Equal(t, uint64(10), pImpl.pipelineMetadata.NextRound)
+		assert.Equal(t, uint64(10), pImpl.pipelineMetadata.NextRoundDEPRECATED)
 	})
 }
 
@@ -801,9 +801,9 @@ func TestPipelineRetryVariables(t *testing.T) {
 				processors:   []processors.Processor{pProcessor},
 				exporter:     pExporter,
 				pipelineMetadata: state{
-					GenesisHash: "",
-					Network:     "",
-					NextRound:   3,
+					GenesisHash:         "",
+					Network:             "",
+					NextRoundDEPRECATED: 3,
 				},
 				wg: sync.WaitGroup{},
 			}

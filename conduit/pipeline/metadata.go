@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"os"
 	"path"
+	"sync"
+	"sync/atomic"
 
 	"github.com/algorand/conduit/conduit/plugins"
 	"github.com/algorand/conduit/conduit/plugins/exporters"
@@ -13,12 +15,35 @@ import (
 	"github.com/algorand/conduit/conduit/plugins/processors"
 )
 
+type roundState uint8
+
+const (
+	beforePlugins roundState = iota
+	beforeCallbacks
+	beforeMetadataSave
+	completed
+)
+
 // state contains the pipeline state.
 type state struct {
-	GenesisHash string `json:"genesis-hash"`
-	Network     string `json:"network"`
-	NextRound   uint64 `json:"next-round"`
-	TelemetryID string `json:"telemetry-id,omitempty"`
+	GenesisHash         string `json:"genesis-hash"`
+	Network             string `json:"network"`
+	NextRoundDEPRECATED uint64 `json:"next-round-deprecated"`
+	TelemetryID         string `json:"telemetry-id,omitempty"`
+
+	NextRound atomic.Uint64 `json:"next-round"`
+
+	// TODO: delete the below!!!!
+	mu        sync.Mutex // protects NextRound
+	roundCond *sync.Cond // condition variable for NextRound
+}
+
+func (s *state) RoundLock() {
+	s.mu.Lock()
+}
+
+func (s *state) RoundUnlock() {
+	s.mu.Unlock()
 }
 
 // encodeToFile writes the state object to the dataDir
