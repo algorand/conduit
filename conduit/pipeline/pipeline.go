@@ -477,13 +477,15 @@ func addMetrics(block data.BlockData, importTime time.Duration) {
 // oneRound attempts to complete one round of the pipeline given a particular
 // partial state of type roundState.
 // It should only be called after the importer.GetBlock() pre-condition is met.
-// Before attempting export, it blocks until the exorter.Receive() pre-condition is met.
+// Before attempting export, it blocks until the exorter.Receive() pre-condition is met
+// which is signaled via the preExportSignal channel being closed.
+// When the round is complete, it signals by closing the roundCompleteSignal channel.
 // The state machine works as follows:
 // - beforePlugins: regardless of plugin call history, try importer.Get(), processors.Process(), exporter.Export()
 // - roundStateNeedsCallbacks: plugins have succeeded and regardless of callback history, try calling all of the completeCallback's
 // - roundStateNeedsSaveMetadata: pipeline's NextRound is updated, try importer.SaveMetadata()
 // - completed: this is the final state
-func (p *pipelineImpl) oneRound(round uint64, state roundState, prevBlk *data.BlockData, ctx context.Context, waitSig, doneSig roundComplete) (roundState, *data.BlockData, error) {
+func (p *pipelineImpl) oneRound(round uint64, state roundState, prevBlk *data.BlockData, ctx context.Context, preExportSignal, roundCompleteSignal roundComplete) (roundState, *data.BlockData, error) {
 	p.logger.Debugf("Pipeline.oneRound(): round %d, state %d", round, state)
 
 	if state >= completed {
@@ -525,7 +527,7 @@ func (p *pipelineImpl) oneRound(round uint64, state roundState, prevBlk *data.Bl
 		case <-p.ctx.Done():
 			p.logger.Debugf("Pipeline.oneRound(): round %d, state %d: <-p.ctx.Done() before exporter", round, state)
 			return state, &blk, p.ctx.Err()
-		case <-waitSig:
+		case <-preExportSignal:
 			// the Receive() pre-condition has been met
 			if err = p.exporter.Receive(blk); err != nil {
 				return state, &blk, err
@@ -559,8 +561,8 @@ func (p *pipelineImpl) oneRound(round uint64, state roundState, prevBlk *data.Bl
 		state = completed
 	}
 
-	// only a successful run can close the output roundSignal
-	close(doneSig)
+	// only a successful run can close the output roundCompleteSignal
+	close(roundCompleteSignal)
 
 	// if we got here, we've succeeded and there's no need to provide the block to the caller
 	// for a retry so let it be garbage collected ASAP
@@ -568,10 +570,10 @@ func (p *pipelineImpl) oneRound(round uint64, state roundState, prevBlk *data.Bl
 }
 
 // oneRoundWithRetries is a goroutine for retrying oneRound() up to p.cfg.RetryCount times
-func (p *pipelineImpl) oneRoundWithRetries(round uint64, exportSig roundComplete, ctx context.Context, cf context.CancelCauseFunc) roundComplete {
+func (p *pipelineImpl) oneRoundWithRetries(round uint64, preExportSignal roundComplete, ctx context.Context, cf context.CancelCauseFunc) roundComplete {
 	p.logger.Debugf("Pipeline.oneRoundWithRetries(%d)", round)
 
-	roundSig := make(roundComplete)
+	roundCompleteSignal := make(roundComplete)
 	p.wg.Add(1)
 	go func() {
 		defer p.wg.Done()
@@ -588,7 +590,7 @@ func (p *pipelineImpl) oneRoundWithRetries(round uint64, exportSig roundComplete
 			default:
 				p.logger.Debugf("Pipeline.oneRoundWithRetries(%d): retry=%d/%d", round, retry, maxRetries)
 				var roundErr error
-				state, blk, roundErr = p.oneRound(round, state, blk, ctx, exportSig, roundSig)
+				state, blk, roundErr = p.oneRound(round, state, blk, ctx, preExportSignal, roundCompleteSignal)
 				if roundErr == nil {
 					return
 				}
@@ -605,7 +607,7 @@ func (p *pipelineImpl) oneRoundWithRetries(round uint64, exportSig roundComplete
 		cf(newPipelineRoundError(err, round))
 	}()
 
-	return roundSig
+	return roundCompleteSignal
 }
 
 type roundComplete chan struct{}
@@ -618,15 +620,17 @@ func (p *pipelineImpl) Start() {
 
 	startCtx, cancelStart := context.WithCancelCause(p.ctx)
 
-	roundSigs := make(chan roundComplete, concurrentRounds)
+	roundSignals := make(chan roundComplete, concurrentRounds)
 
 	round := p.pipelineMetadata.NextRound.Load()
-	// initialize to a closed channel so the initial exporter is unblocked
-	exportSig := make(roundComplete)
-	close(exportSig)
+
+	// preExportSignal is closed so that the first round's exporter can proceed unblocked
+	preExportSignal := make(roundComplete)
+	close(preExportSignal)
+
 	for i := uint64(0); i < concurrentRounds; i++ {
-		exportSig = p.oneRoundWithRetries(round, exportSig, startCtx, cancelStart)
-		roundSigs <- exportSig
+		preExportSignal = p.oneRoundWithRetries(round, preExportSignal, startCtx, cancelStart)
+		roundSignals <- preExportSignal
 		round++
 	}
 
@@ -636,7 +640,7 @@ loop:
 		case <-p.ctx.Done():
 			p.logger.Debugf("Pipeline.Start(): select <-p.ctx.Done()")
 			break loop
-		case importSig, ok := <-roundSigs:
+		case importSignal, ok := <-roundSignals:
 			if !ok {
 				p.logger.Debugf("Pipeline.Start(): select <-roundSigs: !ok")
 				break loop
@@ -646,11 +650,13 @@ loop:
 			case <-p.ctx.Done():
 				p.logger.Debugf("Pipeline.Start(): select <-roundSigs select <-p.ctx.Done()")
 				break loop
-			case <-importSig:
+			case <-importSignal:
 				p.logger.Debugf("Pipeline.Start()  select <-roundSigs select <-importSig")
-				exportSig = p.oneRoundWithRetries(round, exportSig, startCtx, cancelStart)
-				roundSigs <- exportSig
+				preExportSignal = p.oneRoundWithRetries(round, preExportSignal, startCtx, cancelStart)
+				roundSignals <- preExportSignal
 			}
+			// should add a default that errors since we should NEVER enter the next loop
+			// with roundSigs actually empty
 		}
 	}
 
@@ -756,6 +762,7 @@ func (p *pipelineImpl) oneRoundWithRetriesBDEPRECATED(round uint64, roundBcast *
 	var blk *data.BlockData
 	var err error
 	maxRetries := p.cfg.RetryCount
+	// TODO: handle the case of maxRetries == 0 (so retry forever)
 	for retry := uint64(0); retry <= maxRetries; retry++ {
 		select {
 		case <-ctx.Done():
