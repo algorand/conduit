@@ -613,7 +613,7 @@ func (p *pipelineImpl) oneRoundWithRetries(round uint64, preExportSignal roundCo
 type roundComplete chan struct{}
 
 // Start pushes block data through the pipeline
-func (p *pipelineImpl) Start() {
+func (p *pipelineImpl) ZStart() {
 	p.logger.Debug("Pipeline.Start()")
 
 	concurrentRounds := uint64(11) // TODO: make this configurable

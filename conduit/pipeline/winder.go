@@ -11,40 +11,150 @@ import (
 )
 
 func (p *pipelineImpl) ImportHandler(importer importers.Importer, inChan <-chan uint64, outChan chan<- data.BlockData, errChan chan<- error) {
-	select {
-	case <-p.ctx.Done():
-	case rnd := <-inChan:
-		var lastError error
-		retry := uint64(0)
-		for retry > p.cfg.RetryCount && p.cfg.RetryCount != 0 {
-			importStart := time.Now()
-			blkData, err := importer.GetBlock(rnd)
-			if err != nil {
-				p.logger.Errorf("%v", err)
-				retry++
-				lastError = err
-				continue
+	p.wg.Add(1)
+	go func() {
+		defer p.wg.Done()
+		lastRnd := uint64(0)
+		for {
+			select {
+			case <-p.ctx.Done():
+				p.logger.Infof("importer handler exiting. lastRnd=%d", lastRnd)
+				return
+			case rnd := <-inChan:
+				p.logger.Debugf("importing round %d", rnd)
+				lastRnd = rnd
+				var lastError error
+				retry := uint64(0)
+				for p.cfg.RetryCount == 0 || retry <= p.cfg.RetryCount {
+					importStart := time.Now()
+					blkData, err := importer.GetBlock(rnd)
+					if err != nil {
+						p.logger.Errorf("%v", err)
+						retry++
+						lastError = err
+						continue
+					}
+
+					metrics.ImporterTimeSeconds.Observe(time.Since(importStart).Seconds())
+					select {
+					case <-p.ctx.Done():
+						return
+					case outChan <- blkData:
+					}
+					lastError = nil
+					break
+				}
+				if lastError != nil {
+					errChan <- lastError
+					return
+				}
 			}
-
-			metrics.ImporterTimeSeconds.Observe(time.Since(importStart).Seconds())
-			outChan <- blkData
-			lastError = nil
 		}
-		if lastError != nil {
-			errChan <- lastError
-			return
-		}
-	}
+	}()
 }
 
-func (p *pipelineImpl) ProcessorHandler(importer processors.Processor, inChan <-chan data.BlockData, outChan chan<- data.BlockData, errChan chan<- error) {
+func (p *pipelineImpl) ProcessorHandler(proc processors.Processor, inChan <-chan data.BlockData, outChan chan<- data.BlockData, errChan chan<- error) {
+	p.wg.Add(1)
+	go func() {
+		defer p.wg.Done()
+		lastRnd := uint64(0)
+		for {
+			select {
+			case <-p.ctx.Done():
+				p.logger.Infof("processor handler exiting lastRnd=%d", lastRnd)
+				return
+			case blkData := <-inChan:
+				p.logger.Debugf("processing round %d", blkData.Round())
+				lastRnd = blkData.Round()
+				var lastError error
+				retry := uint64(0)
+				for p.cfg.RetryCount == 0 || retry <= p.cfg.RetryCount {
+					processorStart := time.Now()
+					blkData, err := proc.Process(blkData)
+					if err != nil {
+						p.logger.Errorf("%v", err)
+						retry++
+						lastError = err
+						continue
+					}
+
+					metrics.ProcessorTimeSeconds.WithLabelValues(proc.Metadata().Name).Observe(time.Since(processorStart).Seconds())
+					select {
+					case <-p.ctx.Done():
+						return
+					case outChan <- blkData:
+					}
+					lastError = nil
+					break
+				}
+				if lastError != nil {
+					errChan <- lastError
+					return
+				}
+			}
+		}
+	}()
 }
 
-func (p *pipelineImpl) ExporterHandler(importer exporters.Exporter, inChan <-chan data.BlockData, errChan chan<- error) {
+func (p *pipelineImpl) ExporterHandler(exporter exporters.Exporter, inChan <-chan data.BlockData, errChan chan<- error) {
+	p.wg.Add(1)
+	go func() {
+		defer p.wg.Done()
+		lastRnd := uint64(0)
+		for {
+			select {
+			case <-p.ctx.Done():
+				p.logger.Infof("exporter handler exiting lastRnd=%d", lastRnd)
+				return
+			case blkData := <-inChan:
+				p.logger.Debugf("exporting round %d", blkData.Round())
+				lastRnd = blkData.Round()
+				var lastError error
+				retry := uint64(0)
+				for p.cfg.RetryCount == 0 || retry <= p.cfg.RetryCount {
+					exporterStart := time.Now()
+					err := exporter.Receive(blkData)
+					if err != nil {
+						p.logger.Errorf("%v", err)
+						retry++
+						lastError = err
+						continue
+					}
+
+					// Increment Round, update metadata
+					p.pipelineMetadata.NextRoundDEPRECATED++
+					err = p.pipelineMetadata.encodeToFile(p.cfg.ConduitArgs.ConduitDataDir)
+					if err != nil {
+						p.logger.Errorf("%v", err)
+					}
+
+				callbacksLoop:
+					for _, cb := range p.completeCallback {
+						err = cb(blkData)
+						if err != nil {
+							p.logger.Errorf("%v", err)
+							lastError = err
+							break callbacksLoop
+						}
+					}
+
+					metrics.ExporterTimeSeconds.Observe(time.Since(exporterStart).Seconds())
+					lastError = nil
+					break
+				}
+				if lastError != nil {
+					errChan <- lastError
+					return
+				}
+			}
+		}
+	}()
 }
 
 // Start pushes block data through the pipeline
-func (p *pipelineImpl) WStart() {
+func (p *pipelineImpl) Start() {
+	p.logger.Debug("Pipeline.Start()")
+
 	// Setup channels
 	roundChan := make(chan uint64)
 	processorBlkInChan := make(chan data.BlockData)
@@ -58,7 +168,7 @@ func (p *pipelineImpl) WStart() {
 		processorBlkInChan = processorBlkOutChan
 	}
 
-	p.ExporterHandler(p.exporter, processorBlkOutChan, errChan)
+	p.ExporterHandler(p.exporter, processorBlkInChan, errChan)
 
 	p.wg.Add(1)
 	// Main loop
@@ -67,8 +177,10 @@ func (p *pipelineImpl) WStart() {
 		defer close(errChan)
 		rnd := startRound
 		for {
+			p.logger.Debugf("pushing round %d", rnd)
 			select {
 			case <-p.ctx.Done():
+				p.logger.Infof("round channel feed exiting. lastRnd=%d", rnd)
 				return
 			case roundChan <- rnd:
 				rnd++
@@ -76,12 +188,15 @@ func (p *pipelineImpl) WStart() {
 		}
 	}(p.pipelineMetadata.NextRoundDEPRECATED)
 
-	// Check for errors
-	for err := range errChan {
+	select {
+	case <-p.ctx.Done():
+		return
+	case err := <-errChan:
 		if err != nil {
 			p.logger.Errorf("%v", err)
-			p.setError(err) // TODO: probably it's better to p.joinError(...)
-			return
+			p.setError(err)
+		} else {
+			p.logger.Errorf("this is strange: Pipeline completed via nil error")
 		}
 	}
 }

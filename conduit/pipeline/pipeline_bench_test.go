@@ -17,7 +17,7 @@ import (
 )
 
 const (
-	logLevel   = log.ErrorLevel // log.DebugLevel //
+	logLevel   = log.ErrorLevel //log.InfoLevel // log.DebugLevel //
 	retryCount = 3              // math.MaxUint64
 )
 
