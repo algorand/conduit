@@ -168,7 +168,7 @@ func (p *pipelineImpl) Start() {
 		processorBlkInChan = processorBlkOutChan
 	}
 
-	p.ExporterHandler(p.exporter, processorBlkInChan, errChan)
+	p.ExporterHandler(p.exporter, processorBlkOutChan, errChan)
 
 	p.wg.Add(1)
 	// Main loop
