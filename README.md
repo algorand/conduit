@@ -97,11 +97,11 @@ Once configured, start Conduit with your data directory as an argument:
 
 Conduit supports external plugins which can be developed by anyone.
 
-For a list of available plugins and instructions on how to use them, see the [External Plugins](./docs/External_Plugins.md) page.
+For a list of available plugins and instructions on how to use them, see the [External Plugins](./docs/ExternalPlugins.md) page.
 
 ## External Plugin Development
 
-See the [Plugin Development](./docs/Plugin_Development.md) page for building a plugin.
+See the [Plugin Development](./docs/PluginDevelopment.md) page for building a plugin.
 
 # Contributing
 
