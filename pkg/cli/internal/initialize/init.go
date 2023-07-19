@@ -146,9 +146,9 @@ func makeInitCmd() *cobra.Command {
 	var processors []string
 	cmd := &cobra.Command{
 		Use:   "init",
-		Short: "initializes a Conduit data directory",
-		Long: `Initializes a conduit.yml file and writes it to stdout. By default
-the config file uses an algod importer in follower mode and a block
+		Short: "Initializes a conduit configuration",
+		Long: `Initializes a conduit configuration file and writes it to stdout or a specified data directory.
+By default the config file uses an algod importer in follower mode and a block
 file writer exporter. The plugin templates can be changed using the
 different options.
 

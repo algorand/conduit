@@ -59,6 +59,8 @@ func MakeDataManager(ctx context.Context, cfg *PruneConfigurations, db idb.Index
 func (p *postgresql) DeleteLoop(wg *sync.WaitGroup, nextRound *uint64) {
 
 	defer wg.Done()
+	
+	p.logger.Debugf("DeleteLoop(): starting delete loop")
 	// If the interval is disabled
 	if p.config.Interval == disabled {
 		// A helpful warning to say that despite a number of rounds being above 0
