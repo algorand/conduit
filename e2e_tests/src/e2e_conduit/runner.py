@@ -21,7 +21,6 @@ class ConduitE2ETestRunner:
         self.keep_temps = keep_temps
 
     def setup_scenario(self, scenario):
-
         # Setup conduit_dir for conduit data dir
         scenario.conduit_dir = tempfile.mkdtemp()
         if not self.keep_temps:
@@ -37,7 +36,8 @@ class ConduitE2ETestRunner:
             plugin.setup(scenario.accumulated_config)
             plugin.resolve_config()
             scenario.accumulated_config = {
-                **scenario.accumulated_config, **plugin.config_output
+                **scenario.accumulated_config,
+                **plugin.config_output,
             }
 
         # Write conduit config to data directory
@@ -90,13 +90,20 @@ class ConduitE2ETestRunner:
             sys.stderr.write(indexerout.dump())
             return 1
 
-        if indexerout.round >= scenario.importer.lastblock:
-            logger.info("reached expected round={}".format(scenario.importer.lastblock))
-            dt = time.time() - start
-            sys.stdout.write("conduit e2etest OK ({:.1f}s)\n".format(dt))
-            return 0
-        logger.error(
-            "conduit did not reach round={}".format(scenario.importer.lastblock)
+        if indexerout.round < scenario.importer.lastblock:
+            logger.error("conduit did not reach round={scenario.importer.lastblock}")
+            sys.stderr.write(indexerout.dump())
+            return 1
+
+        # WLOG indexer's round >= the final network round
+        if errors := scenario.validate():
+            logger.error(f"conduit failed validation: {errors}")
+            sys.stderr.write(indexerout.dump())
+            return 1
+
+        logger.info(
+            f"reached expected round={scenario.importer.lastblock} and passed validation"
         )
-        sys.stderr.write(indexerout.dump())
-        return 1
+        dt = time.time() - start
+        sys.stdout.write("conduit e2etest OK ({:.1f}s)\n".format(dt))
+        return 0

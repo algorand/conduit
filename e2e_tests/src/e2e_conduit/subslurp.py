@@ -52,9 +52,10 @@ class subslurp:
                 if self.logIsError(line):
                     raise RuntimeError(f"E2E tests logged an error: {self.error_log}")
 
-    def dump(self):
-        self.gz.close()
+    def dump(self) -> str:
+        if self.gz is not None:
+            self.gz.close()
         self.gz = None
         self.buf.seek(0)
         r = gzip.open(self.buf, "rt")
-        return r.read()
+        return r.read() # type: ignore
