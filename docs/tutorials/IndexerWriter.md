@@ -132,7 +132,8 @@ Finish configuring Conduit by setting the following values in `conduit_data/cond
 
 If you are connecting to an existing PostgreSQL database, you can also set
 the admin token at `importer.config.catchup-config.admin-token` to the contents of `algod_data/algod.admin.token`.
- When the admin token is configured, Conduit will initial the node by using fast catchup.
+When the admin token is configured, Conduit will initialize the node by using fast catchup.
+The latest round will be fetched from the database for Conduit to use.
 
 Review the inline documentation in `conduit.yml` and decide if there are any
 other settings you would like to update.

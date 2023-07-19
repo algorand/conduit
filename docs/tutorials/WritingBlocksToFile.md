@@ -14,43 +14,12 @@ which are not sending either algos or some other asset to our account.
 
 ## Getting Started
 
-First we need to make sure we have Conduit installed. Head over to [GettingStarted.md](../GettingStarted.md)
-in order to get more details on how to install Conduit. We'll just build it from source:  
-
-```bash
-git clone https://github.com/algorand/conduit.git $HOME/conduit
-cd conduit
-make conduit
-alias conduit=$HOME/conduit/cmd/conduit/conduit
-```
-
-Now that we have Conduit installed we can take a look at the options for supported plugins with
-
-```bash
-conduit list
-```
-
-The current list ends up being
-
-```bash
-importers:
-  algod       - Importer for fetching blocks from an algod REST API.
-  file_reader - Importer for fetching blocks from files in a directory created by the 'file_writer' plugin.
-
-processors:
-  filter_processor - FilterProcessor Filter Processor
-  noop             - noop processor
-
-exporters:
-  file_writer - Exporter for writing data to a file.
-  noop        - noop exporter
-  postgresql  - Exporter for writing data to a postgresql instance.
-```
+First we need to make sure we have Conduit installed. Head over to the installation section of [the README](../../README.md) for more details. For this tutorial we'll assume `conduit` is installed and available on the path.
 
 For our conduit pipeline we're going to use the `algod` importer, a `filter_processor`, and of course the
 `file_writer` exporter.  
-To get more details about each of these individually, and the configuration variables required and available for them, 
-we can again use the list command. For example,
+To get more details about each of these individually, and their configuration variables, 
+use the list command. For example:
 
 ```bash
 conduit list exporters file_writer
@@ -58,20 +27,7 @@ conduit list exporters file_writer
 
 Returns the following:
 
-```bash
-name: "file_writer"
-config:
-  # BlocksDir is an optional path to a directory where block data will be
-  # stored. The directory is created if it doesn't exist. If not present the
-  # plugin data directory is used.
-  block-dir: "/path/to/block/files"
-  # FilenamePattern is the format used to write block files. It uses go
-  # string formatting and should accept one number for the round.
-  # If the file has a '.gz' extension, blocks will be gzipped.
-  # Default: "%[1]d_block.json"
-  filename-pattern: "%[1]d_block.json"
-  # DropCertificate is used to remove the vote certificate from the block data before writing files.
-  drop-certificate: true
+```yml @../../conduit/plugins/exporters/file_writer/sample.yaml
 ```
 
 ## Setting Up Our Pipeline
@@ -196,6 +152,7 @@ There are two things to address before our example becomes useful.
 
 For me, it's easiest to use the testnet dispenser, so I've done that. You can look at my transaction for yourself,
 block #26141781 on testnet.
+
 2. Skip rounds
 
 To avoid having to run algod all the way from genesis to the most recent round, you can use catchpoint catchup to

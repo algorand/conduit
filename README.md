@@ -113,4 +113,4 @@ Conduit can be used to populate data from an existing [Indexer 2.x](https://gith
 
 We will continue to maintain Indexer 2.x for the time being, but encourage users to move to Conduit. It provides cost benefits for most deployments in addition to greater flexibility.
 
-[See the migration guide for details.](./docs/tutorials/IndexerMigration.md).
+To migrate, follow the [Using Conduit to Populate an Indexer Database](./docs/tutorials/IndexerWriter.md) tutorial. When you get to the step about setting up postgres, substitute your existing database connection string. Conduit will read the database to initialize the next round.
