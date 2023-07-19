@@ -135,7 +135,7 @@ func (exp *postgresqlExporter) Init(ctx context.Context, initProvider data.InitP
 	exp.round = uint64(initProvider.NextDBRound())
 
 	dataPruningEnabled := !exp.cfg.Test && exp.cfg.Delete.Rounds > 0
-	exp.logger.Debugf("postgresql exporter Init(): data pruning enabled: %t; exp.cfg.Delete: %+v", dataPruningEnabled, exp.cfg.Delete)	
+	exp.logger.Debugf("postgresql exporter Init(): data pruning enabled: %t; exp.cfg.Delete: %+v", dataPruningEnabled, exp.cfg.Delete)
 	if dataPruningEnabled {
 		exp.dm = util.MakeDataManager(exp.ctx, &exp.cfg.Delete, exp.db, logger)
 		exp.wg.Add(1)
