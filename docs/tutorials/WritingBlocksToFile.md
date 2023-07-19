@@ -7,7 +7,7 @@ useful for both building and debugging conduit pipelines.
 ## Our Problem Statement
 
 For this example, our task is to ingest blocks from an Algorand network (we'll use Testnet for this),
-and write blocks to files. 
+and write blocks to files.
 
 Additionally, we don't care to see data about transactions which aren't sent to us, so we'll filter out all transactions
 which are not sending either algos or some other asset to our account.
@@ -17,8 +17,8 @@ which are not sending either algos or some other asset to our account.
 First we need to make sure we have Conduit installed. Head over to the installation section of [the README](../../README.md) for more details. For this tutorial we'll assume `conduit` is installed and available on the path.
 
 For our conduit pipeline we're going to use the `algod` importer, a `filter_processor`, and of course the
-`file_writer` exporter.  
-To get more details about each of these individually, and their configuration variables, 
+`file_writer` exporter.
+To get more details about each of these individually, and their configuration variables,
 use the list command. For example:
 
 ```bash
@@ -27,18 +27,35 @@ conduit list exporters file_writer
 
 Returns the following:
 
-```yml @../../conduit/plugins/exporters/file_writer/sample.yaml
+```yml @../../conduit/plugins/exporters/filewriter/sample.yaml
+name: "file_writer"
+config:
+    # BlocksDir is the path to a directory where block data should be stored.
+    # The directory is created if it doesn't exist. If no directory is provided
+    # blocks are written to the Conduit data directory.
+    #block-dir: "/path/to/block/files"
+  
+    # FilenamePattern is the format used to write block files. It uses go
+    # string formatting and should accept one number for the round.
+    # If the file has a '.gz' extension, blocks will be gzipped.
+    # Default: "%[1]d_block.json"
+    filename-pattern: "%[1]d_block.json"
+  
+    # DropCertificate is used to remove the vote certificate from the block data before writing files.
+    drop-certificate: true
 ```
 
 ## Setting Up Our Pipeline
 
 Let's start assembling a configuration file which describes our conduit pipeline. For that we'll run
 
+TODO: this is incomplete and needs to be updated to use init with templates
 ```bash
-conduit init -d data
+mkdir data
+conduit init --importer algod --processor filter_processor --exporter ... > data/conduit.yml data
 ```
 
-This will create a configuration directory if we don't provide one to it, and write a skeleton config file
+This will create a configuration directory and write a skeleton config file
 there which we will use as the starting point for our pipeline. Here is the config file which the `init` subcommand has
 written for us:
 
@@ -116,7 +133,7 @@ a look at the filter plugin documentation.
 
 For the exporter the setup is simple. No configuration is necessary because it defaults to a directory inside the
 conduit data directory. In this example I've chosen to override the default and set the directory output of my blocks
-to a temporary directory, `block-dir: "/tmp/conduit-blocks/"`. 
+to a temporary directory, `block-dir: "/tmp/conduit-blocks/"`.
 
 ## Running the pipeline
 
@@ -158,7 +175,7 @@ block #26141781 on testnet.
 To avoid having to run algod all the way from genesis to the most recent round, you can use catchpoint catchup to
 fast-forward to a more recent block. Similarly, we want to be able to run Conduit pipelines from whichever round is
 most relevant and useful for us.
-To run conduit from a round other than 0, use the `--next-round-override` or `-r` flag. 
+To run conduit from a round other than 0, use the `--next-round-override` or `-r` flag.
 
 Now let's run the command!
 
