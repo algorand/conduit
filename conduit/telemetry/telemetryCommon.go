@@ -3,7 +3,7 @@ package telemetry
 import (
 	"time"
 
-	"github.com/opensearch-project/opensearch-go/v2"
+	opensearch "github.com/opensearch-project/opensearch-go/v2"
 )
 
 // Config represents the configuration of Telemetry logging
