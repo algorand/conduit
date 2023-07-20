@@ -36,11 +36,11 @@ graph LR;
 
 ## Node (algod with follow mode)
 
-This is the blockchain data source. When in [follow mode](follow-mode-doc), algod is controlled by Conduit to ensure the two services are always operating on the same block. In this way algod is able to
+This is the blockchain data source. When in [follow mode][follow-mode-doc], algod is controlled by Conduit to ensure the two services are always operating on the same block. In this way algod is able to
 store the minimum number of blocks required to stream data to Conduit.
 
 We will cover a basic installation using `update.sh`, for [additional
-information refer to the developer portal.](node-install-doc)
+information refer to the developer portal.][node-install-doc]
 
 ```bash
 # Download update.sh script.
@@ -80,7 +80,7 @@ When finished, this command will stop the node:
 
 This document cannot go into the complete details for configuring your
 database. PostgreSQL or a compatible database like Amazon Aurora are suitable
-for the Indexer API. See the [Indexer](indexer-readme) documentation more details.
+for the Indexer API. See the [Indexer][indexer-readme] documentation more details.
 
 For this tutorial the process is simplified by using a local docker image.
 
@@ -106,7 +106,7 @@ docker rm local-database
 
 Now we will configure Conduit to import data from `algod` and export to `PostgreSQL`.
 
-Download the `conduit` binary [from the releases page](conduit-release). Put
+Download the `conduit` binary [from the releases page][conduit-release]. Put
 the binary in the current working directory, or install it to your path and use
 normally.
 
@@ -145,9 +145,9 @@ Start Conduit with:
 
 ## Indexer API
 
-With data in PostgreSQL, you can now start the [Indexer API](indexer-read-only).
+With data in PostgreSQL, you can now start the [Indexer API][indexer-read-only].
 
-Download Indexer 3.x [from the releases page](indexer-release). Put
+Download Indexer 3.x [from the releases page][indexer-release]. Put
 the `algorand-indexer` binary in the current working directory, or install it to your path and use
 normally.
 
@@ -161,7 +161,7 @@ To test that it's working, here is an example API call:
 curl http://localhost:8980/v2/accounts
 ```
 
-More information about Indexer can be found in the [Indexer README](indexer-readme) and the [Indexer API documentation](indexer-rest-api).
+More information about Indexer can be found in the [Indexer README][indexer-readme] and the [Indexer API documentation][indexer-rest-api].
 
 [follow-mode-doc]: https://github.com/algorand/go-algorand/blob/master/docs/follower_node.md
 [node-install-doc]: https://developer.algorand.org/docs/run-a-node/setup/install/
