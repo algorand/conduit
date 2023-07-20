@@ -7,121 +7,44 @@ useful for both building and debugging conduit pipelines.
 ## Our Problem Statement
 
 For this example, our task is to ingest blocks from an Algorand network (we'll use Testnet for this),
-and write blocks to files. 
+and write blocks to files.
 
 Additionally, we don't care to see data about transactions which aren't sent to us, so we'll filter out all transactions
 which are not sending either algos or some other asset to our account.
 
 ## Getting Started
 
-First we need to make sure we have Conduit installed. Head over to [GettingStarted.md](../GettingStarted.md)
-in order to get more details on how to install Conduit. We'll just build it from source:  
-
-```bash
-git clone https://github.com/algorand/conduit.git $HOME/conduit
-cd conduit
-make conduit
-alias conduit=$HOME/conduit/cmd/conduit/conduit
-```
-
-Now that we have Conduit installed we can take a look at the options for supported plugins with
-
-```bash
-conduit list
-```
-
-The current list ends up being
-
-```bash
-importers:
-  algod       - Importer for fetching blocks from an algod REST API.
-  file_reader - Importer for fetching blocks from files in a directory created by the 'file_writer' plugin.
-
-processors:
-  filter_processor - FilterProcessor Filter Processor
-  noop             - noop processor
-
-exporters:
-  file_writer - Exporter for writing data to a file.
-  noop        - noop exporter
-  postgresql  - Exporter for writing data to a postgresql instance.
-```
+First we need to make sure we have Conduit installed. Head over to the installation section of [the README](../../README.md) for more details. For this tutorial we'll assume `conduit` is installed and available on the path.
 
 For our conduit pipeline we're going to use the `algod` importer, a `filter_processor`, and of course the
-`file_writer` exporter.  
-To get more details about each of these individually, and the configuration variables required and available for them, 
-we can again use the list command. For example,
+`file_writer` exporter.
+To get more details about each of these individually, and their configuration variables,
+use the list command or check the [plugins README](../../conduit/plugins/). For example:
 
 ```bash
 conduit list exporters file_writer
 ```
 
-Returns the following:
-
-```bash
-name: "file_writer"
-config:
-  # BlocksDir is an optional path to a directory where block data will be
-  # stored. The directory is created if it doesn't exist. If not present the
-  # plugin data directory is used.
-  block-dir: "/path/to/block/files"
-  # FilenamePattern is the format used to write block files. It uses go
-  # string formatting and should accept one number for the round.
-  # If the file has a '.gz' extension, blocks will be gzipped.
-  # Default: "%[1]d_block.json"
-  filename-pattern: "%[1]d_block.json"
-  # DropCertificate is used to remove the vote certificate from the block data before writing files.
-  drop-certificate: true
-```
-
 ## Setting Up Our Pipeline
 
-Let's start assembling a configuration file which describes our conduit pipeline. For that we'll run
+Let's start assembling a configuration file which describes our conduit pipeline. For that we'll use the `conduit init` command to create the `conduit.yml` template.
 
 ```bash
-conduit init -d data
+mkdir data
+conduit init --importer algod --processor filter_processor --exporter ... > data/conduit.yml data
 ```
 
-This will create a configuration directory if we don't provide one to it, and write a skeleton config file
-there which we will use as the starting point for our pipeline. Here is the config file which the `init` subcommand has
-written for us:
-
-```yaml
-# Generated conduit configuration file.
-log-level: INFO
-# When enabled prometheus metrics are available on '/metrics'
-metrics:
-  mode: OFF
-  addr: ":9999"
-  prefix: "conduit"
-# The importer is typically an algod archival instance.
-importer:
-  name: algod
-  config:
-    netaddr: "your algod address here"
-    token: "your algod token here"
-# One or more processors may be defined to manipulate what data
-# reaches the exporter.
-processors:
-# An exporter is defined to do something with the data.
-# Here the filewriter is defined which writes the raw block
-# data to files.
-exporter:
-  name: file_writer
-  config:
-  # optionally provide a different directory to store blocks.
-  #block-dir: "path where data should be written"
-```
+This will create a configuration directory and write the `conduit.yml` config file
+template.
 
 ## Setting up our Importer
 
-We can see the specific set of plugins defined for our pipeline--an `algod` importer and `file_writer` exporter.
-Now we will fill in the proper fields for these. I've got a local instance of algod running at `127.0.0.1:8080`,
-with an API token of `e36c01fc77e490f23e61899c0c22c6390d0fff1443af2c95d056dc5ce4e61302`. If you need help setting up
+Now we will fill in the algod importer configuration. I've got a local instance of algod running at `127.0.0.1:8080`,
+with an API token of `e36c01fc77e490f23e61899c0c22c6390d0fff1443af2c95d056dc5ce4e61302` and an admin API token of `2d9ceaf47debb8aff77c62475b8337f6ecef75c2aa8aa02170a8d38b9126b75a`. Find these in the `algod.token` and `algod.admin.token` files from your algod data directory. If you need help setting up
 algod, you can take a look at the [go-algorand docs](https://github.com/algorand/go-algorand#getting-started) or our
 [developer portal](https://developer.algorand.org/).
 
-Here is the completed importer config:
+There are other options for the algod importer which are not being used for this tutorial. Those can be left or deleted as I've done here in the completed importer config:
 
 ```yaml
 importer:
@@ -129,15 +52,17 @@ importer:
     config:
       netaddr: "http://127.0.0.1:8080"
       token: "e36c01fc77e490f23e61899c0c22c6390d0fff1443af2c95d056dc5ce4e61302"
+      catchup-config:
+        admin-token: "2d9ceaf47debb8aff77c62475b8337f6ecef75c2aa8aa02170a8d38b9126b75a"
 ```
 
 ## Setting up our Processor
 
-The processor section in our generated config is empty, so we'll need to fill in that section with the proper data
-for the filter processor. We can paste in the output of our list command for that.
+The processor section in our generated config has the filter_processor template, so we'll need to fill that in.
 
-```bash
-> conduit list processors filter_processor
+The default configuration looks something like this:
+
+```yaml
 name: filter_processor
 config:
   # Filters is a list of boolean expressions that can search the payset transactions.
@@ -152,20 +77,17 @@ config:
 The filter processor uses the tag of a property and allows us to specify an exact value to match or a regex.
 For our use case we'll grab the address of a wallet I've created on testnet, `NVCAFYNKJL2NGAIZHWLIKI6HGMTLYXL7BXPBO7NXX4A7GMMWKNFKFKDKP4`.
 
-That should give us exactly what we want, a filter that only allows transaction through for which the receiver is my
-account. However, there is a lot more you can do with the filter processor. To learn more about the possible uses, take
-a look at the filter plugin documentation.
+That should give us exactly what we want, a filter that only allows transaction through for which the receiver is my account. However, there is a lot more you can do with the filter processor. To learn more about the possible uses, take a look at the filter plugin documentation.
 
 ## Setting up our Exporter
 
 For the exporter the setup is simple. No configuration is necessary because it defaults to a directory inside the
 conduit data directory. In this example I've chosen to override the default and set the directory output of my blocks
-to a temporary directory, `block-dir: "/tmp/conduit-blocks/"`. 
+to a temporary directory, `block-dir: "/tmp/conduit-blocks/"`.
 
 ## Running the pipeline
 
-Now we should have a fully valid config, so let's try it out. Here's the full config I ended up with
-(with comments removed)
+Now we should have a fully valid config, so let's try it out. Here's the full config I ended up with. Comments and optional parameters were removed:
 
 ```yaml
 log-level: "INFO"
@@ -196,12 +118,13 @@ There are two things to address before our example becomes useful.
 
 For me, it's easiest to use the testnet dispenser, so I've done that. You can look at my transaction for yourself,
 block #26141781 on testnet.
+
 2. Skip rounds
 
-To avoid having to run algod all the way from genesis to the most recent round, you can use catchpoint catchup to
+To avoid having to run algod all the way from genesis to the most recent round, we can use catchpoint catchup to
 fast-forward to a more recent block. Similarly, we want to be able to run Conduit pipelines from whichever round is
 most relevant and useful for us.
-To run conduit from a round other than 0, use the `--next-round-override` or `-r` flag. 
+To run conduit from a round other than 0, use the `--next-round-override` or `-r` flag. Because we set the admin token for our node, Conduit is able to run fast-catchup for us.
 
 Now let's run the command!
 

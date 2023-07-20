@@ -8,7 +8,6 @@ import (
 
 	"github.com/algorand/conduit/conduit/data"
 	_ "github.com/algorand/conduit/conduit/plugins/exporters/all"
-	_ "github.com/algorand/conduit/conduit/plugins/exporters/example"
 	_ "github.com/algorand/conduit/conduit/plugins/importers/all"
 	_ "github.com/algorand/conduit/conduit/plugins/processors/all"
 )

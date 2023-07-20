@@ -15,6 +15,7 @@ package main
 import (
 	"bytes"
 	"errors"
+	"flag"
 	"fmt"
 	"io"
 	"log"
@@ -124,6 +125,9 @@ func insertIncludes(buf *bytes.Buffer, b *includeBlock) error {
 }
 
 func main() {
+	inputFilename := flag.String("filename", "README.md", "Name of input file.")
+	flag.Parse()
+
 	// Estimate Telegraf root to be able to handle absolute paths
 	cwd, err := os.Getwd()
 	if err != nil {
@@ -135,20 +139,19 @@ func main() {
 	}
 
 	var includeRoot string
-	if idx := strings.LastIndex(cwd, filepath.FromSlash("/plugins/")); idx > 0 {
+	if idx := strings.LastIndex(cwd, filepath.FromSlash("/conduit")); idx > 0 {
 		includeRoot = cwd[:idx]
 	}
 
 	// Get the file permission of the README for later use
-	inputFilename := "README.md"
-	inputFileInfo, err := os.Lstat(inputFilename)
+	inputFileInfo, err := os.Lstat(*inputFilename)
 	if err != nil {
 		log.Fatalf("Cannot get file permissions: %v", err)
 	}
 	perm := inputFileInfo.Mode().Perm()
 
 	// Read and parse the README markdown file
-	readme, err := os.ReadFile(inputFilename)
+	readme, err := os.ReadFile(*inputFilename)
 	if err != nil {
 		log.Fatalf("Reading README failed: %v", err)
 	}
@@ -253,7 +256,7 @@ func main() {
 	}
 
 	// Write output with same permission as input
-	file, err := os.OpenFile(inputFilename, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, perm)
+	file, err := os.OpenFile(*inputFilename, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, perm)
 	if err != nil {
 		log.Fatalf("Opening output file failed: %v", err)
 	}

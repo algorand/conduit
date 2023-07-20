@@ -12,52 +12,108 @@
 
 # Algorand Conduit
 
-Conduit is a framework for ingesting blocks from the Algorand blockchain into external applications. It is designed as modular plugin system that allows users to configure their own data pipelines for filtering, aggregation, and storage of transactions and accounts on any Algorand network.
+Conduit is a framework for ingesting blocks from the Algorand blockchain into external applications. It is designed as modular plugin system that allows users to configure their own data pipelines for filtering, aggregation, and storage of blockchain data.
+
+<!-- TODO: a cool diagram here that clearly demonstrates data moving through the system -->
+
+For example, use conduit to:
+* Build a notification system for on chain events.
+* Power a next generation block explorer.
+* Select app specific data and write it to a custom database.
+* Build a custom Indexer for a new [ARC](https://github.com/algorandfoundation/ARCs).
+* Send blockchain data to another streaming data platform for additional processing (e.g. RabbitMQ, Kafka, ZeroMQ).
+* Build an NFT catalog based on different standards.
 
 # Getting Started
 
-See the [Getting Started](./docs/GettingStarted.md) page.
+## Installation
 
-## Building from source
+### Download
 
-Development is done using the [Go Programming Language](https://golang.org/), the version is specified in the project's [go.mod](go.mod) file. This document assumes that you have a functioning
-environment setup. If you need assistance setting up an environment please visit
-the [official Go documentation website](https://golang.org/doc/).
+The latest `conduit` binary can be downloaded from the [GitHub releases page](https://github.com/algorand/conduit/releases).
 
-Run `make` to build Conduit, the binary is located at `cmd/conduit/conduit`.
+### Docker
 
-# Configuration
+[The latest docker image is on docker hub.](https://hub.docker.com/r/algorand/conduit)
 
-See the [Configuration](./docs/Configuration.md) page.
+### Install from Source
 
-# Third Party Plugins
+1. Checkout the repo, or download the source, `git clone https://github.com/algorand/conduit.git && cd conduit`
+2. Run `make conduit`.
+3. The binary is created at `cmd/conduit/conduit`.
 
-See the [Third Party Plugins](./docs/Third_Party_Plugins.md) page.
+## Usage
 
-# Develoment
+Conduit is configured with a YAML file named `conduit.yml`. This file defines the pipeline behavior by enabling and configuring different plugins.
 
-See the [Development](./docs/Development.md) page for building a plugin.
+### Create `conduit.yml` configuration file
 
-# Plugin System
+Use the `conduit init` subcommand to create a configuration template. Place the configuration template in a new data directory. By convention the directory is named `data` and is referred to as the data directory.
+
+```sh
+mkdir data
+./conduit init > data/conduit.yml
+```
+
 A Conduit pipeline is composed of 3 components, [Importers](./conduit/plugins/importers/), [Processors](./conduit/plugins/processors/), and [Exporters](./conduit/plugins/exporters/).
-Every pipeline must define exactly 1 Importer, exactly 1 Exporter, and can optionally define a series of 0 or more Processors.
+Every pipeline must define exactly 1 Importer, exactly 1 Exporter, and can optionally define a series of 0 or more Processors. See a full list of available plugins with `conduit list` or the [plugin documentation page](./conduit/plugins).
+
+Here is an example `conduit.yml` that configures two plugins:
+
+```yaml
+importer:
+    name: algod
+    config:
+        mode: "follower"
+        netaddr: "http://your-follower-node:1234"
+        token: "your API token"
+
+# no processors defined for this configuration
+processors:
+
+exporter:
+    name: "file_writer"
+    config:
+        # the default config writes block data to the data directory.
+```
+
+The `conduit init` command can also be used to select which plugins to include in the template. The example below uses the standard algod importer and sends the data to PostgreSQL. This example does not use any processor plugins.
+```sh
+./conduit init --importer algod --exporter postgresql > data/conduit.yml
+```
+
+Before running Conduit you need to review and modify `conduit.yml` according to your environment.
+
+### Run Conduit
+
+Once configured, start Conduit with your data directory as an argument:
+```sh
+./conduit -d data
+```
+
+### Full Tutorials
+
+* [Writing Blocks to Files Using Conduit](./docs/tutorials/WritingBlocksToFile.md)
+* [Using Conduit to Populate an Indexer Database](./docs/tutorials/IndexerWriter.md)
+
+# External Plugins
+
+Conduit supports external plugins which can be developed by anyone.
+
+For a list of available plugins and instructions on how to use them, see the [External Plugins](./docs/ExternalPlugins.md) page.
+
+## External Plugin Development
+
+See the [Plugin Development](./docs/PluginDevelopment.md) page for building a plugin.
 
 # Contributing
 
-Contributions are welcome! Please refer to our [CONTRIBUTING](https://github.com/algorand/go-algorand/blob/master/CONTRIBUTING.md) document for general contribution guidelines, and individual plugin documentation for contributing to new and existing Conduit plugins.
+Contributions are welcome! Please refer to our [CONTRIBUTING](https://github.com/algorand/go-algorand/blob/master/CONTRIBUTING.md) document for general contribution guidelines.
 
-# Common Setups
+# Migrating from Indexer 2.x
 
-The most common usage of Conduit is to get validated blocks from a local `algod` Algorand node, and adding them to a database (such as [PostgreSQL](https://www.postgresql.org/)).
-Users can separately (outside of Conduit) serve that data via an API to make available a variety of prepared queries--this is what the Algorand Indexer does.
+Conduit can be used to populate data from an existing [Indexer 2.x](https://github.com/algorand/indexer/) deployment as part of upgrading to Indexer 3.x.
 
-Conduit works by fetching blocks one at a time via the configured Importer, sending the block data through the configured Processors, and terminating block handling via an Exporter (traditionally a database).
-For a step-by-step walkthrough of a basic Conduit setup, see [Writing Blocks To Files](./docs/tutorials/WritingBlocksToFile.md).
+We will continue to maintain Indexer 2.x for the time being, but encourage users to move to Conduit. It provides cost benefits for most deployments in addition to greater flexibility.
 
-# Migrating from Indexer
-
-Indexer was built in a way that strongly coupled it to Postgresql, and the defined REST API. We've built Conduit in a way which is backwards compatible with the preexisting Indexer API and Postgresql DB.
-
-Going forward we will continue to maintain the Indexer application, however our main focus will be enabling and optimizing a multitude of use cases through the Conduit pipeline design rather the singular Indexer pipeline.
-
-For a more detailed look at the differences between Conduit and Indexer, see [our migration guide](./docs/tutorials/IndexerMigration.md).
+To migrate, follow the [Using Conduit to Populate an Indexer Database](./docs/tutorials/IndexerWriter.md) tutorial. When you get to the step about setting up postgres, substitute your existing database connection string. Conduit will read the database to initialize the next round.
