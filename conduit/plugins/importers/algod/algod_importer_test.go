@@ -680,7 +680,7 @@ func TestGetBlockErrors(t *testing.T) {
 		{
 			name:                "Cannot wait for block",
 			rnd:                 123,
-			blockAfterResponder: MakeJsonResponderSeries("/wait-for-block-after", []int{http.StatusOK, http.StatusNotFound}, []interface{}{models.NodeStatus{}}),
+			blockAfterResponder: MakeJsonResponderSeries("/wait-for-block-after", []int{http.StatusOK, http.StatusNotFound}, []interface{}{models.NodeStatus{LastRound: 1}}),
 			err:                 fmt.Sprintf("error getting block for round 123"),
 			logs:                []string{"error getting block for round 123"},
 		},
@@ -755,9 +755,7 @@ func TestGetBlockErrors(t *testing.T) {
 			// Make sure each of the expected log messages are present
 			for _, log := range tc.logs {
 				found := false
-				fmt.Printf("Looking for: %s\n", log)
 				for _, entry := range hook.AllEntries() {
-					fmt.Printf(" * %s\n", entry.Message)
 					fmt.Println(strings.Contains(entry.Message, log))
 					found = found || strings.Contains(entry.Message, log)
 				}
