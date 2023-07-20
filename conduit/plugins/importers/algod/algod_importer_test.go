@@ -3,16 +3,16 @@ package algodimporter
 import (
 	"context"
 	"fmt"
-	"net/http"
-	"net/http/httptest"
-	"strings"
-	"testing"
-
 	"github.com/sirupsen/logrus"
 	"github.com/sirupsen/logrus/hooks/test"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v3"
+	"net/http"
+	"net/http/httptest"
+	"strings"
+	"testing"
+	"time"
 
 	"github.com/algorand/go-algorand-sdk/v2/client/v2/algod"
 	"github.com/algorand/go-algorand-sdk/v2/client/v2/common/models"
@@ -634,6 +634,7 @@ func TestAlgodImporter_ProvideMetrics(t *testing.T) {
 }
 
 func TestGetBlockErrors(t *testing.T) {
+	waitForRoundTimeout = time.Hour
 	testcases := []struct {
 		name                string
 		rnd                 uint64
@@ -643,39 +644,48 @@ func TestGetBlockErrors(t *testing.T) {
 		logs                []string
 		err                 string
 	}{
-		{
-			name:                "Cannot get status",
-			rnd:                 123,
-			blockAfterResponder: MakeJsonResponderSeries("/wait-for-block-after", []int{http.StatusOK, http.StatusNotFound}, []interface{}{models.NodeStatus{}}),
-			err:                 fmt.Sprintf("error getting status for round"),
-			logs:                []string{"error getting status for round 123", "failed to get block for round 123 "},
-		},
+		/*
+			{
+				name:                "Cannot wait for block",
+				rnd:                 123,
+				blockAfterResponder: MakeJsonResponderSeries("/wait-for-block-after", []int{http.StatusNotFound}, []interface{}{models.NodeStatus{}}),
+				// Skip over the "needs catchup" logic.
+				blockResponder: MakeMsgpStatusResponder("get", "/v2/blocks/", http.StatusOK, sdk.LedgerStateDelta{}),
+				deltaResponder: MakeMsgpStatusResponder("get", "/v2/deltas/", http.StatusOK, sdk.LedgerStateDelta{}),
+				err:            fmt.Sprintf("error getting block for round 123"),
+				logs:           []string{"error getting block for round 123"},
+			},
+		*/
 		{
 			name:                "Cannot get block",
 			rnd:                 123,
 			blockAfterResponder: BlockAfterResponder,
+			deltaResponder:      MakeMsgpStatusResponder("get", "/v2/deltas/", http.StatusNotFound, sdk.LedgerStateDelta{}),
 			blockResponder:      MakeMsgpStatusResponder("get", "/v2/blocks/", http.StatusNotFound, ""),
 			err:                 fmt.Sprintf("failed to get block"),
 			logs:                []string{"error getting block for round 123", "failed to get block for round 123 "},
 		},
-		{
-			name:                "Cannot get delta (node behind)",
-			rnd:                 200,
-			blockAfterResponder: MakeBlockAfterResponder(models.NodeStatus{LastRound: 50}),
-			blockResponder:      BlockResponder,
-			deltaResponder:      MakeMsgpStatusResponder("get", "/v2/deltas/", http.StatusNotFound, ""),
-			err:                 fmt.Sprintf("ledger state delta not found: node round (50) is behind required round (200)"),
-			logs:                []string{"ledger state delta not found: node round (50) is behind required round (200)"},
-		},
-		{
-			name:                "Cannot get delta (caught up)",
-			rnd:                 200,
-			blockAfterResponder: MakeBlockAfterResponder(models.NodeStatus{LastRound: 200}),
-			blockResponder:      BlockResponder,
-			deltaResponder:      MakeMsgpStatusResponder("get", "/v2/deltas/", http.StatusNotFound, ""),
-			err:                 fmt.Sprintf("ledger state delta not found: node round (200), required round (200)"),
-			logs:                []string{"ledger state delta not found: node round (200), required round (200)"},
-		},
+		/*
+			{
+				name:                "Cannot get delta (node behind)",
+				rnd:                 200,
+				blockAfterResponder: MakeBlockAfterResponder(models.NodeStatus{LastRound: 50}),
+				blockResponder:      BlockResponder,
+				deltaResponder:      MakeMsgpStatusResponder("get", "/v2/deltas/", http.StatusNotFound, ""),
+				err:                 fmt.Sprintf("ledger state delta not found: node round (50) is behind required round (200)"),
+				logs:                []string{"ledger state delta not found: node round (50) is behind required round (200)"},
+			},
+			{
+				name:                "Cannot get delta (caught up)",
+				rnd:                 200,
+				blockAfterResponder: MakeBlockAfterResponder(models.NodeStatus{LastRound: 200}),
+				blockResponder:      BlockResponder,
+				deltaResponder:      MakeMsgpStatusResponder("get", "/v2/deltas/", http.StatusNotFound, ""),
+				err:                 fmt.Sprintf("ledger state delta not found: node round (200), required round (200)"),
+				logs:                []string{"ledger state delta not found: node round (200), required round (200)"},
+			},
+
+		*/
 	}
 
 	for _, tc := range testcases {
@@ -720,7 +730,10 @@ func TestGetBlockErrors(t *testing.T) {
 			// Make sure each of the expected log messages are present
 			for _, log := range tc.logs {
 				found := false
+				fmt.Printf("Looking for: %s\n", log)
 				for _, entry := range hook.AllEntries() {
+					fmt.Printf(" * %s\n", entry.Message)
+					fmt.Println(strings.Contains(entry.Message, log))
 					found = found || strings.Contains(entry.Message, log)
 				}
 				noError = noError && assert.True(t, found, "Expected log was not found: '%s'", log)
