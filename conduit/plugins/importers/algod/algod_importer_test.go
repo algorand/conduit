@@ -277,10 +277,11 @@ func TestInitCatchup(t *testing.T) {
 			algodServer: NewAlgodServer(
 				GenesisResponder,
 				MakePostSyncRoundResponder(http.StatusOK),
+				MakeMsgpStatusResponder("get", "/v2/deltas/", http.StatusNotFound, sdk.LedgerStateDelta{}),
 				MakeJsonResponderSeries("/v2/status", []int{http.StatusOK, http.StatusOK, http.StatusBadRequest}, []interface{}{models.NodeStatus{LastRound: 1235}}),
 				MakeMsgpStatusResponder("post", "/v2/catchup/", http.StatusOK, nil)),
 			netAddr:   "",
-			errInit:   "received unexpected error (StatusAfterBlock) waiting for node to catchup: HTTP 400",
+			errInit:   "received unexpected error (StatusAfterBlock) waiting for node to catchup: did not reach expected round",
 			errGetGen: "",
 			logs:      []string{},
 		},
@@ -291,6 +292,7 @@ func TestInitCatchup(t *testing.T) {
 			catchpoint:  "1236#abcd",
 			algodServer: NewAlgodServer(
 				GenesisResponder,
+				MakeMsgpStatusResponder("get", "/v2/deltas/", http.StatusNotFound, sdk.LedgerStateDelta{}),
 				MakePostSyncRoundResponder(http.StatusOK),
 				MakeJsonResponderSeries("/v2/status", []int{http.StatusOK}, []interface{}{
 					models.NodeStatus{LastRound: 1235},
@@ -299,6 +301,33 @@ func TestInitCatchup(t *testing.T) {
 					models.NodeStatus{Catchpoint: "1236#abcd", CatchpointAcquiredBlocks: 1, CatchpointTotalBlocks: 1},
 					models.NodeStatus{Catchpoint: "1236#abcd"},
 					models.NodeStatus{LastRound: 1236},
+				}),
+				MakeMsgpStatusResponder("post", "/v2/catchup/", http.StatusOK, "")),
+			netAddr:   "",
+			errInit:   "received unexpected error (StatusAfterBlock) waiting for node to catchup: did not reach expected round",
+			errGetGen: "",
+			logs: []string{
+				"catchup phase Processed Accounts: 1 / 1",
+				"catchup phase Verified Accounts: 1 / 1",
+				"catchup phase Acquired Blocks: 1 / 1",
+				"catchup phase Verified Blocks",
+			}},
+		{
+			name:        "monitor catchup success",
+			adminToken:  "admin",
+			targetRound: 1237,
+			catchpoint:  "1236#abcd",
+			algodServer: NewAlgodServer(
+				GenesisResponder,
+				MakeMsgpStatusResponder("get", "/v2/deltas/", http.StatusNotFound, sdk.LedgerStateDelta{}),
+				MakePostSyncRoundResponder(http.StatusOK),
+				MakeJsonResponderSeries("/v2/status", []int{http.StatusOK}, []interface{}{
+					models.NodeStatus{LastRound: 1235},
+					models.NodeStatus{Catchpoint: "1236#abcd", CatchpointProcessedAccounts: 1, CatchpointTotalAccounts: 1},
+					models.NodeStatus{Catchpoint: "1236#abcd", CatchpointVerifiedAccounts: 1, CatchpointTotalAccounts: 1},
+					models.NodeStatus{Catchpoint: "1236#abcd", CatchpointAcquiredBlocks: 1, CatchpointTotalBlocks: 1},
+					models.NodeStatus{Catchpoint: "1236#abcd"},
+					models.NodeStatus{LastRound: 1237}, // this is the only difference from the previous test
 				}),
 				MakeMsgpStatusResponder("post", "/v2/catchup/", http.StatusOK, "")),
 			netAddr:   "",
