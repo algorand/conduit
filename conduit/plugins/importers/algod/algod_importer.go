@@ -320,10 +320,13 @@ func (algodImp *algodImporter) catchupNode(network string, targetRound uint64) e
 		}
 	}
 
-	_, err := algodImp.aclient.StatusAfterBlock(targetRound).Do(algodImp.ctx)
+	status, err := algodImp.aclient.StatusAfterBlock(targetRound).Do(algodImp.ctx)
 	algodImp.logger.Tracef("importer algod.catchupNode() called StatusAfterBlock(targetRound=%d) err: %v", targetRound, err)
 	if err != nil {
 		err = fmt.Errorf("received unexpected error (StatusAfterBlock) waiting for node to catchup: %w", err)
+	}
+	if status.LastRound < targetRound {
+		err = fmt.Errorf("received unexpected error (StatusAfterBlock) waiting for node to catchup: did not reach expected round %d != %d", status.LastRound, targetRound)
 	}
 	return err
 }
@@ -424,20 +427,14 @@ func (e *SyncError) Error() string {
 	return fmt.Sprintf("wrong round returned from status for round: %d != %d", e.rnd, e.expected)
 }
 
-type statusCalls interface {
-	StatusAfterBlock(uint642 uint64) *algod.StatusAfterBlock
-	Status() *algod.Status
-}
-
-func waitForRoundWithTimeout(ctx context.Context, l *logrus.Logger, c statusCalls, rnd uint64, to time.Duration) (uint64, error) {
+func waitForRoundWithTimeout(ctx context.Context, l *logrus.Logger, c *algod.Client, rnd uint64, to time.Duration) (uint64, error) {
 	ctxWithTimeout, cf := context.WithTimeout(ctx, to)
 	defer cf()
 	status, err := c.StatusAfterBlock(rnd - 1).Do(ctxWithTimeout)
 	l.Tracef("importer algod.waitForRoundWithTimeout() called StatusAfterBlock(%d) err: %v", rnd-1, err)
 
 	if err == nil {
-		// Handle current go SDK which returns the current status after a timeout.
-		// This shouldn't happen because we're using context.WithTimeout.
+		// On a timeout StatusAfterBlock returns the current status, so check that we've actually reached the correct round.
 		if status.LastRound >= rnd {
 			return status.LastRound, nil
 		}
@@ -447,22 +444,20 @@ func waitForRoundWithTimeout(ctx context.Context, l *logrus.Logger, c statusCall
 		}
 	}
 
-	// Handle context timeout
-	if errors.Is(err, context.DeadlineExceeded) {
-		status, err = c.Status().Do(ctx)
-		l.Tracef("importer algod.waitForRoundWithTimeout() called Status() err: %v", err)
-		if err != nil {
-			return 0, fmt.Errorf("unable to get status: %w", err)
+	// If there was a different error and the node is responsive, call status before returning a SyncError.
+	status2, err2 := c.Status().Do(ctx)
+	l.Tracef("importer algod.waitForRoundWithTimeout() called Status() err: %v", err)
+	if err2 != nil {
+		return 0, fmt.Errorf("unable to get status: %w", err)
+	}
+	if status2.LastRound < rnd {
+		return 0, &SyncError{
+			rnd:      status.LastRound,
+			expected: rnd,
 		}
-		if status.LastRound < rnd {
-			return 0, &SyncError{
-				rnd:      status.LastRound,
-				expected: rnd,
-			}
-		}
-		return status.LastRound, nil
 	}
 
+	// This is probably a connection error, not a SyncError.
 	return 0, err
 }
 
