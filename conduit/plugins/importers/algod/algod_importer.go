@@ -414,6 +414,7 @@ func (algodImp *algodImporter) getDelta(rnd uint64) (sdk.LedgerStateDelta, error
 	return delta, nil
 }
 
+// SyncError is used to indicate algod and conduit are not synchronized.
 type SyncError struct {
 	rnd      uint64
 	expected uint64
