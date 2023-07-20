@@ -581,6 +581,10 @@ netaddr: %s
 }
 
 func TestGetBlockFailure(t *testing.T) {
+	// Note: There are panics in the log because the init function in these tests calls the
+	//       delta endpoint and causes a panic in most cases. This causes the "needs catchup"
+	//       function to send out a sync request at which point logic continues as normal and
+	//       the GetBlock function is able to run for the test.
 	tests := []struct {
 		name        string
 		algodServer *httptest.Server
