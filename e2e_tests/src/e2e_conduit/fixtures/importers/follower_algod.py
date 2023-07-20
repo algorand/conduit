@@ -1,15 +1,11 @@
-import atexit
 import glob
 import json
 import logging
 import os
-import shutil
-import tempfile
 
 import boto3
 from botocore.config import Config
 from botocore import UNSIGNED
-
 from e2e_common.util import hassuffix, xrun, firstFromS3Prefix, countblocks, atexitrun
 from e2e_conduit.fixtures.importers.importer_plugin import ImporterPlugin
 
@@ -67,8 +63,8 @@ class FollowerAlgodImporter(ImporterPlugin):
             if "/" in tarname:
                 cmhash_tarnme = tarname.split("/")
                 cmhash = cmhash_tarnme[0]
-                tarname =cmhash_tarnme[1]
-                prefix+="/"+cmhash
+                tarname = cmhash_tarnme[1]
+                prefix += "/" + cmhash
                 tarpath = os.path.join(conduit_dir, tarname)
             else:
                 tarpath = os.path.join(conduit_dir, tarname)
@@ -90,14 +86,14 @@ class FollowerAlgodImporter(ImporterPlugin):
         self.last = countblocks(blockfiles[0])
         # Reset the secondary node, and enable follow mode.
         # This is what conduit will connect to for data access.
-        for root, dirs, files in os.walk(os.path.join(tempnet, 'Node', 'tbd-v1')):
-                for f in files:
-                    if ".sqlite" in f:
-                        os.remove(os.path.join(root, f))
+        for root, _, files in os.walk(os.path.join(tempnet, "Node", "tbd-v1")):
+            for f in files:
+                if ".sqlite" in f:
+                    os.remove(os.path.join(root, f))
         cf = {}
         with open(os.path.join(tempnet, "Node", "config.json"), "r") as config_file:
             cf = json.load(config_file)
-            cf['EnableFollowMode'] = True
+            cf["EnableFollowMode"] = True
         with open(os.path.join(tempnet, "Node", "config.json"), "w") as config_file:
             config_file.write(json.dumps(cf))
         try:

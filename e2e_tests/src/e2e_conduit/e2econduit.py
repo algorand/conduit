@@ -1,16 +1,16 @@
 #!/usr/bin/env python3
-#
 
 import argparse
 import logging
 import os
 import sys
 
-from e2e_common.util import find_binary
-from e2e_conduit.fixtures import importers, processors, exporters
 from e2e_conduit.runner import ConduitE2ETestRunner
 from e2e_conduit.scenarios import scenarios
-from e2e_conduit.scenarios.follower_indexer_scenario import follower_indexer_scenario
+from e2e_conduit.scenarios.follower_indexer_scenario import (
+    FollowerIndexerScenario,
+    FollowerIndexerScenarioWithDeleteTask,
+)
 from e2e_conduit.scenarios.filter_scenario import (
     app_filter_indexer_scenario,
     pay_filter_indexer_scenario,
@@ -50,9 +50,14 @@ def main():
         sourcenet = e2edata and os.path.join(e2edata, "net")
     importer_source = sourcenet if sourcenet else args.s3_source_net
     if importer_source:
-        scenarios.append(follower_indexer_scenario(importer_source))
-        # scenarios.append(app_filter_indexer_scenario(importer_source))
-        # scenarios.append(pay_filter_indexer_scenario(importer_source))
+        scenarios.extend(
+            [
+                FollowerIndexerScenario(importer_source),
+                FollowerIndexerScenarioWithDeleteTask(importer_source),
+                app_filter_indexer_scenario(importer_source),
+                pay_filter_indexer_scenario(importer_source),
+            ]
+        )
 
     runner = ConduitE2ETestRunner(args.conduit_bin, keep_temps=args.keep_temps)
 

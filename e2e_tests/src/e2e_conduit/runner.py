@@ -95,8 +95,8 @@ class ConduitE2ETestRunner:
             sys.stderr.write(indexerout.dump())
             return 1
 
-        # WLOG indexer's round >= the final network round
-        if errors := scenario.validate():
+        # now indexer's round == the final network round
+        if errors := scenario.get_validation_errors():
             logger.error(f"conduit failed validation: {errors}")
             sys.stderr.write(indexerout.dump())
             return 1
