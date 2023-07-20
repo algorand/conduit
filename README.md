@@ -56,7 +56,7 @@ mkdir data
 ```
 
 A Conduit pipeline is composed of 3 components, [Importers](./conduit/plugins/importers/), [Processors](./conduit/plugins/processors/), and [Exporters](./conduit/plugins/exporters/).
-Every pipeline must define exactly 1 Importer, exactly 1 Exporter, and can optionally define a series of 0 or more Processors. A full list of available plugins with `conduit list` and the [plugin documentation page](./conduit/plugins).
+Every pipeline must define exactly 1 Importer, exactly 1 Exporter, and can optionally define a series of 0 or more Processors. See a full list of available plugins with `conduit list` or the [plugin documentation page](./conduit/plugins).
 
 Here is an example `conduit.yml` that configures two plugins:
 
@@ -77,9 +77,9 @@ exporter:
         # the default config writes block data to the data directory.
 ```
 
-The `conduit init` command can also be used to select which plugins to include in the template that uses the standard algod importer and sends the data to PostgreSQL. This example does not use any processor plugins.
+The `conduit init` command can also be used to select which plugins to include in the template. The example below uses the standard algod importer and sends the data to PostgreSQL. This example does not use any processor plugins.
 ```sh
-./conduit init --importer algod --exporter postgresql > conduit.yml
+./conduit init --importer algod --exporter postgresql > data/conduit.yml
 ```
 
 Before running Conduit you need to review and modify `conduit.yml` according to your environment.
@@ -90,6 +90,11 @@ Once configured, start Conduit with your data directory as an argument:
 ```sh
 ./conduit -d data
 ```
+
+### Full Tutorials
+
+* [Writing Blocks to Files Using Conduit](./docs/tutorials/WritingBlocksToFile.md)
+* [Using Conduit to Populate an Indexer Database](./docs/tutorials/IndexerWriter.md)
 
 # External Plugins
 

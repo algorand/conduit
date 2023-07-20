@@ -19,7 +19,7 @@ First we need to make sure we have Conduit installed. Head over to the installat
 For our conduit pipeline we're going to use the `algod` importer, a `filter_processor`, and of course the
 `file_writer` exporter.
 To get more details about each of these individually, and their configuration variables,
-use the list command or check the [README](../../conduit/plugins/exporters/filewriter/). For example:
+use the list command or check the [plugins README](../../conduit/plugins/). For example:
 
 ```bash
 conduit list exporters file_writer
@@ -40,7 +40,7 @@ template.
 ## Setting up our Importer
 
 Now we will fill in the algod importer configuration. I've got a local instance of algod running at `127.0.0.1:8080`,
-with an API token of `e36c01fc77e490f23e61899c0c22c6390d0fff1443af2c95d056dc5ce4e61302` and aan admin API token of `2d9ceaf47debb8aff77c62475b8337f6ecef75c2aa8aa02170a8d38b9126b75a`. Find these in the `algod.token` and `algod.admin.token` files from your algod data directory. If you need help setting up
+with an API token of `e36c01fc77e490f23e61899c0c22c6390d0fff1443af2c95d056dc5ce4e61302` and an admin API token of `2d9ceaf47debb8aff77c62475b8337f6ecef75c2aa8aa02170a8d38b9126b75a`. Find these in the `algod.token` and `algod.admin.token` files from your algod data directory. If you need help setting up
 algod, you can take a look at the [go-algorand docs](https://github.com/algorand/go-algorand#getting-started) or our
 [developer portal](https://developer.algorand.org/).
 
