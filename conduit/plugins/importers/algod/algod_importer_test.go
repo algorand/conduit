@@ -644,48 +644,40 @@ func TestGetBlockErrors(t *testing.T) {
 		logs                []string
 		err                 string
 	}{
-		/*
-			{
-				name:                "Cannot wait for block",
-				rnd:                 123,
-				blockAfterResponder: MakeJsonResponderSeries("/wait-for-block-after", []int{http.StatusNotFound}, []interface{}{models.NodeStatus{}}),
-				// Skip over the "needs catchup" logic.
-				blockResponder: MakeMsgpStatusResponder("get", "/v2/blocks/", http.StatusOK, sdk.LedgerStateDelta{}),
-				deltaResponder: MakeMsgpStatusResponder("get", "/v2/deltas/", http.StatusOK, sdk.LedgerStateDelta{}),
-				err:            fmt.Sprintf("error getting block for round 123"),
-				logs:           []string{"error getting block for round 123"},
-			},
-		*/
+		{
+			name:                "Cannot wait for block",
+			rnd:                 123,
+			blockAfterResponder: MakeJsonResponderSeries("/wait-for-block-after", []int{http.StatusOK, http.StatusNotFound}, []interface{}{models.NodeStatus{}}),
+			err:                 fmt.Sprintf("error getting block for round 123"),
+			logs:                []string{"error getting block for round 123"},
+		},
 		{
 			name:                "Cannot get block",
 			rnd:                 123,
 			blockAfterResponder: BlockAfterResponder,
 			deltaResponder:      MakeMsgpStatusResponder("get", "/v2/deltas/", http.StatusNotFound, sdk.LedgerStateDelta{}),
 			blockResponder:      MakeMsgpStatusResponder("get", "/v2/blocks/", http.StatusNotFound, ""),
-			err:                 fmt.Sprintf("failed to get block"),
-			logs:                []string{"error getting block for round 123", "failed to get block for round 123 "},
+			err:                 fmt.Sprintf("error getting block for round 123"),
+			logs:                []string{"error getting block for round 123"},
 		},
-		/*
-			{
-				name:                "Cannot get delta (node behind)",
-				rnd:                 200,
-				blockAfterResponder: MakeBlockAfterResponder(models.NodeStatus{LastRound: 50}),
-				blockResponder:      BlockResponder,
-				deltaResponder:      MakeMsgpStatusResponder("get", "/v2/deltas/", http.StatusNotFound, ""),
-				err:                 fmt.Sprintf("ledger state delta not found: node round (50) is behind required round (200)"),
-				logs:                []string{"ledger state delta not found: node round (50) is behind required round (200)"},
-			},
-			{
-				name:                "Cannot get delta (caught up)",
-				rnd:                 200,
-				blockAfterResponder: MakeBlockAfterResponder(models.NodeStatus{LastRound: 200}),
-				blockResponder:      BlockResponder,
-				deltaResponder:      MakeMsgpStatusResponder("get", "/v2/deltas/", http.StatusNotFound, ""),
-				err:                 fmt.Sprintf("ledger state delta not found: node round (200), required round (200)"),
-				logs:                []string{"ledger state delta not found: node round (200), required round (200)"},
-			},
-
-		*/
+		{
+			name:                "Cannot get delta (node behind)",
+			rnd:                 200,
+			blockAfterResponder: MakeBlockAfterResponder(models.NodeStatus{LastRound: 50}),
+			blockResponder:      BlockResponder,
+			deltaResponder:      MakeMsgpStatusResponder("get", "/v2/deltas/", http.StatusNotFound, ""),
+			err:                 fmt.Sprintf("wrong round returned from status for round: 50 != 200"),
+			logs:                []string{"wrong round returned from status for round: 50 != 200", "Sync error detected, attempting to set the sync round to recover the node"},
+		},
+		{
+			name:                "Cannot get delta (caught up)",
+			rnd:                 200,
+			blockAfterResponder: MakeBlockAfterResponder(models.NodeStatus{LastRound: 200}),
+			blockResponder:      BlockResponder,
+			deltaResponder:      MakeMsgpStatusResponder("get", "/v2/deltas/", http.StatusNotFound, ""),
+			err:                 fmt.Sprintf("ledger state delta not found: node round (200), required round (200)"),
+			logs:                []string{"ledger state delta not found: node round (200), required round (200)"},
+		},
 	}
 
 	for _, tc := range testcases {
