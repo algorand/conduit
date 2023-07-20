@@ -73,7 +73,7 @@ class FollowerIndexerScenarioWithDeleteTask(Scenario):
         """
 
         # sleep for 3 seconds to allow delete_task iteration to wake up after 2 seconds
-        # for its final pruning when the conduit is all caught up with the network
+        # for its final pruning when Conduit is all caught up with the network
         time.sleep(3)
 
         idb = IndexerDB.from_connection_string(

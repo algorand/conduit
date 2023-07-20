@@ -44,7 +44,6 @@ def main():
     else:
         logging.basicConfig(level=logging.INFO)
     sourcenet = args.source_net
-    # source_is_tar = False
     if not sourcenet:
         e2edata = os.getenv("E2EDATA")
         sourcenet = e2edata and os.path.join(e2edata, "net")
