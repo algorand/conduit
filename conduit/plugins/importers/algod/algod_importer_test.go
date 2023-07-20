@@ -661,7 +661,7 @@ func TestGetBlockErrors(t *testing.T) {
 			logs:                []string{"error getting block for round 123"},
 		},
 		{
-			name:                "Cannot get delta (node behind)",
+			name:                "Cannot get delta (node behind, re-send sync)",
 			rnd:                 200,
 			blockAfterResponder: MakeBlockAfterResponder(models.NodeStatus{LastRound: 50}),
 			blockResponder:      BlockResponder,
