@@ -6,7 +6,7 @@ log-level: INFO
 
 # Number of retries to perform after a pipeline plugin error.
 # Set to 0 to retry forever.
-retry-count: 10
+retry-count: 0
 
 # Time duration to wait between retry attempts.
 retry-delay: "1s"
