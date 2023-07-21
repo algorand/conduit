@@ -2,6 +2,7 @@ import time
 
 from e2e_common.indexer_db import IndexerDB
 from e2e_conduit.fixtures import importers, exporters
+from e2e_conduit.fixtures.exporters.postgresql import CONFIG_DELETE_TASK
 from e2e_conduit.scenarios import Scenario
 
 
@@ -25,7 +26,7 @@ class _Errors:
 
     def delete_task_txn_rounds_different(self, first_txn_round, last_txn_round):
         return f"""Indexer table txn has smallest round={first_txn_round} different from greatest round={last_txn_round}.
-This is problematic for the delete task because {self.exporter.config_input["delete_task"]=} so we should only keep transactions for the very last round."""
+This is problematic for the delete task because delete-task configuration is {self.exporter.config_input[CONFIG_DELETE_TASK]} so we should only keep transactions for the very last round."""
 
 
 class FollowerIndexerScenario(Scenario, _Errors):

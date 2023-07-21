@@ -10,6 +10,7 @@ from e2e_common.util import atexitrun, xrun
 
 logger = logging.getLogger(__name__)
 
+CONFIG_DELETE_TASK = "delete-task"
 
 @dataclass
 class DeleteTask:
@@ -68,5 +69,5 @@ class PostgresqlExporter(PluginFixture):
         self.config_input = {
             "connection-string": f"host=localhost port={self.port} user={self.user} password={self.password} dbname={self.db_name} sslmode=disable",
             "max-conn": self.max_conn,
-            "delete-task": asdict(self.delete_task),
+            CONFIG_DELETE_TASK: asdict(self.delete_task),
         }
