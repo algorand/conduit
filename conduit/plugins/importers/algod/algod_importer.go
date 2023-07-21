@@ -434,8 +434,10 @@ func waitForRoundWithTimeout(ctx context.Context, l *logrus.Logger, c *algod.Cli
 	l.Tracef("importer algod.waitForRoundWithTimeout() called StatusAfterBlock(%d) err: %v", rnd-1, err)
 
 	if err == nil {
-		// On a timeout StatusAfterBlock returns the current status, so check that we've actually reached the correct round.
-		if status.LastRound >= rnd {
+		// When c.StatusAfterBlock has a server-side timeout it returns the current status.
+		// We use a context with timeout and the algod default timeout is 1 minute, so technically
+		// with the current versions, this check should never be required.
+		if rnd <= status.LastRound {
 			return status.LastRound, nil
 		}
 		return 0, &SyncError{
@@ -446,9 +448,10 @@ func waitForRoundWithTimeout(ctx context.Context, l *logrus.Logger, c *algod.Cli
 
 	// If there was a different error and the node is responsive, call status before returning a SyncError.
 	status2, err2 := c.Status().Do(ctx)
-	l.Tracef("importer algod.waitForRoundWithTimeout() called Status() err: %v", err)
+	l.Tracef("importer algod.waitForRoundWithTimeout() called Status() err: %v", err2)
 	if err2 != nil {
-		return 0, fmt.Errorf("unable to get status: %w", err)
+		// If there was an error getting status, return the original error.
+		return 0, fmt.Errorf("unable to get status after block and status: %w", errors.Join(err, err2))
 	}
 	if status2.LastRound < rnd {
 		return 0, &SyncError{
@@ -458,10 +461,10 @@ func waitForRoundWithTimeout(ctx context.Context, l *logrus.Logger, c *algod.Cli
 	}
 
 	// This is probably a connection error, not a SyncError.
-	return 0, err
+	return 0, fmt.Errorf("unknown error: %w", errors.Join(err, err2))
 }
 
-func (algodImp *algodImporter) GetBlockInner(rnd uint64) (data.BlockData, error) {
+func (algodImp *algodImporter) getBlockInner(rnd uint64) (data.BlockData, error) {
 	var blockbytes []byte
 	var blk data.BlockData
 
@@ -515,7 +518,7 @@ func (algodImp *algodImporter) GetBlockInner(rnd uint64) (data.BlockData, error)
 }
 
 func (algodImp *algodImporter) GetBlock(rnd uint64) (data.BlockData, error) {
-	blk, err := algodImp.GetBlockInner(rnd)
+	blk, err := algodImp.getBlockInner(rnd)
 
 	if err != nil {
 		target := &SyncError{}
