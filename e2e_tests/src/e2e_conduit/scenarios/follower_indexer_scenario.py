@@ -5,7 +5,30 @@ from e2e_conduit.fixtures import importers, exporters
 from e2e_conduit.scenarios import Scenario
 
 
-class FollowerIndexerScenario(Scenario):
+class _Errors:
+    # SQL errors:
+    def block_header_final_round_query_error(self, e):
+        return f"Failed to get final round from indexer block_header table: {e}"
+
+    def txn_min_max_query_error(self, e):
+        return f"Failed to get min/max round from indexer txn table: {e}"
+
+    def table_row_count_query_error(self, table_name, e):
+        return f"Failed to get row count from indexer {table_name} table: {e}"
+
+    # Logic errors:
+    def txn_table_biggest_round_too_big(self, last_txn_round):
+        return f"Indexer table txn has round={last_txn_round} greater than network's final round={self.importer.lastblock}"
+
+    def block_header_round_mismatch(self, indexer_final_round):
+        return f"Indexer table block_header has final round={indexer_final_round} different from network's final round={self.importer.lastblock}"
+
+    def delete_task_txn_rounds_different(self, first_txn_round, last_txn_round):
+        return f"""Indexer table txn has smallest round={first_txn_round} different from greatest round={last_txn_round}.
+This is problematic for the delete task because {self.exporter.config_input["delete_task"]=} so we should only keep transactions for the very last round."""
+
+
+class FollowerIndexerScenario(Scenario, _Errors):
     def __init__(self, sourcenet):
         super().__init__(
             name="follower_indexer_scenario",
@@ -37,27 +60,21 @@ class FollowerIndexerScenario(Scenario):
         try:
             _, last_txn_round = idb.get_txn_min_max_round()
             if last_txn_round > self.importer.lastblock:
-                errors.append(
-                    f"Indexer last txn round {last_txn_round} is greater than importer last block {self.importer.lastblock}"
-                )
+                errors.append(self.txn_table_biggest_round_too_big(last_txn_round))
         except Exception as e:
-            errors.append(f"Failed to get min/max round from indexer txn table: {e}")
+            errors.append(self.txn_min_max_query_error(e))
 
         try:
             indexer_final_round = idb.get_block_header_final_round()
             if indexer_final_round != self.importer.lastblock:
-                errors.append(
-                    f"Indexer final round {indexer_final_round} does not match importer last block {self.importer.lastblock}"
-                )
+                errors.append(self.block_header_round_mismatch(indexer_final_round))
         except Exception as e:
-            errors.append(
-                f"Failed to get final round from indexer block_header table: {e}"
-            )
+            errors.append(self.block_header_final_round_query_error(e))
 
         return errors
 
 
-class FollowerIndexerScenarioWithDeleteTask(Scenario):
+class FollowerIndexerScenarioWithDeleteTask(Scenario, _Errors):
     def __init__(self, sourcenet):
         super().__init__(
             name="follower_indexer_scenario_with_delete_task",
@@ -90,19 +107,19 @@ class FollowerIndexerScenarioWithDeleteTask(Scenario):
 
                     if first_txn_round != last_txn_round:
                         errors.append(
-                            f"Indexer first txn round {first_txn_round} is not equal to last txn round {last_txn_round}"
+                            self.delete_task_txn_rounds_different(
+                                first_txn_round, last_txn_round
+                            )
                         )
 
-                    if last_txn_round != self.importer.lastblock:
+                    if last_txn_round > self.importer.lastblock:
                         errors.append(
-                            f"Indexer last txn round {last_txn_round} is not equal to importer last block {self.importer.lastblock}"
+                            self.txn_table_biggest_round_too_big(last_txn_round)
                         )
 
                 except Exception as e:
-                    errors.append(
-                        f"Failed to get min/max round from indexer txn table: {e}"
-                    )
+                    errors.append(self.txn_min_max_query_error(e))
         except Exception as e:
-            errors.append(f"Failed to get row count from indexer txn table: {e}")
+            errors.append(self.table_row_count_query_error("txn", e))
 
         return errors

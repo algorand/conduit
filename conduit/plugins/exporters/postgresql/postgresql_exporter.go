@@ -113,10 +113,11 @@ func (exp *postgresqlExporter) Init(ctx context.Context, initProvider data.InitP
 	exp.ctx, exp.cf = context.WithCancel(ctx)
 	exp.logger = logger
 
-	db, ready, exp.cfg, err := createIndexerDB(exp.logger, false, cfg)
+	db, ready, exporterConfig, err := createIndexerDB(exp.logger, false, cfg)
 	if err != nil {
 		return fmt.Errorf("db create error: %v", err)
 	}
+	exp.cfg = exporterConfig
 	<-ready
 
 	exp.db = db
