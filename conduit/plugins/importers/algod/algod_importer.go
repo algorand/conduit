@@ -461,7 +461,7 @@ func waitForRoundWithTimeout(ctx context.Context, l *logrus.Logger, c *algod.Cli
 	}
 
 	// This is probably a connection error, not a SyncError.
-	return 0, fmt.Errorf("unknown error: %w", errors.Join(err, err2))
+	return 0, fmt.Errorf("unknown errors: StatusAfterBlock(%w), Status(%w)", err, err2)
 }
 
 func (algodImp *algodImporter) getBlockInner(rnd uint64) (data.BlockData, error) {
