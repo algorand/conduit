@@ -10,6 +10,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"sync"
 	"testing"
@@ -914,7 +915,7 @@ func TestMetrics(t *testing.T) {
 		if strings.HasSuffix(*stat.Name, metrics.BlockImportTimeName) {
 			found++
 			// 1 hour in seconds
-			assert.Contains(t, stat.String(), "sample_count:1 sample_sum:3600")
+			assert.Regexp(t, regexp.MustCompile("sample_count:1 +sample_sum:3600"), stat.String())
 		}
 		if strings.HasSuffix(*stat.Name, metrics.ImportedRoundGaugeName) {
 			found++
@@ -922,24 +923,24 @@ func TestMetrics(t *testing.T) {
 		}
 		if strings.HasSuffix(*stat.Name, metrics.ImportedTxnsPerBlockName) {
 			found++
-			assert.Contains(t, stat.String(), "sample_count:1 sample_sum:14")
+			assert.Regexp(t, regexp.MustCompile("sample_count:1 +sample_sum:14"), stat.String())
 		}
 		if strings.HasSuffix(*stat.Name, metrics.ImportedTxnsName) {
 			found++
 			str := stat.String()
 			// the 6 single txns
-			assert.Contains(t, str, `label:<name:"txn_type" value:"acfg" > gauge:<value:1 >`)
-			assert.Contains(t, str, `label:<name:"txn_type" value:"afrz" > gauge:<value:1 >`)
-			assert.Contains(t, str, `label:<name:"txn_type" value:"axfer" > gauge:<value:1 >`)
-			assert.Contains(t, str, `label:<name:"txn_type" value:"keyreg" > gauge:<value:1 >`)
-			assert.Contains(t, str, `label:<name:"txn_type" value:"pay" > gauge:<value:1 >`)
-			assert.Contains(t, str, `label:<name:"txn_type" value:"stpf" > gauge:<value:1 >`)
+			assert.Regexp(t, regexp.MustCompile(`label:.name:"txn_type" +value:"acfg". +gauge:.value:1.`), str)
+			assert.Regexp(t, regexp.MustCompile(`label:.name:"txn_type" +value:"afrz". +gauge:.value:1.`), str)
+			assert.Regexp(t, regexp.MustCompile(`label:.name:"txn_type" +value:"axfer". +gauge:.value:1.`), str)
+			assert.Regexp(t, regexp.MustCompile(`label:.name:"txn_type" +value:"keyreg". +gauge:.value:1.`), str)
+			assert.Regexp(t, regexp.MustCompile(`label:.name:"txn_type" +value:"pay". +gauge:.value:1.`), str)
+			assert.Regexp(t, regexp.MustCompile(`label:.name:"txn_type" +value:"stpf". +gauge:.value:1.`), str)
 
-			// 2 app call txns
-			assert.Contains(t, str, `label:<name:"txn_type" value:"appl" > gauge:<value:2 >`)
+			// // 2 app call txns
+			assert.Regexp(t, regexp.MustCompile(`label:.name:"txn_type" +value:"appl". +gauge:.value:2.`), str)
 
 			// 1 app had 6 inner txns
-			assert.Contains(t, str, `label:<name:"txn_type" value:"inner" > gauge:<value:6 >`)
+			assert.Regexp(t, regexp.MustCompile(`label:.name:"txn_type" +value:"inner". +gauge:.value:6.`), str)
 		}
 	}
 	assert.Equal(t, 4, found)

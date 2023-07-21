@@ -1,19 +1,20 @@
 #!/usr/bin/env python3
-#
 
 import argparse
 import logging
 import os
 import sys
 
-from e2e_common.util import find_binary
-import e2e_conduit.fixtures.importers as importers
-import e2e_conduit.fixtures.processors as processors
-import e2e_conduit.fixtures.exporters as exporters
 from e2e_conduit.runner import ConduitE2ETestRunner
 from e2e_conduit.scenarios import scenarios
-from e2e_conduit.scenarios.follower_indexer_scenario import follower_indexer_scenario
-from e2e_conduit.scenarios.filter_scenario import app_filter_indexer_scenario, pay_filter_indexer_scenario
+from e2e_conduit.scenarios.follower_indexer_scenario import (
+    FollowerIndexerScenario,
+    FollowerIndexerScenarioWithDeleteTask,
+)
+from e2e_conduit.scenarios.filter_scenario import (
+    app_filter_indexer_scenario,
+    pay_filter_indexer_scenario,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -43,21 +44,29 @@ def main():
     else:
         logging.basicConfig(level=logging.INFO)
     sourcenet = args.source_net
-    source_is_tar = False
     if not sourcenet:
         e2edata = os.getenv("E2EDATA")
         sourcenet = e2edata and os.path.join(e2edata, "net")
     importer_source = sourcenet if sourcenet else args.s3_source_net
     if importer_source:
-        scenarios.append(follower_indexer_scenario(importer_source))
-        scenarios.append(app_filter_indexer_scenario(importer_source))
-        scenarios.append(pay_filter_indexer_scenario(importer_source))
+        scenarios.extend(
+            [
+                FollowerIndexerScenario(importer_source),
+                FollowerIndexerScenarioWithDeleteTask(importer_source),
+                app_filter_indexer_scenario(importer_source),
+                pay_filter_indexer_scenario(importer_source),
+            ]
+        )
 
     runner = ConduitE2ETestRunner(args.conduit_bin, keep_temps=args.keep_temps)
 
     success = True
     for scenario in scenarios:
         runner.setup_scenario(scenario)
+        if scenario.exporter.name == "postgresql":
+            print(
+                f"postgresql exporter with connect info: {scenario.exporter.config_input['connection-string']}"
+            )
         if runner.run_scenario(scenario) != 0:
             success = False
     return 0 if success else 1

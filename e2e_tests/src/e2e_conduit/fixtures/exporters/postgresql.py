@@ -1,3 +1,4 @@
+from dataclasses import dataclass, asdict
 import logging
 import random
 import string
@@ -9,9 +10,16 @@ from e2e_common.util import atexitrun, xrun
 
 logger = logging.getLogger(__name__)
 
+CONFIG_DELETE_TASK = "delete-task"
+
+@dataclass
+class DeleteTask:
+    interval: int
+    rounds: int
+
 
 class PostgresqlExporter(PluginFixture):
-    def __init__(self, max_conn=0):
+    def __init__(self, max_conn=0, delete_interval=0, delete_rounds=0):
         self.user = "algorand"
         self.password = "algorand"
         self.db_name = "e2e_db"
@@ -19,6 +27,7 @@ class PostgresqlExporter(PluginFixture):
         self.port = "45432"
         self.container_name = ""
         self.max_conn = max_conn
+        self.delete_task = DeleteTask(delete_interval, delete_rounds)
         super().__init__()
 
     @property
@@ -27,7 +36,7 @@ class PostgresqlExporter(PluginFixture):
 
     def setup(self, _):
         self.container_name = "".join(
-            random.choice(string.ascii_lowercase) for i in range(10)
+            random.choice(string.ascii_lowercase) for _ in range(10)
         )
         self.port = f"{random.randint(1150, 65535)}"
         try:
@@ -60,4 +69,5 @@ class PostgresqlExporter(PluginFixture):
         self.config_input = {
             "connection-string": f"host=localhost port={self.port} user={self.user} password={self.password} dbname={self.db_name} sslmode=disable",
             "max-conn": self.max_conn,
+            CONFIG_DELETE_TASK: asdict(self.delete_task),
         }
