@@ -107,7 +107,17 @@ func MakeNodeStatusResponder(status models.NodeStatus) algodCustomHandler {
 	return MakeJsonResponder("/v2/status", status)
 }
 
-var BlockAfterResponder = MakeBlockAfterResponder(models.NodeStatus{})
+// BlockAfterResponder handles /v2/status requests and returns a NodeStatus object with the provided last round
+func BlockAfterResponder(r *http.Request, w http.ResponseWriter) bool {
+	if strings.Contains(r.URL.Path, "/wait-for-block-after") {
+		rnd, _ := strconv.Atoi(path.Base(r.URL.Path))
+		w.WriteHeader(http.StatusOK)
+		status := models.NodeStatus{LastRound: uint64(rnd + 1)}
+		_, _ = w.Write(json.Encode(status))
+		return true
+	}
+	return false
+}
 
 func MakeLedgerStateDeltaResponder(delta types.LedgerStateDelta) algodCustomHandler {
 	return MakeMsgpResponder("/v2/deltas/", delta)

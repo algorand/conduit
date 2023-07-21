@@ -3,16 +3,16 @@ package algodimporter
 import (
 	"context"
 	"fmt"
-	"net/http"
-	"net/http/httptest"
-	"strings"
-	"testing"
-
 	"github.com/sirupsen/logrus"
 	"github.com/sirupsen/logrus/hooks/test"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v3"
+	"net/http"
+	"net/http/httptest"
+	"strings"
+	"testing"
+	"time"
 
 	"github.com/algorand/go-algorand-sdk/v2/client/v2/algod"
 	"github.com/algorand/go-algorand-sdk/v2/client/v2/common/models"
@@ -277,10 +277,11 @@ func TestInitCatchup(t *testing.T) {
 			algodServer: NewAlgodServer(
 				GenesisResponder,
 				MakePostSyncRoundResponder(http.StatusOK),
+				MakeMsgpStatusResponder("get", "/v2/deltas/", http.StatusNotFound, sdk.LedgerStateDelta{}),
 				MakeJsonResponderSeries("/v2/status", []int{http.StatusOK, http.StatusOK, http.StatusBadRequest}, []interface{}{models.NodeStatus{LastRound: 1235}}),
 				MakeMsgpStatusResponder("post", "/v2/catchup/", http.StatusOK, nil)),
 			netAddr:   "",
-			errInit:   "received unexpected error (StatusAfterBlock) waiting for node to catchup: HTTP 400",
+			errInit:   "received unexpected error (StatusAfterBlock) waiting for node to catchup: did not reach expected round",
 			errGetGen: "",
 			logs:      []string{},
 		},
@@ -291,6 +292,7 @@ func TestInitCatchup(t *testing.T) {
 			catchpoint:  "1236#abcd",
 			algodServer: NewAlgodServer(
 				GenesisResponder,
+				MakeMsgpStatusResponder("get", "/v2/deltas/", http.StatusNotFound, sdk.LedgerStateDelta{}),
 				MakePostSyncRoundResponder(http.StatusOK),
 				MakeJsonResponderSeries("/v2/status", []int{http.StatusOK}, []interface{}{
 					models.NodeStatus{LastRound: 1235},
@@ -299,6 +301,33 @@ func TestInitCatchup(t *testing.T) {
 					models.NodeStatus{Catchpoint: "1236#abcd", CatchpointAcquiredBlocks: 1, CatchpointTotalBlocks: 1},
 					models.NodeStatus{Catchpoint: "1236#abcd"},
 					models.NodeStatus{LastRound: 1236},
+				}),
+				MakeMsgpStatusResponder("post", "/v2/catchup/", http.StatusOK, "")),
+			netAddr:   "",
+			errInit:   "received unexpected error (StatusAfterBlock) waiting for node to catchup: did not reach expected round",
+			errGetGen: "",
+			logs: []string{
+				"catchup phase Processed Accounts: 1 / 1",
+				"catchup phase Verified Accounts: 1 / 1",
+				"catchup phase Acquired Blocks: 1 / 1",
+				"catchup phase Verified Blocks",
+			}},
+		{
+			name:        "monitor catchup success",
+			adminToken:  "admin",
+			targetRound: 1237,
+			catchpoint:  "1236#abcd",
+			algodServer: NewAlgodServer(
+				GenesisResponder,
+				MakeMsgpStatusResponder("get", "/v2/deltas/", http.StatusNotFound, sdk.LedgerStateDelta{}),
+				MakePostSyncRoundResponder(http.StatusOK),
+				MakeJsonResponderSeries("/v2/status", []int{http.StatusOK}, []interface{}{
+					models.NodeStatus{LastRound: 1235},
+					models.NodeStatus{Catchpoint: "1236#abcd", CatchpointProcessedAccounts: 1, CatchpointTotalAccounts: 1},
+					models.NodeStatus{Catchpoint: "1236#abcd", CatchpointVerifiedAccounts: 1, CatchpointTotalAccounts: 1},
+					models.NodeStatus{Catchpoint: "1236#abcd", CatchpointAcquiredBlocks: 1, CatchpointTotalBlocks: 1},
+					models.NodeStatus{Catchpoint: "1236#abcd"},
+					models.NodeStatus{LastRound: 1237}, // this is the only difference from the previous test
 				}),
 				MakeMsgpStatusResponder("post", "/v2/catchup/", http.StatusOK, "")),
 			netAddr:   "",
@@ -581,6 +610,10 @@ netaddr: %s
 }
 
 func TestGetBlockFailure(t *testing.T) {
+	// Note: There are panics in the log because the init function in these tests calls the
+	//       delta endpoint and causes a panic in most cases. This causes the "needs catchup"
+	//       function to send out a sync request at which point logic continues as normal and
+	//       the GetBlock function is able to run for the test.
 	tests := []struct {
 		name        string
 		algodServer *httptest.Server
@@ -634,6 +667,7 @@ func TestAlgodImporter_ProvideMetrics(t *testing.T) {
 }
 
 func TestGetBlockErrors(t *testing.T) {
+	waitForRoundTimeout = time.Hour
 	testcases := []struct {
 		name                string
 		rnd                 uint64
@@ -644,28 +678,29 @@ func TestGetBlockErrors(t *testing.T) {
 		err                 string
 	}{
 		{
-			name:                "Cannot get status",
+			name:                "Cannot wait for block",
 			rnd:                 123,
-			blockAfterResponder: MakeJsonResponderSeries("/wait-for-block-after", []int{http.StatusOK, http.StatusNotFound}, []interface{}{models.NodeStatus{}}),
-			err:                 fmt.Sprintf("error getting status for round"),
-			logs:                []string{"error getting status for round 123", "failed to get block for round 123 "},
+			blockAfterResponder: MakeJsonResponderSeries("/wait-for-block-after", []int{http.StatusOK, http.StatusNotFound}, []interface{}{models.NodeStatus{LastRound: 1}}),
+			err:                 fmt.Sprintf("error getting block for round 123"),
+			logs:                []string{"error getting block for round 123"},
 		},
 		{
 			name:                "Cannot get block",
 			rnd:                 123,
 			blockAfterResponder: BlockAfterResponder,
+			deltaResponder:      MakeMsgpStatusResponder("get", "/v2/deltas/", http.StatusNotFound, sdk.LedgerStateDelta{}),
 			blockResponder:      MakeMsgpStatusResponder("get", "/v2/blocks/", http.StatusNotFound, ""),
-			err:                 fmt.Sprintf("failed to get block"),
-			logs:                []string{"error getting block for round 123", "failed to get block for round 123 "},
+			err:                 fmt.Sprintf("error getting block for round 123"),
+			logs:                []string{"error getting block for round 123"},
 		},
 		{
-			name:                "Cannot get delta (node behind)",
+			name:                "Cannot get delta (node behind, re-send sync)",
 			rnd:                 200,
 			blockAfterResponder: MakeBlockAfterResponder(models.NodeStatus{LastRound: 50}),
 			blockResponder:      BlockResponder,
 			deltaResponder:      MakeMsgpStatusResponder("get", "/v2/deltas/", http.StatusNotFound, ""),
-			err:                 fmt.Sprintf("ledger state delta not found: node round (50) is behind required round (200)"),
-			logs:                []string{"ledger state delta not found: node round (50) is behind required round (200)"},
+			err:                 fmt.Sprintf("wrong round returned from status for round: 50 != 200"),
+			logs:                []string{"wrong round returned from status for round: 50 != 200", "Sync error detected, attempting to set the sync round to recover the node"},
 		},
 		{
 			name:                "Cannot get delta (caught up)",
@@ -721,6 +756,7 @@ func TestGetBlockErrors(t *testing.T) {
 			for _, log := range tc.logs {
 				found := false
 				for _, entry := range hook.AllEntries() {
+					fmt.Println(strings.Contains(entry.Message, log))
 					found = found || strings.Contains(entry.Message, log)
 				}
 				noError = noError && assert.True(t, found, "Expected log was not found: '%s'", log)
