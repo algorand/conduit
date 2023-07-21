@@ -1,19 +1,10 @@
-# Docker Image
+# Conduit Docker Image
 
 Algorand's Conduit data pipeline packaged for docker.
 
 This document provides some basic guidance and commands tailored
 for the docker container. For additional information refer to
-the [full documentation](https://developer.algorand.org/docs/get-details/conduit/GettingStarted/).
-
-# Configuration
-
-Special locations in the container designed to modify behavior:
-
-| File | Description |
-| ---- | ----------- |
-| /etc/algorand/conduit.yml | Required. Conduit configuration file. Definition for the pipeline behavior. |
-| /data | Optional. Data directory. For persistence you may mount a volume at this location. See volume permissions sections for additional information. |
+the [full documentation](https://github.com/algorand/conduit).
 
 # Usage
 
@@ -22,7 +13,7 @@ There are built-in utilities to help create the configuration.
 Once a configuration is made launch conduit and pass in the configuration
 to use.
 
-## Creating a conduit.yml configuration
+## Create the configuration
 
 The init subcommand can be used to create a configuration template.
 See the options here:
@@ -49,14 +40,14 @@ docker run algorand/conduit init --importer algod --processors filter_processor 
 
 ## Run with conduit.yml
 
-With `conduit.yml` in your current working directory, it can be mounted directly to `/data/conduit.yml`. This is good for testing and some deployments which override the starting round. For a more complete deployment see the next section which explains how to mount the entire data directory.
+With `conduit.yml` in your current working directory, it can be mounted directly to `/etc/algorand/conduit.yml`. This is good for testing and some deployments which override the starting round. For a more complete deployment see the next section which explains how to mount the entire data directory.
 
 Mount `conduit.yml` with the following command:
 ```
 docker run -it -v $(pwd)/conduit.yml:/etc/algorand/conduit.yml algorand/conduit
 ```
 
-# Mounting the Data Directory
+# Mount the Data Directory
 
 For production deployments, you should consider mounting the entire data directory. This way you can persist state across images during an upgrade, or for backups. The data directory is located at `/data`. When mounting a data directory, it must contain the `conduit.yml` file.
 

@@ -27,16 +27,16 @@ config:
     # * archival mode allows you to start processing on any round but does not
     #   contain the ledger state delta objects required for the postgres writer.
     mode: "follower"
-  
+
     # Algod API address.
-    netaddr: "http://url:port"
-  
-    # Algod API token.
-    token: ""
-  
+    netaddr: "http://your-algod-url:port"
+
+    # Algod API token. Found in the algod.token file.
+    token: "contents of your algod.token file"
+
     # Algod catchpoint catchup arguments
     catchup-config:
         # Algod Admin API Token. Used for running fast catchup during startup
-        # if the node needs to be initialized.
+        # if the node needs to be initialized. Found in algod.admin.token file.
         admin-token: ""
 ```
