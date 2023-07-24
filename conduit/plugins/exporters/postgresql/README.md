@@ -25,7 +25,7 @@ The first run after enabling pruning for an existing database must delete all of
 
 ### Cloud Database Optimization
 
-Many cloud databases like RDS will allocate storage as needed when needed. Once allocated, they typically do not deallocate the storage if it is no longer needed. To realize the benefits of data pruning, you should consider migrating to a new database to reset the allocated storage. You can do this by starting a new deployment from scratch.
+Many cloud databases like RDS will allocate storage as needed. Once allocated, they typically do not deallocate the storage if it is no longer needed. To realize the benefits of data pruning, you should consider migrating to a new database to reset the allocated storage. You can do this by starting a new deployment from scratch.
 
 ## Configuration
 ```yml @sample.yaml
