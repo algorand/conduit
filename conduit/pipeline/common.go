@@ -6,8 +6,9 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/algorand/conduit/conduit/data"
 	log "github.com/sirupsen/logrus"
+
+	"github.com/algorand/conduit/conduit/data"
 )
 
 // HandlePanic function to log panics in a common way
