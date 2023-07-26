@@ -289,7 +289,6 @@ func BenchmarkPipeline(b *testing.B) {
 				}
 				secs := b.Elapsed().Seconds()
 				rps := float64(rounds) / secs
-				// fmt.Printf("benchmark warmup results. N: %d, elapsed: %f, rounds/sec: %f\n", b.N, secs, rps)
 				b.ReportMetric(rps, "rounds/sec")
 			})
 		}

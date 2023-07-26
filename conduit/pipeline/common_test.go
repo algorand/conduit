@@ -14,7 +14,7 @@ import (
 
 // TestRetries tests the retry logic
 func TestRetries(t *testing.T) {
-	errSucceedAfter := errors.New("succeed after has failed")
+	errSentinelCause := errors.New("succeed after has failed")
 
 	succeedAfterFactory := func(succeedAfter uint64, never bool) func(uint64) (uint64, error) {
 		tries := uint64(0)
@@ -25,7 +25,7 @@ func TestRetries(t *testing.T) {
 				return tries + 1, nil
 			}
 			tries++
-			return 0, fmt.Errorf("%w: tries=%d", errSucceedAfter, tries-1)
+			return 0, fmt.Errorf("%w: tries=%d", errSentinelCause, tries-1)
 		}
 	}
 
@@ -37,7 +37,7 @@ func TestRetries(t *testing.T) {
 				return nil
 			}
 			tries++
-			return fmt.Errorf("%w: tries=%d", errSucceedAfter, tries-1)
+			return fmt.Errorf("%w: tries=%d", errSentinelCause, tries-1)
 		}
 	}
 
@@ -139,7 +139,7 @@ func TestRetries(t *testing.T) {
 				y := <-yChan
 				err := <-errChan
 				require.ErrorIs(t, err, errTestCancelled, tc.name)
-				require.ErrorIs(t, err, errSucceedAfter, tc.name)
+				require.ErrorIs(t, err, errSentinelCause, tc.name)
 				require.Zero(t, y, tc.name)
 				return
 			}
@@ -151,7 +151,7 @@ func TestRetries(t *testing.T) {
 			} else { // retryCount > 0 so doesn't retry forever
 				if tc.neverSucceed || tc.succeedAfter > tc.retryCount {
 					require.ErrorContains(t, err, fmt.Sprintf("%d", tc.retryCount), tc.name)
-					require.ErrorIs(t, err, errSucceedAfter, tc.name)
+					require.ErrorIs(t, err, errSentinelCause, tc.name)
 					require.Zero(t, y, tc.name)
 				} else { // !tc.neverSucceed && succeedAfter <= retryCount
 					require.NoError(t, err, tc.name)
@@ -190,7 +190,7 @@ func TestRetries(t *testing.T) {
 				}()
 				err := <-errChan
 				require.ErrorIs(t, err, errTestCancelled, tc.name)
-				require.ErrorIs(t, err, errSucceedAfter, tc.name)
+				require.ErrorIs(t, err, errSentinelCause, tc.name)
 				return
 			}
 
@@ -200,7 +200,7 @@ func TestRetries(t *testing.T) {
 			} else { // retryCount > 0 so doesn't retry forever
 				if tc.neverSucceed || tc.succeedAfter > tc.retryCount {
 					require.ErrorContains(t, err, fmt.Sprintf("%d", tc.retryCount), tc.name)
-					require.ErrorIs(t, err, errSucceedAfter, tc.name)
+					require.ErrorIs(t, err, errSentinelCause, tc.name)
 				} else { // !tc.neverSucceed && succeedAfter <= retryCount
 					require.NoError(t, err, tc.name)
 				}
