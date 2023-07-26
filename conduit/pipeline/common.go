@@ -23,6 +23,17 @@ type pluginInput interface {
 	uint64 | data.BlockData | string | empty
 }
 
+// Retries is a helper function to retry a function call with a delay and a max retry count.
+// The pipeline's configuration determines the retry behavior:
+//   - When p.cfg.retryCount == 0, the function will retry forever or until the context is canceled.
+//   - When p.cfg.retryCount > 0, the function will retry p.cfg.retryCount times before giving up.
+//   - Upon success, a nil error is returned.
+//   - Upon failure, a non-nil error is returned. In the case of p.cfg.retryCount > 0, the error
+//     will be a joined error of all the errors encountered during the retries. In the case of
+//     p.cfg.retryCount == 0, the error will be the last error encountered.
+//   - In the case of failure or cancellation, the duration returned is the total time spent in the function, including retries.
+//   - In the case of success, the duration measures the time spent in the call to f() that succeeded.
+//   - In the case of failure or cancellation, the value returned will be the zero value for Y.
 func Retries[X, Y pluginInput](f func(x X) (Y, error), x X, p *pipelineImpl, msg string) (y Y, dur time.Duration, err error) {
 	start := time.Now()
 
@@ -46,6 +57,7 @@ func Retries[X, Y pluginInput](f func(x X) (Y, error), x X, p *pipelineImpl, msg
 
 		p.logger.Infof("%s: retry number %d/%d with err: %v", msg, i, p.cfg.RetryCount, err2)
 		if p.cfg.RetryCount > 0 {
+			// TODO: this feels like a code smell. Probly better to always keep only the last error.
 			err = errors.Join(err, err2)
 		} else {
 			// in the case of infinite retries, only keep the last error
@@ -58,9 +70,10 @@ func Retries[X, Y pluginInput](f func(x X) (Y, error), x X, p *pipelineImpl, msg
 	return
 }
 
-func RetriesNoOutput[X pluginInput](f func(a X) error, a X, p *pipelineImpl, msg string) (time.Duration, error) {
-	_, d, err := Retries(func(a X) (empty, error) {
-		return empty{}, f(a)
+// RetriesNoOutput applies the same logic as Retries, but for functions that return no output.
+func RetriesNoOutput[X pluginInput](f func(x X) error, a X, p *pipelineImpl, msg string) (time.Duration, error) {
+	_, d, err := Retries(func(x X) (empty, error) {
+		return empty{}, f(x)
 	}, a, p, msg)
 	return d, err
 }
