@@ -537,7 +537,7 @@ func (p *pipelineImpl) ProcessorHandler(idx int, proc processors.Processor, blkI
 // saving the metadata, and invoking the activated plugin callbacks. If the context's cancellation is received
 // before the exporter's Receive method has succeeded, cancel immediately.
 // However, after the exporter's Receive() method has succeeded we try every component at least once
-// but will abort if a failure occurs at when a cancellation is received.
+// but will abort if a failure occurs after a cancellation is received.
 func (p *pipelineImpl) ExporterHandler(exporter exporters.Exporter, blkChan <-chan data.BlockData) {
 	p.wg.Add(1)
 	go func() {
@@ -572,7 +572,6 @@ func (p *pipelineImpl) ExporterHandler(exporter exporters.Exporter, blkChan <-ch
 				p.logger.Tracef("exporter handler received block data for round %d after wait of %s", lastRnd, waitTime)
 				lastRnd = blkData.Round()
 
-				// TODO: the next level of concurrency will require an atomic NextRound counter
 				if p.pipelineMetadata.NextRound != lastRnd {
 					lastError = fmt.Errorf("aborting after out of order block data. %d != %d", p.pipelineMetadata.NextRound, lastRnd)
 					return

@@ -248,36 +248,36 @@ func finalRound(pi *pipelineImpl) (sdk.Round, error) {
 
 func BenchmarkPipeline(b *testing.B) {
 	benchCases := []benchmarkCase{
-		// {
-		// 	name:            "vanilla 2 procs without sleep",
-		// 	importerSleep:   0,
-		// 	processorsSleep: []time.Duration{0, 0},
-		// 	exporterSleep:   0,
-		// },
-		// {
-		// 	name:            "uniform sleep of 10ms",
-		// 	importerSleep:   10 * time.Millisecond,
-		// 	processorsSleep: []time.Duration{10 * time.Millisecond, 10 * time.Millisecond},
-		// 	exporterSleep:   10 * time.Millisecond,
-		// },
+		{
+			name:            "vanilla 2 procs without sleep",
+			importerSleep:   0,
+			processorsSleep: []time.Duration{0, 0},
+			exporterSleep:   0,
+		},
+		{
+			name:            "uniform sleep of 10ms",
+			importerSleep:   10 * time.Millisecond,
+			processorsSleep: []time.Duration{10 * time.Millisecond, 10 * time.Millisecond},
+			exporterSleep:   10 * time.Millisecond,
+		},
 		{
 			name:            "exporter 10ms while others 1ms",
 			importerSleep:   time.Millisecond,
 			processorsSleep: []time.Duration{time.Millisecond, time.Millisecond},
 			exporterSleep:   10 * time.Millisecond,
 		},
-		// {
-		// 	name:            "importer 10ms while others 1ms",
-		// 	importerSleep:   10 * time.Millisecond,
-		// 	processorsSleep: []time.Duration{time.Millisecond, time.Millisecond},
-		// 	exporterSleep:   time.Millisecond,
-		// },
-		// {
-		// 	name:            "first processor 10ms while others 1ms",
-		// 	importerSleep:   time.Millisecond,
-		// 	processorsSleep: []time.Duration{10 * time.Millisecond, time.Millisecond},
-		// 	exporterSleep:   time.Millisecond,
-		// },
+		{
+			name:            "importer 10ms while others 1ms",
+			importerSleep:   10 * time.Millisecond,
+			processorsSleep: []time.Duration{time.Millisecond, time.Millisecond},
+			exporterSleep:   time.Millisecond,
+		},
+		{
+			name:            "first processor 10ms while others 1ms",
+			importerSleep:   time.Millisecond,
+			processorsSleep: []time.Duration{10 * time.Millisecond, time.Millisecond},
+			exporterSleep:   time.Millisecond,
+		},
 	}
 	for _, buffSize := range []int{1} {
 		for _, bc := range benchCases {
