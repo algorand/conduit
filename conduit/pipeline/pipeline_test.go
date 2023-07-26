@@ -264,12 +264,12 @@ func TestPipelineRun(t *testing.T) {
 	var pExporter exporters.Exporter = &mExporter
 	var cbComplete conduit.Completed = &mProcessor
 
-	ctx, cf := context.WithCancel(context.Background())
+	ctx, ccf := context.WithCancelCause(context.Background())
 
 	l, _ := test.NewNullLogger()
 	pImpl := pipelineImpl{
 		ctx:              ctx,
-		cf:               cf,
+		ccf:              ccf,
 		logger:           l,
 		initProvider:     nil,
 		importer:         pImporter,
@@ -291,7 +291,7 @@ func TestPipelineRun(t *testing.T) {
 
 	go func() {
 		time.Sleep(1 * time.Second)
-		cf()
+		ccf(errors.New("testing timeout"))
 	}()
 
 	pImpl.Start()
@@ -358,11 +358,11 @@ func TestPipelineErrors(t *testing.T) {
 	var pExporter exporters.Exporter = &mExporter
 	var cbComplete conduit.Completed = &mProcessor
 
-	ctx, cf := context.WithCancel(context.Background())
+	ctx, ccf := context.WithCancelCause(context.Background())
 	l, _ := test.NewNullLogger()
 	pImpl := pipelineImpl{
 		ctx: ctx,
-		cf:  cf,
+		ccf: ccf,
 		cfg: &data.Config{
 			RetryDelay: 0 * time.Second,
 			RetryCount: math.MaxUint64,
@@ -383,37 +383,38 @@ func TestPipelineErrors(t *testing.T) {
 
 	go pImpl.Start()
 	time.Sleep(time.Millisecond)
-	pImpl.cf()
+	cancel := errors.New("testing timeout")
+	pImpl.ccf(cancel)
 	pImpl.Wait()
 	assert.Error(t, pImpl.Error(), fmt.Errorf("importer"))
 
 	mImporter.returnError = false
 	mProcessor.returnError = true
-	pImpl.ctx, pImpl.cf = context.WithCancel(context.Background())
-	pImpl.setError(nil)
+	pImpl.ctx, pImpl.ccf = context.WithCancelCause(context.Background())
+	pImpl.joinError(nil)
 	go pImpl.Start()
 	time.Sleep(time.Millisecond)
-	pImpl.cf()
+	pImpl.ccf(cancel)
 	pImpl.Wait()
 	assert.Error(t, pImpl.Error(), fmt.Errorf("process"))
 
 	mProcessor.returnError = false
 	mProcessor.onCompleteError = true
-	pImpl.ctx, pImpl.cf = context.WithCancel(context.Background())
-	pImpl.setError(nil)
+	pImpl.ctx, pImpl.ccf = context.WithCancelCause(context.Background())
+	pImpl.joinError(nil)
 	go pImpl.Start()
 	time.Sleep(time.Millisecond)
-	pImpl.cf()
+	pImpl.ccf(cancel)
 	pImpl.Wait()
 	assert.Error(t, pImpl.Error(), fmt.Errorf("on complete"))
 
 	mProcessor.onCompleteError = false
 	mExporter.returnError = true
-	pImpl.ctx, pImpl.cf = context.WithCancel(context.Background())
-	pImpl.setError(nil)
+	pImpl.ctx, pImpl.ccf = context.WithCancelCause(context.Background())
+	pImpl.joinError(nil)
 	go pImpl.Start()
 	time.Sleep(time.Millisecond)
-	pImpl.cf()
+	pImpl.ccf(cancel)
 	pImpl.Wait()
 	assert.Error(t, pImpl.Error(), fmt.Errorf("exporter"))
 }
@@ -433,11 +434,11 @@ func Test_pipelineImpl_registerLifecycleCallbacks(t *testing.T) {
 	var pProcessor processors.Processor = &mProcessor
 	var pExporter exporters.Exporter = &mExporter
 
-	ctx, cf := context.WithCancel(context.Background())
+	ctx, ccf := context.WithCancelCause(context.Background())
 	l, _ := test.NewNullLogger()
 	pImpl := pipelineImpl{
 		ctx:          ctx,
-		cf:           cf,
+		ccf:          ccf,
 		cfg:          &data.Config{},
 		logger:       l,
 		initProvider: nil,
