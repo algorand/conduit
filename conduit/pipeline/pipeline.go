@@ -467,13 +467,9 @@ func (p *pipelineImpl) ImportHandler(importer importers.Importer, roundChan <-ch
 				totalSelectWait += waitTime
 				p.logger.Tracef("importer handler @ round %d received  %s", rnd, waitTime)
 
-				blkDataPtr, importTime, lastError := Retries(importer.GetBlock, rnd, p, importer.Metadata().Name)
+				blkData, importTime, lastError := Retries(importer.GetBlock, rnd, p, importer.Metadata().Name)
 				if lastError != nil {
 					p.cancel(fmt.Errorf("importer %s handler (%w): failed to import round %d after %dms: %w", importer.Metadata().Name, errImporterCause, rnd, importTime.Milliseconds(), lastError))
-					return
-				}
-				if blkDataPtr == nil {
-					p.cancel(fmt.Errorf("importer %s handler (%w): receieved nil blkDataPtr. this should never happen! failed to import round", importer.Metadata().Name, errImporterCause))
 					return
 				}
 				metrics.ImporterTimeSeconds.Observe(importTime.Seconds())
@@ -482,7 +478,7 @@ func (p *pipelineImpl) ImportHandler(importer importers.Importer, roundChan <-ch
 				select {
 				case <-p.ctx.Done():
 					return
-				case blkOutChan <- *blkDataPtr:
+				case blkOutChan <- blkData:
 					waitTime := time.Since(feedStart)
 					totalFeedWait += waitTime
 					p.logger.Tracef("imported round %d into blkOutChan after waiting %dms on channel", rnd, waitTime.Milliseconds())
@@ -516,13 +512,9 @@ func (p *pipelineImpl) ProcessorHandler(idx int, proc processors.Processor, blkI
 				p.logger.Tracef("processor[%d] %s handler received block data for round %d after wait of %s", idx, proc.Metadata().Name, lastRnd, waitTime)
 				lastRnd = blkData.Round()
 
-				blkDataPtr, procTime, lastError := Retries(proc.Process, blkData, p, proc.Metadata().Name)
+				blkData, procTime, lastError := Retries(proc.Process, blkData, p, proc.Metadata().Name)
 				if lastError != nil {
 					p.cancel(fmt.Errorf("processor[%d] %s handler (%w): failed to process round %d after %dms: %w", idx, proc.Metadata().Name, errProcessorCause, lastRnd, procTime.Milliseconds(), lastError))
-					return
-				}
-				if blkDataPtr == nil {
-					p.cancel(fmt.Errorf("processor[%d] %s handler (%w): receieved nil blkDataPtr. this should never happen! failed to process round %d", idx, proc.Metadata().Name, errProcessorCause, lastRnd))
 					return
 				}
 				metrics.ProcessorTimeSeconds.WithLabelValues(proc.Metadata().Name).Observe(procTime.Seconds())
