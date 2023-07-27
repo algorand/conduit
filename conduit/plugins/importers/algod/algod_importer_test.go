@@ -3,16 +3,17 @@ package algodimporter
 import (
 	"context"
 	"fmt"
-	"github.com/sirupsen/logrus"
-	"github.com/sirupsen/logrus/hooks/test"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
-	"gopkg.in/yaml.v3"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/sirupsen/logrus"
+	"github.com/sirupsen/logrus/hooks/test"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"gopkg.in/yaml.v3"
 
 	"github.com/algorand/go-algorand-sdk/v2/client/v2/algod"
 	"github.com/algorand/go-algorand-sdk/v2/client/v2/common/models"
@@ -700,7 +701,7 @@ func TestGetBlockErrors(t *testing.T) {
 			blockResponder:      BlockResponder,
 			deltaResponder:      MakeMsgpStatusResponder("get", "/v2/deltas/", http.StatusNotFound, ""),
 			err:                 fmt.Sprintf("wrong round returned from status for round: 50 != 200"),
-			logs:                []string{"wrong round returned from status for round: 50 != 200", "Sync error detected, attempting to set the sync round to recover the node"},
+			logs:                []string{"wrong round returned from status for round: 50 != 200", "sync error detected, attempting to set the sync round to recover the node"},
 		},
 		{
 			name:                "Cannot get delta (caught up)",
@@ -755,7 +756,8 @@ func TestGetBlockErrors(t *testing.T) {
 			// Make sure each of the expected log messages are present
 			for _, log := range tc.logs {
 				found := false
-				for _, entry := range hook.AllEntries() {
+				hookEntries := hook.AllEntries()
+				for _, entry := range hookEntries {
 					fmt.Println(strings.Contains(entry.Message, log))
 					found = found || strings.Contains(entry.Message, log)
 				}
