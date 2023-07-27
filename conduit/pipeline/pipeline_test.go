@@ -311,9 +311,10 @@ func TestPipelineRun(t *testing.T) {
 		},
 	}
 
+	errTestCancellation := errors.New("test cancellation")
 	go func() {
 		time.Sleep(1 * time.Second)
-		ccf(errors.New("testing timeout"))
+		ccf(errTestCancellation)
 	}()
 
 	err := pImpl.Init()
@@ -342,6 +343,8 @@ func TestPipelineRun(t *testing.T) {
 	assert.Equal(t, finalRound, mImporter.finalRound)
 
 	mock.AssertExpectationsForObjects(t, &mImporter, &mProcessor, &mExporter)
+
+	assert.ErrorIs(t, pImpl.WhyStopped(), errTestCancellation)
 }
 
 // TestPipelineCpuPidFiles tests that cpu and pid files are created when specified

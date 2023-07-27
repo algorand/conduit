@@ -36,6 +36,7 @@ type Pipeline interface {
 	Init() error
 	Start()
 	Stop()
+	WhyStopped() error
 	Error() error
 	Wait()
 }
@@ -418,6 +419,16 @@ func (p *pipelineImpl) Stop() {
 	}
 }
 
+// WhyStopped returns nil if a context was never provided or the pipeline
+// is yet to have stopped. Otherwise, it returns the cause of the pipeline's
+// context cancellation.
+func (p *pipelineImpl) WhyStopped() error {
+	if p.ctx == nil {
+		return nil
+	}
+	return context.Cause(p.ctx)
+}
+
 func numInnerTxn(txn sdk.SignedTxnWithAD) int {
 	result := 0
 	for _, itxn := range txn.ApplyData.EvalDelta.InnerTxns {
@@ -549,9 +560,6 @@ func (p *pipelineImpl) ExporterHandler(exporter exporters.Exporter, blkChan <-ch
 
 		defer func() {
 			p.logger.Debugf("exporter %s handler exiting. lastRnd=%d totalSelectWait=%dms, totalExportWork=%dms", exporter.Metadata().Name, lastRnd, totalSelectWait.Milliseconds(), totalExportWork.Milliseconds())
-		}()
-
-		defer func() {
 			if lastError != nil {
 				err := fmt.Errorf("exporter %s handler (%w) after round %d: %w", exporter.Metadata().Name, errExporterCause, lastRnd, lastError)
 				p.cancel(err)
