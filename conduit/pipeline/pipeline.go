@@ -592,6 +592,13 @@ func (p *pipelineImpl) ExporterHandler(exporter exporters.Exporter, blkChan <-ch
 					return
 				}
 				metrics.ExporterTimeSeconds.Observe(exportTime.Seconds())
+				// Ignore round 0 (which is empty).
+				if lastRnd > 0 {
+					// Previously we reported time starting after block fetching is complete
+					// through the end of the export operation. Now that each plugin is running
+					// in its own goroutine, report only the time of the export.
+					addMetrics(blkData, exportTime)
+				}
 
 				// Increment Round, update metadata
 				p.pipelineMetadata.NextRound = lastRnd + 1
