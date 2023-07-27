@@ -476,7 +476,7 @@ func (p *pipelineImpl) ImportHandler(importer importers.Importer, roundChan <-ch
 				lastRnd = rnd
 				waitTime := time.Since(selectStart)
 				totalSelectWait += waitTime
-				p.logger.Tracef("importer handler @ round %d received  %s", rnd, waitTime)
+				p.logger.Tracef("importer handler waited %s to receive round %d", waitTime, rnd)
 
 				blkData, importTime, lastError := Retries(importer.GetBlock, rnd, p, importer.Metadata().Name)
 				if lastError != nil {
@@ -632,7 +632,7 @@ func (p *pipelineImpl) Start() {
 		processorBlkInChan = processorBlkOutChan
 	}
 
-	p.ExporterHandler(p.exporter, processorBlkOutChan)
+	p.ExporterHandler(p.exporter, processorBlkInChan)
 
 	p.wg.Add(1)
 	// Main loop
@@ -657,7 +657,7 @@ func (p *pipelineImpl) Start() {
 	}(p.pipelineMetadata.NextRound)
 
 	<-p.ctx.Done()
-	// TODO: send a prometheus observation based on context.Cause(ctx)
+	// TODO: send a prometheus observation based on WhyStopped()
 }
 
 // Start pushes block data through the pipeline
