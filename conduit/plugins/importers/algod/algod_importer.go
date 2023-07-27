@@ -424,6 +424,7 @@ type SyncError struct {
 	err      error
 }
 
+// NewSyncError creates a new SyncError.
 func NewSyncError(rnd, expected uint64, err error) *SyncError {
 	return &SyncError{
 		rnd:      rnd,
