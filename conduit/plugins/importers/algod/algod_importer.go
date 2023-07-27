@@ -470,11 +470,10 @@ func (algodImp *algodImporter) getBlockInner(rnd uint64) (data.BlockData, error)
 
 	nodeRound, err := waitForRoundWithTimeout(algodImp.ctx, algodImp.logger, algodImp.aclient, rnd, waitForRoundTimeout)
 	if err != nil {
-		// If context has expired.
 		if algodImp.ctx.Err() != nil {
-			return blk, fmt.Errorf("GetBlock ctx error: %w", err)
+			return blk, fmt.Errorf("importer algod.GetBlock() ctx cancelled: %w", err)
 		}
-		algodImp.logger.Errorf(err.Error())
+		algodImp.logger.Errorf("importer algod.GetBlock() called waitForRoundWithTimeout: %v", err)
 		return data.BlockData{}, err
 	}
 	start := time.Now()
@@ -483,7 +482,7 @@ func (algodImp *algodImporter) getBlockInner(rnd uint64) (data.BlockData, error)
 	dt := time.Since(start)
 	getAlgodRawBlockTimeSeconds.Observe(dt.Seconds())
 	if err != nil {
-		algodImp.logger.Errorf("error getting block for round %d: %s", rnd, err.Error())
+		algodImp.logger.Errorf("importer algod.GetBlock() error getting block for round %d: %s", rnd, err.Error())
 		return data.BlockData{}, err
 	}
 	tmpBlk := new(models.BlockResponse)
@@ -503,9 +502,9 @@ func (algodImp *algodImporter) getBlockInner(rnd uint64) (data.BlockData, error)
 			delta, err = algodImp.getDelta(rnd)
 			if err != nil {
 				if nodeRound < rnd {
-					err = fmt.Errorf("ledger state delta not found: node round (%d) is behind required round (%d), ensure follower node has its sync round set to the required round: %w", nodeRound, rnd, err)
+					err = fmt.Errorf("importer algod.GetBlock() ledger state delta not found: node round (%d) is behind required round (%d), ensure follower node has its sync round set to the required round: %w", nodeRound, rnd, err)
 				} else {
-					err = fmt.Errorf("ledger state delta not found: node round (%d), required round (%d): verify follower node configuration and ensure follower node has its sync round set to the required round, re-deploying the follower node may be necessary: %w", nodeRound, rnd, err)
+					err = fmt.Errorf("importer algod.GetBlock() ledger state delta not found: node round (%d), required round (%d): verify follower node configuration and ensure follower node has its sync round set to the required round, re-deploying the follower node may be necessary: %w", nodeRound, rnd, err)
 				}
 				algodImp.logger.Error(err.Error())
 				return data.BlockData{}, err
@@ -523,10 +522,10 @@ func (algodImp *algodImporter) GetBlock(rnd uint64) (data.BlockData, error) {
 	if err != nil {
 		target := &SyncError{}
 		if errors.As(err, &target) {
-			algodImp.logger.Warnf("Sync error detected, attempting to set the sync round to recover the node: %s", err.Error())
+			algodImp.logger.Warnf("importer algod.GetBlock() sync error detected, attempting to set the sync round to recover the node: %s", err.Error())
 			_, _ = algodImp.aclient.SetSyncRound(rnd).Do(algodImp.ctx)
 		} else {
-			err = fmt.Errorf("error getting block for round %d, check node configuration: %s", rnd, err)
+			err = fmt.Errorf("importer algod.GetBlock() error getting block for round %d, check node configuration: %s", rnd, err)
 			algodImp.logger.Errorf(err.Error())
 		}
 		return data.BlockData{}, err
