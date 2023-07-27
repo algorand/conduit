@@ -80,7 +80,7 @@ func (p *pipelineImpl) joinError(err error) {
 	p.err = errors.Join(p.err, err)
 }
 
-func (p *pipelineImpl) cancel(err error) {
+func (p *pipelineImpl) cancelWithProblem(err error) {
 	p.ccf(err)
 	p.joinError(err)
 }
@@ -480,7 +480,7 @@ func (p *pipelineImpl) ImportHandler(importer importers.Importer, roundChan <-ch
 
 				blkData, importTime, lastError := Retries(importer.GetBlock, rnd, p, importer.Metadata().Name)
 				if lastError != nil {
-					p.cancel(fmt.Errorf("importer %s handler (%w): failed to import round %d after %dms: %w", importer.Metadata().Name, errImporterCause, rnd, importTime.Milliseconds(), lastError))
+					p.cancelWithProblem(fmt.Errorf("importer %s handler (%w): failed to import round %d after %dms: %w", importer.Metadata().Name, errImporterCause, rnd, importTime.Milliseconds(), lastError))
 					return
 				}
 				metrics.ImporterTimeSeconds.Observe(importTime.Seconds())
@@ -525,7 +525,7 @@ func (p *pipelineImpl) ProcessorHandler(idx int, proc processors.Processor, blkI
 
 				blkData, procTime, lastError := Retries(proc.Process, blkData, p, proc.Metadata().Name)
 				if lastError != nil {
-					p.cancel(fmt.Errorf("processor[%d] %s handler (%w): failed to process round %d after %dms: %w", idx, proc.Metadata().Name, errProcessorCause, lastRnd, procTime.Milliseconds(), lastError))
+					p.cancelWithProblem(fmt.Errorf("processor[%d] %s handler (%w): failed to process round %d after %dms: %w", idx, proc.Metadata().Name, errProcessorCause, lastRnd, procTime.Milliseconds(), lastError))
 					return
 				}
 				metrics.ProcessorTimeSeconds.WithLabelValues(proc.Metadata().Name).Observe(procTime.Seconds())
@@ -562,7 +562,7 @@ func (p *pipelineImpl) ExporterHandler(exporter exporters.Exporter, blkChan <-ch
 			p.logger.Debugf("exporter %s handler exiting. lastRnd=%d totalSelectWait=%dms, totalExportWork=%dms", exporter.Metadata().Name, lastRnd, totalSelectWait.Milliseconds(), totalExportWork.Milliseconds())
 			if lastError != nil {
 				err := fmt.Errorf("exporter %s handler (%w) after round %d: %w", exporter.Metadata().Name, errExporterCause, lastRnd, lastError)
-				p.cancel(err)
+				p.cancelWithProblem(err)
 				p.logger.Error(err)
 			}
 		}()
