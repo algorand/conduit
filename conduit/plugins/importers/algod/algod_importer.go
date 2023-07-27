@@ -421,10 +421,23 @@ func (algodImp *algodImporter) getDelta(rnd uint64) (sdk.LedgerStateDelta, error
 type SyncError struct {
 	rnd      uint64
 	expected uint64
+	err      error
+}
+
+func NewSyncError(rnd, expected uint64, err error) *SyncError {
+	return &SyncError{
+		rnd:      rnd,
+		expected: expected,
+		err:      err,
+	}
 }
 
 func (e *SyncError) Error() string {
-	return fmt.Sprintf("wrong round returned from status for round: %d != %d", e.rnd, e.expected)
+	return fmt.Sprintf("wrong round returned from status for round: %d != %d: %v", e.rnd, e.expected, e.err)
+}
+
+func (e *SyncError) Unwrap() error {
+	return e.err
 }
 
 func waitForRoundWithTimeout(ctx context.Context, l *logrus.Logger, c *algod.Client, rnd uint64, to time.Duration) (uint64, error) {
@@ -440,10 +453,7 @@ func waitForRoundWithTimeout(ctx context.Context, l *logrus.Logger, c *algod.Cli
 		if rnd <= status.LastRound {
 			return status.LastRound, nil
 		}
-		return 0, &SyncError{
-			rnd:      status.LastRound,
-			expected: rnd,
-		}
+		return 0, NewSyncError(status.LastRound, rnd, fmt.Errorf("this check should never be required: %w", err))
 	}
 
 	// If there was a different error and the node is responsive, call status before returning a SyncError.
@@ -454,10 +464,7 @@ func waitForRoundWithTimeout(ctx context.Context, l *logrus.Logger, c *algod.Cli
 		return 0, fmt.Errorf("unable to get status after block and status: %w", errors.Join(err, err2))
 	}
 	if status2.LastRound < rnd {
-		return 0, &SyncError{
-			rnd:      status.LastRound,
-			expected: rnd,
-		}
+		return 0, NewSyncError(status2.LastRound, rnd, fmt.Errorf("status2.LastRound mismatch: %w", err))
 	}
 
 	// This is probably a connection error, not a SyncError.
