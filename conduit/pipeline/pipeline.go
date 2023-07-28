@@ -618,6 +618,9 @@ func (p *pipelineImpl) ExporterHandler(exporter exporters.Exporter, blkChan <-ch
 					}
 				}
 				lastError = nil
+				// WARNING: removing the following will BREAK the E2E test.
+				// Modify with CAUTION. (Search for "Pipeline round:" in subslurp.py)
+				p.logger.Infof("FINISHED Pipeline round: %v", p.pipelineMetadata.NextRound)
 			}
 		}
 	}()
@@ -650,6 +653,7 @@ func (p *pipelineImpl) Start() {
 		defer p.logger.Debugf("round channel feed exiting. lastRnd=%d totalFeedWait=%dms", rnd, totalFeedWait.Milliseconds())
 		for {
 			selectStart := time.Now()
+			p.logger.Infof("Pipeline round kickoff: %v", rnd)
 			p.logger.Tracef("pushing round %d into roundChan", rnd)
 			select {
 			case <-p.ctx.Done():
