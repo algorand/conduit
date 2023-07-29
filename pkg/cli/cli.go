@@ -134,7 +134,7 @@ Detailed documentation is online: https://github.com/algorand/conduit`,
 		Run: func(cmd *cobra.Command, args []string) {
 			err := runConduitCmdWithConfig(cfg)
 			if err != nil {
-				fmt.Fprintf(os.Stderr, "\nExiting with error:\n%s.\n", err)
+				fmt.Fprintf(os.Stderr, "\nExiting with error:\t%s.\n", err)
 				os.Exit(1)
 			}
 		},
