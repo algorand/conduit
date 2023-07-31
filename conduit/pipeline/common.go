@@ -34,7 +34,7 @@ type pluginInput interface {
 //   - when > 0, the function will retry p.cfg.retryCount times before giving up
 //
 // - Upon success:
-//   - a nil error is returned even if there were many intermediate failures
+//   - a nil error is returned even if there were intermediate failures
 //   - the returned duration dur measures the time spent in the call to f() that succeeded
 //
 // - Upon failure:

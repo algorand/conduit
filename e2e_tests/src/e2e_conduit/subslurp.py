@@ -12,12 +12,6 @@ FINISH_ROUND: re.Pattern = re.compile(
     b"FINISHED Pipeline round: (\d+). UPDATED Pipeline round"
 )
 
-# Matches error from attempting to sync past network's final round:
-# "waitForRoundWithTimeout: wrong round returned from status for round: 102 != 103: status2.LastRound mismatch: context deadline exceeded"
-# END_OF_TEST_SYNC_MISMATCH: re.Pattern = re.compile(
-#     b"wrong round returned from status for round: (\d+) != (\d+).*context deadline exceeded"
-# )
-
 
 class subslurp:
     """accumulate stdout or stderr from a subprocess and hold it for debugging if something goes wrong"""
@@ -29,18 +23,6 @@ class subslurp:
         self.timeout = timedelta(seconds=120)
         self.round = 0
         self.error_log = None
-
-    # def is_log_error(self, log_line):
-    #     if b"error" in log_line:
-    #         # match = re.search(END_OF_TEST_SYNC_MISMATCH, log_line)
-    #         # if match:
-    #         #     x, y = list(map(int, match.groups()))
-    #         #     if x + 1 == y and x == lastround:
-    #         #         return False
-
-    #         self.error_log = log_line
-    #         return True
-    #     return False
 
     def tryParseRound(self, log_line):
         match = FINISH_ROUND.search(log_line)
