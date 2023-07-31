@@ -16,9 +16,6 @@ const (
 	// Compare with logrus' default time format:
 	// time.RFC1123Z = "Mon, 02 Jan 2006 15:04:05 -0700"
 	ConduitTimeFormat = time.RFC3339Nano
-
-	// Unfortunately, variations on this theme didn't work:
-	// ConduitTimeFormat = "Mon, 02 Jan 2006 15:04:05.123456789 -0700"
 )
 
 // DefaultConfigBaseName is the default conduit configuration filename without the extension.
