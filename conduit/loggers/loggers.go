@@ -8,6 +8,7 @@ import (
 
 	log "github.com/sirupsen/logrus"
 
+	"github.com/algorand/conduit/conduit/data"
 	"github.com/algorand/conduit/conduit/pipeline"
 )
 
@@ -16,6 +17,7 @@ func MakeThreadSafeLoggerWithWriter(level log.Level, writer io.Writer) *log.Logg
 	formatter := pipeline.PluginLogFormatter{
 		Formatter: &log.JSONFormatter{
 			DisableHTMLEscape: true,
+			TimestampFormat:   data.ConduitTimeFormat,
 		},
 		Type: "Conduit",
 		Name: "main",

@@ -554,46 +554,46 @@ func (p *pipelineImpl) ExporterHandler(exporter exporters.Exporter, blkChan <-ch
 	go func() {
 		defer p.wg.Done()
 		var lastError error
-		lastRnd := uint64(0)
+		lastRound := uint64(0)
 		totalSelectWait := time.Duration(0)
 		totalExportWork := time.Duration(0)
 
 		defer func() {
-			p.logger.Debugf("exporter %s handler exiting. lastRnd=%d totalSelectWait=%dms, totalExportWork=%dms", exporter.Metadata().Name, lastRnd, totalSelectWait.Milliseconds(), totalExportWork.Milliseconds())
+			p.logger.Debugf("exporter %s handler exiting. lastRnd=%d totalSelectWait=%dms, totalExportWork=%dms", exporter.Metadata().Name, lastRound, totalSelectWait.Milliseconds(), totalExportWork.Milliseconds())
 			if lastError != nil {
-				err := fmt.Errorf("exporter %s handler (%w) after round %d: %w", exporter.Metadata().Name, errExporterCause, lastRnd, lastError)
+				err := fmt.Errorf("exporter %s handler (%w) after round %d: %w", exporter.Metadata().Name, errExporterCause, lastRound, lastError)
 				p.cancelWithProblem(err)
 				p.logger.Error(err)
 			}
 		}()
 
 		for {
-			p.logger.Tracef("exporter handler waiting for block data. round=%d", lastRnd)
+			p.logger.Tracef("exporter handler waiting for block data. round=%d", lastRound)
 			selectStart := time.Now()
 			select {
 			case <-p.ctx.Done():
-				p.logger.Infof("exporter handler exiting lastRnd=%d", lastRnd)
+				p.logger.Infof("exporter handler exiting lastRnd=%d", lastRound)
 				return
 			case blkData := <-blkChan:
 				waitTime := time.Since(selectStart)
 				totalSelectWait += waitTime
-				p.logger.Tracef("exporter handler received block data for round %d after wait of %s", lastRnd, waitTime)
-				lastRnd = blkData.Round()
+				p.logger.Tracef("exporter handler received block data for round %d after wait of %s", lastRound, waitTime)
+				lastRound = blkData.Round()
 
-				if p.pipelineMetadata.NextRound != lastRnd {
-					lastError = fmt.Errorf("aborting after out of order block data. %d != %d", p.pipelineMetadata.NextRound, lastRnd)
+				if p.pipelineMetadata.NextRound != lastRound {
+					lastError = fmt.Errorf("aborting after out of order block data. %d != %d", p.pipelineMetadata.NextRound, lastRound)
 					return
 				}
 
 				var exportTime time.Duration
 				exportTime, lastError = RetriesNoOutput(exporter.Receive, blkData, p, exporter.Metadata().Name)
 				if lastError != nil {
-					lastError = fmt.Errorf("aborting after failing to export round %d: %w", lastRnd, lastError)
+					lastError = fmt.Errorf("aborting after failing to export round %d: %w", lastRound, lastError)
 					return
 				}
 				metrics.ExporterTimeSeconds.Observe(exportTime.Seconds())
 				// Ignore round 0 (which is empty).
-				if lastRnd > 0 {
+				if lastRound > 0 {
 					// Previously we reported time starting after block fetching is complete
 					// through the end of the export operation. Now that each plugin is running
 					// in its own goroutine, report only the time of the export.
@@ -601,16 +601,17 @@ func (p *pipelineImpl) ExporterHandler(exporter exporters.Exporter, blkChan <-ch
 				}
 
 				// Increment Round, update metadata
-				p.pipelineMetadata.NextRound = lastRnd + 1
+				nextRound := lastRound + 1
+				p.pipelineMetadata.NextRound = nextRound
 				_, lastError = RetriesNoOutput(p.pipelineMetadata.encodeToFile, p.cfg.ConduitArgs.ConduitDataDir, p, "pipelineMetadata save")
 				if lastError != nil {
-					lastError = fmt.Errorf("aborting after updating NextRound=%d and failing to save metadata: %w", lastRnd+1, lastError)
+					lastError = fmt.Errorf("aborting after updating NextRound=%d and failing to save metadata: %w", nextRound, lastError)
 					return
 				}
 				p.logger.Tracef("exporter %s @ round %d saved pipeline metadata", exporter.Metadata().Name, p.pipelineMetadata.NextRound)
 
 				for i, cb := range p.completeCallback {
-					p.logger.Tracef("exporter %s @ round=%d NextRound=%d executing callback %d", exporter.Metadata().Name, lastRnd, p.pipelineMetadata.NextRound, i)
+					p.logger.Tracef("exporter %s @ round=%d NextRound=%d executing callback %d", exporter.Metadata().Name, lastRound, p.pipelineMetadata.NextRound, i)
 					_, lastError = RetriesNoOutput(cb, blkData, p, fmt.Sprintf("callback %d", i))
 					if lastError != nil {
 						lastError = fmt.Errorf("aborting due to failed callback %d: %w", i, lastError)
@@ -620,7 +621,7 @@ func (p *pipelineImpl) ExporterHandler(exporter exporters.Exporter, blkChan <-ch
 				lastError = nil
 				// WARNING: removing the following will BREAK the E2E test.
 				// Modify with CAUTION. (Search for "Pipeline round:" in subslurp.py)
-				p.logger.Infof("FINISHED Pipeline round: %v", p.pipelineMetadata.NextRound)
+				p.logger.Infof("FINISHED Pipeline round: %d. UPDATED Pipeline round: %d", lastRound, nextRound)
 			}
 		}
 	}()
