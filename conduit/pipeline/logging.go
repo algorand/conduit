@@ -2,6 +2,8 @@ package pipeline
 
 import (
 	log "github.com/sirupsen/logrus"
+
+	"github.com/algorand/conduit/conduit/data"
 )
 
 // PluginLogFormatter formats the log message with special conduit tags
@@ -23,6 +25,7 @@ func makePluginLogFormatter(pluginType string, pluginName string) PluginLogForma
 	return PluginLogFormatter{
 		Formatter: &log.JSONFormatter{
 			DisableHTMLEscape: true,
+			TimestampFormat:   data.ConduitTimeFormat,
 		},
 		Type: pluginType,
 		Name: pluginName,
