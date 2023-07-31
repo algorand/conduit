@@ -51,7 +51,7 @@ class subslurp:
                     )
                     return
                 if b"error" in line:
-                    # NOTE this quite very strict criterion!!!
+                    # NOTE this quite strict criterion!!!
                     raise RuntimeError(
                         f"E2E tests logged an error at line {i+1}: {self.error_log}"
                     )
