@@ -10,6 +10,12 @@ import (
 	yaml "gopkg.in/yaml.v3"
 )
 
+const (
+	// ConduitTimeFormat is the time format used by conduit's logger.
+	// time.RFC3339Nano = "2006-01-02T15:04:05.999999999Z07:00"
+	ConduitTimeFormat = time.RFC3339Nano
+)
+
 // DefaultConfigBaseName is the default conduit configuration filename without the extension.
 var DefaultConfigBaseName = "conduit"
 
