@@ -476,7 +476,7 @@ func (p *pipelineImpl) ImportHandler(importer importers.Importer, roundChan <-ch
 				lastRnd = rnd
 				waitTime := time.Since(selectStart)
 				totalSelectWait += waitTime
-				p.logger.Tracef("importer handler waited %s to receive round %d", waitTime, rnd)
+				p.logger.Tracef("importer handler waited %dms to receive round %d", waitTime.Milliseconds(), rnd)
 
 				blkData, importTime, lastError := Retries(importer.GetBlock, rnd, p, importer.Metadata().Name)
 				if lastError != nil {
@@ -549,7 +549,7 @@ func (p *pipelineImpl) ProcessorHandler(idx int, proc processors.Processor, blkI
 // before the exporter's Receive method has succeeded, cancel immediately.
 // However, after the exporter's Receive() method has succeeded we try every component at least once
 // but will abort if a failure occurs after a cancellation is received.
-func (p *pipelineImpl) ExporterHandler(exporter exporters.Exporter, blkChan <-chan data.BlockData) {
+func (p *pipelineImpl) ExporterHandler(exporter exporters.Exporter, blkChan <-chan data.BlockData, startStart time.Time) {
 	p.wg.Add(1)
 	go func() {
 		defer p.wg.Done()
@@ -619,9 +619,11 @@ func (p *pipelineImpl) ExporterHandler(exporter exporters.Exporter, blkChan <-ch
 					}
 				}
 				lastError = nil
-				// WARNING: removing the following will BREAK the E2E test.
-				// Modify with CAUTION. (Search for "Pipeline round:" in subslurp.py)
-				p.logger.Infof("FINISHED Pipeline round: %d. UPDATED Pipeline round: %d", lastRound, nextRound)
+				// WARNING: removing the following will BREAK:
+				// - the E2E test (Search for "Pipeline round:" in subslurp.py)
+				// - the internal tools logstats collector (See func ConduitCollector in logstats.go of internal-tools repo)
+				// Modify with CAUTION!!!!
+				p.logger.Infof("UPDATED Pipeline NextRound=%d. FINISHED Pipeline round r=%d (%d txn) exported in %s", nextRound, lastRound, len(blkData.Payset), time.Since(startStart))
 			}
 		}
 	}()
@@ -629,6 +631,7 @@ func (p *pipelineImpl) ExporterHandler(exporter exporters.Exporter, blkChan <-ch
 
 // Start pushes block data through the pipeline
 func (p *pipelineImpl) Start() {
+	startStart := time.Now()
 	p.logger.Trace("Pipeline.Start()")
 
 	// Setup channels
@@ -643,7 +646,7 @@ func (p *pipelineImpl) Start() {
 		processorBlkInChan = processorBlkOutChan
 	}
 
-	p.ExporterHandler(p.exporter, processorBlkInChan)
+	p.ExporterHandler(p.exporter, processorBlkInChan, startStart)
 
 	p.wg.Add(1)
 	// Main loop
