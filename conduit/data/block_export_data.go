@@ -25,10 +25,10 @@ type InitProvider interface {
 
 // PipelineData is used to keep track of pipeline performance
 type PipelineData struct {
-	//StartRoundTime is the time the pipeline started processing the block
+	// StartRoundTime is the time the pipeline started processing the block
 	StartRoundTime time.Time `json:"startRoundTime,omitempty"`
 
-	//FinishImportTime is the time the pipeline received the block from the importer
+	// FinishImportTime is the time the pipeline received the block from the importer
 	FinishImportTime time.Time `json:"finishImportTime,omitempty"`
 }
 
