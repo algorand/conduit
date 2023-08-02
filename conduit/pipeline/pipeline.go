@@ -62,7 +62,7 @@ type pipelineImpl struct {
 }
 
 var (
-	errStopCause      = errors.New("pipeline stopped")
+	stopCause         = errors.New("pipeline stopped") //nolint:revive // this is a sentinel error
 	errImporterCause  = errors.New("importer cancelled")
 	errProcessorCause = errors.New("processor cancelled")
 	errExporterCause  = errors.New("exporter cancelled")
@@ -386,7 +386,7 @@ func (p *pipelineImpl) Init() error {
 }
 
 func (p *pipelineImpl) Stop() {
-	p.ccf(errStopCause)
+	p.ccf(stopCause)
 	p.wg.Wait()
 
 	if p.profFile != nil {

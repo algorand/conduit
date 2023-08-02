@@ -7,10 +7,8 @@ import re
 logger = logging.getLogger(__name__)
 
 # Matches conduit log output:
-# "FINISHED Pipeline round: 110. UPDATED Pipeline round: 111"
-FINISH_ROUND: re.Pattern = re.compile(
-    b"FINISHED Pipeline round: (\d+). UPDATED Pipeline round"
-)
+# "UPDATED Pipeline NextRound=111. FINISHED Pipeline round r=110 (23 txn) exported in 1.23435sec"
+FINISH_ROUND: re.Pattern = re.compile(b"FINISHED Pipeline round r=(\d+)")
 
 
 class subslurp:
