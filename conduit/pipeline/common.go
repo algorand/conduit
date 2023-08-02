@@ -2,7 +2,6 @@ package pipeline
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"time"
 
@@ -21,7 +20,11 @@ func HandlePanic(logger *log.Logger) {
 type empty struct{}
 
 type pluginInput interface {
-	uint64 | data.BlockData | string | empty
+	uint64 | data.BlockData | string
+}
+
+type pluginOutput interface {
+	pluginInput | empty
 }
 
 // Retries is a wrapper for retrying a function call f() with a cancellation context,
@@ -42,7 +45,7 @@ type pluginInput interface {
 //   - when p.cfg.retryCount > 0, the error will be a join of all the errors encountered during the retries
 //   - when p.cfg.retryCount == 0, the error will be the last error encountered
 //   - the returned duration dur is the total time spent in the function, including retries
-func Retries[X, Y pluginInput](f func(x X) (Y, error), x X, p *pipelineImpl, msg string) (y Y, dur time.Duration, err error) {
+func Retries[X pluginInput, Y pluginOutput](f func(x X) (Y, error), x X, p *pipelineImpl, msg string) (y Y, dur time.Duration, err error) {
 	start := time.Now()
 
 	for i := uint64(0); p.cfg.RetryCount == 0 || i <= p.cfg.RetryCount; i++ {
@@ -58,19 +61,12 @@ func Retries[X, Y pluginInput](f func(x X) (Y, error), x X, p *pipelineImpl, msg
 			}
 		}
 		opStart := time.Now()
-		y2, err2 := f(x)
-		if err2 == nil {
-			return y2, time.Since(opStart), nil
+		y, err = f(x)
+		if err == nil {
+			dur = time.Since(opStart)
+			return
 		}
-
-		p.logger.Infof("%s: retry number %d/%d with err: %v", msg, i, p.cfg.RetryCount, err2)
-		if p.cfg.RetryCount > 0 {
-			// TODO: this feels like a code smell. Probly better to always keep only the last error.
-			err = errors.Join(err, err2)
-		} else {
-			// in the case of infinite retries, only keep the last error
-			err = err2
-		}
+		p.logger.Infof("%s: retry number %d/%d with err: %v", msg, i, p.cfg.RetryCount, err)
 	}
 
 	dur = time.Since(start)
