@@ -147,6 +147,9 @@ func TestRetries(t *testing.T) {
 			y, _, err := Retries(succeedAfter, 0, p, "test")
 			if tc.retryCount == 0 { // WLOG tc.neverSucceed == false
 				require.NoError(t, err, tc.name)
+
+				// note we subtract 1 from y below because succeedAfter has added 1 to its output
+				// to disambiguate with the zero value which occurs on failure
 				require.Equal(t, tc.succeedAfter, y-1, tc.name)
 			} else { // retryCount > 0 so doesn't retry forever
 				if tc.neverSucceed || tc.succeedAfter > tc.retryCount {
