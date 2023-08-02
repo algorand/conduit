@@ -271,8 +271,6 @@ func TestPipelineRun(t *testing.T) {
 	mImporter.On("GetBlock", mock.Anything).Return(mock.Anything, nil)
 	mImporter.On("OnComplete", mock.Anything).Return(nil)
 	mProcessor := mockProcessor{}
-	processorData := uniqueBlockData
-	processorData.BlockHeader.Round++
 	mProcessor.On("Process", mock.Anything).Return(mock.Anything)
 	mProcessor.On("OnComplete", mock.Anything).Return(nil)
 	mExporter := mockExporter{}
