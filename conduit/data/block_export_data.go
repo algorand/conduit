@@ -21,8 +21,6 @@ type InitProvider interface {
 	GetTelemetryClient() telemetry.Client
 }
 
-// PipelineData is used to keep track of pipeline performance
-
 // BlockData is provided to the Exporter on each round.
 type BlockData struct {
 	// BlockHeader is the immutable header from the block
