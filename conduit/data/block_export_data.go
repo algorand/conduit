@@ -23,6 +23,7 @@ type InitProvider interface {
 
 // BlockData is provided to the Exporter on each round.
 type BlockData struct {
+
 	// BlockHeader is the immutable header from the block
 	BlockHeader sdk.BlockHeader `json:"block,omitempty"`
 
