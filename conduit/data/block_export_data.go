@@ -1,8 +1,6 @@
 package data
 
 import (
-	"time"
-
 	sdk "github.com/algorand/go-algorand-sdk/v2/types"
 
 	"github.com/algorand/conduit/conduit/telemetry"
@@ -24,13 +22,6 @@ type InitProvider interface {
 }
 
 // PipelineData is used to keep track of pipeline performance
-type PipelineData struct {
-	// StartRoundTime is the time the pipeline started processing the block
-	StartRoundTime time.Time `json:"startRoundTime,omitempty"`
-
-	// FinishImportTime is the time the pipeline received the block from the importer
-	FinishImportTime time.Time `json:"finishImportTime,omitempty"`
-}
 
 // BlockData is provided to the Exporter on each round.
 type BlockData struct {
@@ -45,9 +36,6 @@ type BlockData struct {
 
 	// Certificate contains voting data that certifies the block. The certificate is non deterministic, a node stops collecting votes once the voting threshold is reached.
 	Certificate *map[string]interface{} `json:"cert,omitempty"`
-
-	// PipelineData is used to keep track of pipeline performance
-	PipelineData
 }
 
 // Round returns the round to which the BlockData corresponds

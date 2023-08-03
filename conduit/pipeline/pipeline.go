@@ -61,6 +61,18 @@ type pipelineImpl struct {
 	pipelineMetadata state
 }
 
+type pipelineData struct {
+	startRoundTime   time.Time
+	finishImportTime time.Time
+}
+
+type pipelineBlock struct {
+	data.BlockData
+	pipelineData
+}
+
+type pluginChannel chan pipelineBlock
+
 var (
 	stopCause         = errors.New("pipeline stopped") //nolint:revive // this is a sentinel error
 	errImporterCause  = errors.New("importer cancelled")
@@ -455,7 +467,7 @@ func addMetrics(block data.BlockData, importTime time.Duration) {
 	metrics.ImportedTxnsPerBlock.Observe(float64(len(block.Payset)) + float64(innerTxn))
 }
 
-func (p *pipelineImpl) ImportHandler(importer importers.Importer, roundChan <-chan uint64, blkOutChan chan<- data.BlockData) {
+func (p *pipelineImpl) importerHandler(importer importers.Importer, roundChan <-chan uint64, blkOutChan pluginChannel) {
 	p.wg.Add(1)
 	go func() {
 		defer p.wg.Done()
@@ -492,15 +504,18 @@ func (p *pipelineImpl) ImportHandler(importer importers.Importer, roundChan <-ch
 				// run through processors
 
 				importFinish := time.Now()
-				blkData.PipelineData = data.PipelineData{
-					StartRoundTime:   startRound,
-					FinishImportTime: importFinish,
+				pipelineBlk := pipelineBlock{
+					BlockData: blkData,
+					pipelineData: pipelineData{
+						startRoundTime:   startRound,
+						finishImportTime: importFinish,
+					},
 				}
 
 				select {
 				case <-p.ctx.Done():
 					return
-				case blkOutChan <- blkData:
+				case blkOutChan <- pipelineBlk:
 					waitTime := time.Since(importFinish)
 					totalFeedWait += waitTime
 					p.logger.Tracef("imported round %d into blkOutChan after waiting %dms on channel", rnd, waitTime.Milliseconds())
@@ -511,7 +526,7 @@ func (p *pipelineImpl) ImportHandler(importer importers.Importer, roundChan <-ch
 	}()
 }
 
-func (p *pipelineImpl) ProcessorHandler(idx int, proc processors.Processor, blkInChan <-chan data.BlockData, blkOutChan chan<- data.BlockData) {
+func (p *pipelineImpl) processorHandler(idx int, proc processors.Processor, blkInChan pluginChannel, blkOutChan pluginChannel) {
 	p.wg.Add(1)
 	go func() {
 		defer p.wg.Done()
@@ -528,13 +543,15 @@ func (p *pipelineImpl) ProcessorHandler(idx int, proc processors.Processor, blkI
 			case <-p.ctx.Done():
 				p.logger.Infof("processor[%d] %s handler exiting lastRnd=%d", idx, proc.Metadata().Name, lastRnd)
 				return
-			case blkData := <-blkInChan:
+			case pluginBlk := <-blkInChan:
 				waitTime := time.Since(selectStart)
 				totalSelectWait += waitTime
 				p.logger.Tracef("processor[%d] %s handler received block data for round %d after wait of %s", idx, proc.Metadata().Name, lastRnd, waitTime)
-				lastRnd = blkData.Round()
+				lastRnd = pluginBlk.Round()
 
-				blkData, procTime, lastError := Retries(proc.Process, blkData, p, proc.Metadata().Name)
+				var procTime time.Duration
+				var lastError error
+				pluginBlk.BlockData, procTime, lastError = Retries(proc.Process, pluginBlk.BlockData, p, proc.Metadata().Name)
 				if lastError != nil {
 					p.cancelWithProblem(fmt.Errorf("processor[%d] %s handler (%w): failed to process round %d after %dms: %w", idx, proc.Metadata().Name, errProcessorCause, lastRnd, procTime.Milliseconds(), lastError))
 					return
@@ -545,7 +562,7 @@ func (p *pipelineImpl) ProcessorHandler(idx int, proc processors.Processor, blkI
 				select {
 				case <-p.ctx.Done():
 					return
-				case blkOutChan <- blkData:
+				case blkOutChan <- pluginBlk:
 					waitTime := time.Since(selectStart)
 					totalFeedWait += waitTime
 					p.logger.Tracef("processor[%d] %s for round %d into blkOutChan after waiting %dms", idx, proc.Metadata().Name, lastRnd, totalFeedWait.Milliseconds())
@@ -555,12 +572,12 @@ func (p *pipelineImpl) ProcessorHandler(idx int, proc processors.Processor, blkI
 	}()
 }
 
-// ExporterHandler handles the exporter's Receive method, updating the metadata's NextRound,
+// exporterHandler handles the exporter's Receive method, updating the metadata's NextRound,
 // saving the metadata, and invoking the activated plugin callbacks. If the context's cancellation is received
 // before the exporter's Receive method has succeeded, cancel immediately.
 // However, after the exporter's Receive() method has succeeded we try every component at least once
 // but will abort if a failure occurs after a cancellation is received.
-func (p *pipelineImpl) ExporterHandler(exporter exporters.Exporter, blkChan <-chan data.BlockData) {
+func (p *pipelineImpl) exporterHandler(exporter exporters.Exporter, blkChan pluginChannel) {
 	p.wg.Add(1)
 	go func() {
 		defer p.wg.Done()
@@ -585,11 +602,11 @@ func (p *pipelineImpl) ExporterHandler(exporter exporters.Exporter, blkChan <-ch
 			case <-p.ctx.Done():
 				p.logger.Infof("exporter handler exiting lastRnd=%d", lastRound)
 				return
-			case blkData := <-blkChan:
+			case pluginBlk := <-blkChan:
 				waitTime := time.Since(selectStart)
 				totalSelectWait += waitTime
 				p.logger.Tracef("exporter handler received block data for round %d after wait of %s", lastRound, waitTime)
-				lastRound = blkData.Round()
+				lastRound = pluginBlk.Round()
 
 				if p.pipelineMetadata.NextRound != lastRound {
 					lastError = fmt.Errorf("aborting after out of order block data. %d != %d", p.pipelineMetadata.NextRound, lastRound)
@@ -597,7 +614,7 @@ func (p *pipelineImpl) ExporterHandler(exporter exporters.Exporter, blkChan <-ch
 				}
 
 				var exportTime time.Duration
-				exportTime, lastError = RetriesNoOutput(exporter.Receive, blkData, p, exporter.Metadata().Name)
+				exportTime, lastError = RetriesNoOutput(exporter.Receive, pluginBlk.BlockData, p, exporter.Metadata().Name)
 				if lastError != nil {
 					lastError = fmt.Errorf("aborting after failing to export round %d: %w", lastRound, lastError)
 					return
@@ -608,7 +625,7 @@ func (p *pipelineImpl) ExporterHandler(exporter exporters.Exporter, blkChan <-ch
 					// Previously we reported time starting after block fetching is complete
 					// through the end of the export operation. Now that each plugin is running
 					// in its own goroutine, report only the time of the export.
-					addMetrics(blkData, exportTime)
+					addMetrics(pluginBlk.BlockData, exportTime)
 				}
 
 				// Increment Round, update metadata
@@ -623,7 +640,7 @@ func (p *pipelineImpl) ExporterHandler(exporter exporters.Exporter, blkChan <-ch
 
 				for i, cb := range p.completeCallback {
 					p.logger.Tracef("exporter %s @ round=%d NextRound=%d executing callback %d", exporter.Metadata().Name, lastRound, p.pipelineMetadata.NextRound, i)
-					_, lastError = RetriesNoOutput(cb, blkData, p, fmt.Sprintf("callback %d", i))
+					_, lastError = RetriesNoOutput(cb, pluginBlk.BlockData, p, fmt.Sprintf("callback %d", i))
 					if lastError != nil {
 						lastError = fmt.Errorf("aborting due to failed callback %d: %w", i, lastError)
 						return
@@ -637,10 +654,10 @@ func (p *pipelineImpl) ExporterHandler(exporter exporters.Exporter, blkChan <-ch
 				p.logger.Infof(
 					"UPDATED Pipeline NextRound=%d after [%s] from round kickoff. FINISHED Pipeline round r=%d (%d txn) exported in %s",
 					nextRound,
-					time.Since(blkData.StartRoundTime),
+					time.Since(pluginBlk.startRoundTime),
 					lastRound,
-					len(blkData.Payset),
-					time.Since(blkData.FinishImportTime),
+					len(pluginBlk.Payset),
+					time.Since(pluginBlk.finishImportTime),
 				)
 			}
 		}
@@ -653,17 +670,17 @@ func (p *pipelineImpl) Start() {
 
 	// Setup channels
 	roundChan := make(chan uint64)
-	processorBlkInChan := make(chan data.BlockData)
-	p.ImportHandler(p.importer, roundChan, processorBlkInChan)
+	processorBlkInChan := make(pluginChannel)
+	p.importerHandler(p.importer, roundChan, processorBlkInChan)
 
-	var processorBlkOutChan chan data.BlockData
+	var processorBlkOutChan pluginChannel
 	for i, proc := range p.processors {
-		processorBlkOutChan = make(chan data.BlockData)
-		p.ProcessorHandler(i, proc, processorBlkInChan, processorBlkOutChan)
+		processorBlkOutChan = make(pluginChannel)
+		p.processorHandler(i, proc, processorBlkInChan, processorBlkOutChan)
 		processorBlkInChan = processorBlkOutChan
 	}
 
-	p.ExporterHandler(p.exporter, processorBlkInChan)
+	p.exporterHandler(p.exporter, processorBlkInChan)
 
 	p.wg.Add(1)
 	// Main loop
