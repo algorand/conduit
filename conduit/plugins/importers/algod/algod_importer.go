@@ -42,7 +42,7 @@ const (
 )
 
 var (
-	waitForRoundTimeout = 5 * time.Second
+	waitForRoundTimeout = 15 * time.Second
 )
 
 const catchpointsURL = "https://algorand-catchpoints.s3.us-east-2.amazonaws.com/consolidated/%s_catchpoints.txt"
@@ -418,23 +418,25 @@ func (algodImp *algodImporter) getDelta(rnd uint64) (sdk.LedgerStateDelta, error
 }
 
 // SyncError is used to indicate algod and conduit are not synchronized.
+// The retrievedRound is the round returned from an algod status call.
+// The expectedRound is the round conduit expected to have gotten back.
 type SyncError struct {
-	rnd      uint64
-	expected uint64
-	err      error
+	retrievedRound uint64
+	expectedRound  uint64
+	err            error
 }
 
 // NewSyncError creates a new SyncError.
-func NewSyncError(rnd, expected uint64, err error) *SyncError {
+func NewSyncError(retrievedRound, expectedRound uint64, err error) *SyncError {
 	return &SyncError{
-		rnd:      rnd,
-		expected: expected,
-		err:      err,
+		retrievedRound: retrievedRound,
+		expectedRound:  expectedRound,
+		err:            err,
 	}
 }
 
 func (e *SyncError) Error() string {
-	return fmt.Sprintf("wrong round returned from status for round: %d != %d: %v", e.rnd, e.expected, e.err)
+	return fmt.Sprintf("wrong round returned from status for round: retrieved(%d) != expected(%d): %v", e.retrievedRound, e.expectedRound, e.err)
 }
 
 func (e *SyncError) Unwrap() error {
