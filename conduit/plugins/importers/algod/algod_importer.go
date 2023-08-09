@@ -457,7 +457,7 @@ func waitForRoundWithTimeout(ctx context.Context, l *logrus.Logger, c *algod.Cli
 			return status.LastRound, nil
 		}
 		// algod's timeout should not be reached because context.WithTimeout is used
-		return 0, NewSyncError(status.LastRound, rnd, fmt.Errorf("sync error, likely due to status after block timeout: %w", err))
+		return 0, NewSyncError(status.LastRound, rnd, fmt.Errorf("sync error, likely due to status after block timeout"))
 	}
 
 	// If there was a different error and the node is responsive, call status before returning a SyncError.
