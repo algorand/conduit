@@ -682,7 +682,7 @@ func TestGetBlockErrors(t *testing.T) {
 			name:                "Cannot wait for block",
 			rnd:                 123,
 			blockAfterResponder: MakeJsonResponderSeries("/wait-for-block-after", []int{http.StatusOK, http.StatusNotFound}, []interface{}{models.NodeStatus{LastRound: 1}}),
-			err:                 fmt.Sprintf("error getting block for round 123"),
+			err:                 "error getting block for round 123",
 			logs:                []string{"error getting block for round 123"},
 		},
 		{
@@ -691,7 +691,7 @@ func TestGetBlockErrors(t *testing.T) {
 			blockAfterResponder: BlockAfterResponder,
 			deltaResponder:      MakeMsgpStatusResponder("get", "/v2/deltas/", http.StatusNotFound, sdk.LedgerStateDelta{}),
 			blockResponder:      MakeMsgpStatusResponder("get", "/v2/blocks/", http.StatusNotFound, ""),
-			err:                 fmt.Sprintf("error getting block for round 123"),
+			err:                 "error getting block for round 123",
 			logs:                []string{"error getting block for round 123"},
 		},
 		{
@@ -700,7 +700,7 @@ func TestGetBlockErrors(t *testing.T) {
 			blockAfterResponder: MakeBlockAfterResponder(models.NodeStatus{LastRound: 50}),
 			blockResponder:      BlockResponder,
 			deltaResponder:      MakeMsgpStatusResponder("get", "/v2/deltas/", http.StatusNotFound, ""),
-			err:                 fmt.Sprintf("wrong round returned from status for round: retrieved(50) != expected(200)"),
+			err:                 "wrong round returned from status for round: retrieved(50) != expected(200)",
 			logs:                []string{"wrong round returned from status for round: retrieved(50) != expected(200)", "sync error detected, attempting to set the sync round to recover the node"},
 		},
 		{
@@ -709,7 +709,7 @@ func TestGetBlockErrors(t *testing.T) {
 			blockAfterResponder: MakeBlockAfterResponder(models.NodeStatus{LastRound: 200}),
 			blockResponder:      BlockResponder,
 			deltaResponder:      MakeMsgpStatusResponder("get", "/v2/deltas/", http.StatusNotFound, ""),
-			err:                 fmt.Sprintf("ledger state delta not found: node round (200), required round (200)"),
+			err:                 "ledger state delta not found: node round (200), required round (200)",
 			logs:                []string{"ledger state delta not found: node round (200), required round (200)"},
 		},
 	}
