@@ -490,12 +490,16 @@ func (p *pipelineImpl) importerHandler(importer importers.Importer, roundChan <-
 				totalSelectWait += waitTime
 				p.logger.Tracef("importer handler waited %dms to receive round %d", waitTime.Milliseconds(), rnd)
 
+				// TODO: DO NOT MERGE THE FOLLOWING!!!!
+				// time.Sleep(5 * time.Second)
+
 				blkData, importTime, lastError := Retries(importer.GetBlock, rnd, p, importer.Metadata().Name)
 				if lastError != nil {
 					p.cancelWithProblem(fmt.Errorf("importer %s handler (%w): failed to import round %d after %dms: %w", importer.Metadata().Name, errImporterCause, rnd, importTime.Milliseconds(), lastError))
 					return
 				}
 				metrics.ImporterTimeSeconds.Observe(importTime.Seconds())
+				p.logger.Tracef("importer handler imported round %d in %dms", rnd, importTime.Milliseconds())
 
 				// TODO: Verify that the block was built with a known protocol version.
 
@@ -636,7 +640,7 @@ func (p *pipelineImpl) exporterHandler(exporter exporters.Exporter, blkChan plug
 					lastError = fmt.Errorf("aborting after updating NextRound=%d and failing to save metadata: %w", nextRound, lastError)
 					return
 				}
-				p.logger.Tracef("exporter %s @ round %d saved pipeline metadata", exporter.Metadata().Name, p.pipelineMetadata.NextRound)
+				p.logger.Tracef("exporter %s incremented pipeline metadata NextRound to %d", exporter.Metadata().Name, p.pipelineMetadata.NextRound)
 
 				for i, cb := range p.completeCallback {
 					p.logger.Tracef("exporter %s @ round=%d NextRound=%d executing callback %d", exporter.Metadata().Name, lastRound, p.pipelineMetadata.NextRound, i)
