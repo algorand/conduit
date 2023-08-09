@@ -42,7 +42,7 @@ const (
 )
 
 var (
-	waitForRoundTimeout = 5 * time.Second
+	waitForRoundTimeout = 15 * time.Second
 )
 
 const catchpointsURL = "https://algorand-catchpoints.s3.us-east-2.amazonaws.com/consolidated/%s_catchpoints.txt"
@@ -418,13 +418,29 @@ func (algodImp *algodImporter) getDelta(rnd uint64) (sdk.LedgerStateDelta, error
 }
 
 // SyncError is used to indicate algod and conduit are not synchronized.
+// The retrievedRound is the round returned from an algod status call.
+// The expectedRound is the round conduit expected to have gotten back.
 type SyncError struct {
-	rnd      uint64
-	expected uint64
+	retrievedRound uint64
+	expectedRound  uint64
+	err            error
+}
+
+// NewSyncError creates a new SyncError.
+func NewSyncError(retrievedRound, expectedRound uint64, err error) *SyncError {
+	return &SyncError{
+		retrievedRound: retrievedRound,
+		expectedRound:  expectedRound,
+		err:            err,
+	}
 }
 
 func (e *SyncError) Error() string {
-	return fmt.Sprintf("wrong round returned from status for round: %d != %d", e.rnd, e.expected)
+	return fmt.Sprintf("wrong round returned from status for round: retrieved(%d) != expected(%d): %v", e.retrievedRound, e.expectedRound, e.err)
+}
+
+func (e *SyncError) Unwrap() error {
+	return e.err
 }
 
 func waitForRoundWithTimeout(ctx context.Context, l *logrus.Logger, c *algod.Client, rnd uint64, to time.Duration) (uint64, error) {
@@ -440,10 +456,7 @@ func waitForRoundWithTimeout(ctx context.Context, l *logrus.Logger, c *algod.Cli
 		if rnd <= status.LastRound {
 			return status.LastRound, nil
 		}
-		return 0, &SyncError{
-			rnd:      status.LastRound,
-			expected: rnd,
-		}
+		return 0, NewSyncError(status.LastRound, rnd, fmt.Errorf("this check should never be required: %w", err))
 	}
 
 	// If there was a different error and the node is responsive, call status before returning a SyncError.
@@ -454,10 +467,7 @@ func waitForRoundWithTimeout(ctx context.Context, l *logrus.Logger, c *algod.Cli
 		return 0, fmt.Errorf("unable to get status after block and status: %w", errors.Join(err, err2))
 	}
 	if status2.LastRound < rnd {
-		return 0, &SyncError{
-			rnd:      status.LastRound,
-			expected: rnd,
-		}
+		return 0, NewSyncError(status2.LastRound, rnd, fmt.Errorf("status2.LastRound mismatch: %w", err))
 	}
 
 	// This is probably a connection error, not a SyncError.
@@ -470,11 +480,10 @@ func (algodImp *algodImporter) getBlockInner(rnd uint64) (data.BlockData, error)
 
 	nodeRound, err := waitForRoundWithTimeout(algodImp.ctx, algodImp.logger, algodImp.aclient, rnd, waitForRoundTimeout)
 	if err != nil {
-		// If context has expired.
 		if algodImp.ctx.Err() != nil {
-			return blk, fmt.Errorf("GetBlock ctx error: %w", err)
+			return blk, fmt.Errorf("importer algod.GetBlock() ctx cancelled: %w", err)
 		}
-		algodImp.logger.Errorf(err.Error())
+		algodImp.logger.Errorf("importer algod.GetBlock() called waitForRoundWithTimeout: %v", err)
 		return data.BlockData{}, err
 	}
 	start := time.Now()
@@ -483,7 +492,7 @@ func (algodImp *algodImporter) getBlockInner(rnd uint64) (data.BlockData, error)
 	dt := time.Since(start)
 	getAlgodRawBlockTimeSeconds.Observe(dt.Seconds())
 	if err != nil {
-		algodImp.logger.Errorf("error getting block for round %d: %s", rnd, err.Error())
+		algodImp.logger.Errorf("importer algod.GetBlock() error getting block for round %d: %s", rnd, err.Error())
 		return data.BlockData{}, err
 	}
 	tmpBlk := new(models.BlockResponse)
@@ -503,9 +512,9 @@ func (algodImp *algodImporter) getBlockInner(rnd uint64) (data.BlockData, error)
 			delta, err = algodImp.getDelta(rnd)
 			if err != nil {
 				if nodeRound < rnd {
-					err = fmt.Errorf("ledger state delta not found: node round (%d) is behind required round (%d), ensure follower node has its sync round set to the required round: %w", nodeRound, rnd, err)
+					err = fmt.Errorf("importer algod.GetBlock() ledger state delta not found: node round (%d) is behind required round (%d), ensure follower node has its sync round set to the required round: %w", nodeRound, rnd, err)
 				} else {
-					err = fmt.Errorf("ledger state delta not found: node round (%d), required round (%d): verify follower node configuration and ensure follower node has its sync round set to the required round, re-deploying the follower node may be necessary: %w", nodeRound, rnd, err)
+					err = fmt.Errorf("importer algod.GetBlock() ledger state delta not found: node round (%d), required round (%d): verify follower node configuration and ensure follower node has its sync round set to the required round, re-deploying the follower node may be necessary: %w", nodeRound, rnd, err)
 				}
 				algodImp.logger.Error(err.Error())
 				return data.BlockData{}, err
@@ -523,10 +532,10 @@ func (algodImp *algodImporter) GetBlock(rnd uint64) (data.BlockData, error) {
 	if err != nil {
 		target := &SyncError{}
 		if errors.As(err, &target) {
-			algodImp.logger.Warnf("Sync error detected, attempting to set the sync round to recover the node: %s", err.Error())
+			algodImp.logger.Warnf("importer algod.GetBlock() sync error detected, attempting to set the sync round to recover the node: %s", err.Error())
 			_, _ = algodImp.aclient.SetSyncRound(rnd).Do(algodImp.ctx)
 		} else {
-			err = fmt.Errorf("error getting block for round %d, check node configuration: %s", rnd, err)
+			err = fmt.Errorf("importer algod.GetBlock() error getting block for round %d, check node configuration: %s", rnd, err)
 			algodImp.logger.Errorf(err.Error())
 		}
 		return data.BlockData{}, err
