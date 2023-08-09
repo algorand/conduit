@@ -42,7 +42,7 @@ const (
 )
 
 var (
-	waitForRoundTimeout = 15 * time.Second
+	waitForRoundTimeout = 30 * time.Second
 )
 
 const catchpointsURL = "https://algorand-catchpoints.s3.us-east-2.amazonaws.com/consolidated/%s_catchpoints.txt"
