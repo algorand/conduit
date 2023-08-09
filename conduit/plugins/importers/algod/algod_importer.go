@@ -481,9 +481,7 @@ func (algodImp *algodImporter) getBlockInner(rnd uint64) (data.BlockData, error)
 
 	nodeRound, err := waitForRoundWithTimeout(algodImp.ctx, algodImp.logger, algodImp.aclient, rnd, waitForRoundTimeout)
 	if err != nil {
-		if algodImp.ctx.Err() != nil {
-			return blk, fmt.Errorf("importer algod.GetBlock() ctx cancelled: %w", err)
-		}
+		err = fmt.Errorf("err: %w, ctx cancellation: %w", err, algodImp.ctx.Err())
 		algodImp.logger.Errorf("importer algod.GetBlock() called waitForRoundWithTimeout: %v", err)
 		return data.BlockData{}, err
 	}
