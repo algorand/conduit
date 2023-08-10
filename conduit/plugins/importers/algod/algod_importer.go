@@ -423,10 +423,10 @@ type SyncError struct {
 	retrievedRound uint64
 
 	// expectedRound is the round conduit expected to have gotten back.
-	expectedRound  uint64
+	expectedRound uint64
 
 	// err is the error that was received from the endpoint caller.
-	err            error
+	err error
 }
 
 // NewSyncError creates a new SyncError.
