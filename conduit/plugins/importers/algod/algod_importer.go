@@ -481,8 +481,8 @@ func (algodImp *algodImporter) getBlockInner(rnd uint64) (data.BlockData, error)
 
 	nodeRound, err := waitForRoundWithTimeout(algodImp.ctx, algodImp.logger, algodImp.aclient, rnd, waitForRoundTimeout)
 	if err != nil {
-		err = fmt.Errorf("err: %w, ctx cancellation: %w", err, algodImp.ctx.Err())
-		algodImp.logger.Errorf("importer algod.GetBlock() called waitForRoundWithTimeout: %v", err)
+		err = fmt.Errorf("called waitForRoundWithTimeout: %w", err)
+		algodImp.logger.Errorf(err.Error())
 		return data.BlockData{}, err
 	}
 	start := time.Now()
@@ -491,13 +491,14 @@ func (algodImp *algodImporter) getBlockInner(rnd uint64) (data.BlockData, error)
 	dt := time.Since(start)
 	getAlgodRawBlockTimeSeconds.Observe(dt.Seconds())
 	if err != nil {
-		algodImp.logger.Errorf("importer algod.GetBlock() error getting block for round %d: %s", rnd, err.Error())
+		err = fmt.Errorf("error getting block for round %d: %w", rnd, err)
+		algodImp.logger.Errorf(err.Error())
 		return data.BlockData{}, err
 	}
 	tmpBlk := new(models.BlockResponse)
 	err = msgpack.Decode(blockbytes, tmpBlk)
 	if err != nil {
-		return blk, err
+		return blk, fmt.Errorf("error decoding block for round %d: %w", rnd, err)
 	}
 
 	blk.BlockHeader = tmpBlk.Block.BlockHeader
@@ -511,9 +512,9 @@ func (algodImp *algodImporter) getBlockInner(rnd uint64) (data.BlockData, error)
 			delta, err = algodImp.getDelta(rnd)
 			if err != nil {
 				if nodeRound < rnd {
-					err = fmt.Errorf("importer algod.GetBlock() ledger state delta not found: node round (%d) is behind required round (%d), ensure follower node has its sync round set to the required round: %w", nodeRound, rnd, err)
+					err = fmt.Errorf("ledger state delta not found: node round (%d) is behind required round (%d), ensure follower node has its sync round set to the required round: %w", nodeRound, rnd, err)
 				} else {
-					err = fmt.Errorf("importer algod.GetBlock() ledger state delta not found: node round (%d), required round (%d): verify follower node configuration and ensure follower node has its sync round set to the required round, re-deploying the follower node may be necessary: %w", nodeRound, rnd, err)
+					err = fmt.Errorf("ledger state delta not found: node round (%d), required round (%d): verify follower node configuration and ensure follower node has its sync round set to the required round, re-deploying the follower node may be necessary: %w", nodeRound, rnd, err)
 				}
 				algodImp.logger.Error(err.Error())
 				return data.BlockData{}, err
