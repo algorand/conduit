@@ -492,9 +492,6 @@ func (p *pipelineImpl) importerHandler(importer importers.Importer, roundChan <-
 				totalSelectWait += waitTime
 				p.logger.Tracef("importer handler waited %dms to receive round %d", waitTime.Milliseconds(), rnd)
 
-				// TODO: DO NOT MERGE THE FOLLOWING!!!!
-				// time.Sleep(5 * time.Second)
-
 				blkData, importTime, lastError := Retries(importer.GetBlock, rnd, p, importer.Metadata().Name)
 				if lastError != nil {
 					p.cancelWithProblem(fmt.Errorf("importer %s handler (%w): failed to import round %d after %dms: %w", importer.Metadata().Name, errImporterCause, rnd, importTime.Milliseconds(), lastError))
