@@ -762,16 +762,15 @@ func TestGetBlockErrors(t *testing.T) {
 			hookEntries := hook.AllEntries()
 			for _, log := range tc.logs {
 				found := false
-				fmt.Println("~~~\nCurrent log: ", log)
 				for _, entry := range hookEntries {
 					logIsSubstring := strings.Contains(entry.Message, log)
 					found = found || logIsSubstring
 					fmt.Printf("logIsSubstring=%t, found=%t:\n\t%s\n", logIsSubstring, found, entry.Message)
 				}
-				noError = noError && assert.True(t, found, "(%s) Expected log was not found: '%s'", tc.name, log)
-				if !noError {
-					fmt.Printf(">>>>>WE HAVE A PROBLEM<<<<<<\n")
+				if !found {
+					fmt.Printf(">>>>>>WE HAVE A PROBLEM<<<<<<\n")
 				}
+				noError = noError && assert.True(t, found, "(%s) Expected log was not found: '%s'", tc.name, log)
 			}
 
 			// Print logs if there was an error.
