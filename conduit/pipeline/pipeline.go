@@ -74,7 +74,9 @@ type pipelineBlock struct {
 type pluginChannel chan pipelineBlock
 
 var (
-	stopCause         = errors.New("pipeline stopped") //nolint:revive // this is a sentinel error
+	// BecauseStopMethod is the sentinel error that signals the pipeline was stopped via Stop().
+	BecauseStopMethod = errors.New("pipeline stopped") //nolint:revive // this is a sentinel error
+
 	errImporterCause  = errors.New("importer cancelled")
 	errProcessorCause = errors.New("processor cancelled")
 	errExporterCause  = errors.New("exporter cancelled")
@@ -398,7 +400,7 @@ func (p *pipelineImpl) Init() error {
 }
 
 func (p *pipelineImpl) Stop() {
-	p.ccf(stopCause)
+	p.ccf(BecauseStopMethod)
 	p.wg.Wait()
 
 	if p.profFile != nil {
