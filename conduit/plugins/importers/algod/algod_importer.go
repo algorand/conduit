@@ -418,12 +418,14 @@ func (algodImp *algodImporter) getDelta(rnd uint64) (sdk.LedgerStateDelta, error
 }
 
 // SyncError is used to indicate algod and conduit are not synchronized.
-// The retrievedRound is the round returned from an algod status call.
-// The expectedRound is the round conduit expected to have gotten back.
-// err is the error that was received from the endpoint caller.
 type SyncError struct {
+	// retrievedRound is the round returned from an algod status call.
 	retrievedRound uint64
+
+	// expectedRound is the round conduit expected to have gotten back.
 	expectedRound  uint64
+
+	// err is the error that was received from the endpoint caller.
 	err            error
 }
 
