@@ -36,7 +36,6 @@ type Pipeline interface {
 	Init() error
 	Start()
 	Stop()
-	WhyStopped() error
 	Error() error
 	Wait()
 }
@@ -74,9 +73,6 @@ type pipelineBlock struct {
 type pluginChannel chan pipelineBlock
 
 var (
-	// BecauseStopMethod is the sentinel error that signals the pipeline was stopped via Stop().
-	BecauseStopMethod = errors.New("pipeline stopped") //nolint:revive // this is a sentinel error
-
 	errImporterCause  = errors.New("importer cancelled")
 	errProcessorCause = errors.New("processor cancelled")
 	errExporterCause  = errors.New("exporter cancelled")
@@ -400,7 +396,7 @@ func (p *pipelineImpl) Init() error {
 }
 
 func (p *pipelineImpl) Stop() {
-	p.ccf(BecauseStopMethod)
+	p.ccf(nil)
 	p.wg.Wait()
 
 	if p.profFile != nil {
@@ -431,16 +427,6 @@ func (p *pipelineImpl) Stop() {
 	if err := p.exporter.Close(); err != nil {
 		p.logger.Errorf("Pipeline.Stop(): Exporter (%s) error on close: %v", p.exporter.Metadata().Name, err)
 	}
-}
-
-// WhyStopped returns nil if a context was never provided or the pipeline
-// is yet to have stopped. Otherwise, it returns the cause of the pipeline's
-// context cancellation.
-func (p *pipelineImpl) WhyStopped() error {
-	if p.ctx == nil {
-		return nil
-	}
-	return context.Cause(p.ctx)
 }
 
 func numInnerTxn(txn sdk.SignedTxnWithAD) int {
@@ -501,10 +487,6 @@ func (p *pipelineImpl) importerHandler(importer importers.Importer, roundChan <-
 				p.logger.Tracef("importer handler imported round %d in %dms", rnd, importTime.Milliseconds())
 
 				// TODO: Verify that the block was built with a known protocol version.
-
-				// Start time currently measures operations after block fetching is complete.
-				// This is for backwards compatibility w/ Indexer's metrics
-				// run through processors
 
 				importFinish := time.Now()
 				pipelineBlk := pipelineBlock{
@@ -713,7 +695,6 @@ func (p *pipelineImpl) Start() {
 	}(p.pipelineMetadata.NextRound)
 
 	<-p.ctx.Done()
-	// TODO: send a prometheus observation based on WhyStopped()
 }
 
 func (p *pipelineImpl) Wait() {

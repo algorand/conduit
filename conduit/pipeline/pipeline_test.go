@@ -342,7 +342,7 @@ func TestPipelineRun(t *testing.T) {
 
 	mock.AssertExpectationsForObjects(t, &mImporter, &mProcessor, &mExporter)
 
-	assert.ErrorIs(t, pImpl.WhyStopped(), errTestCancellation)
+	assert.ErrorIs(t, context.Cause(pImpl.ctx), errTestCancellation)
 }
 
 // TestPipelineCpuPidFiles tests that cpu and pid files are created when specified
