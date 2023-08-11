@@ -33,7 +33,11 @@ func NewAlgodHandler(responders ...algodCustomHandler) *AlgodHandler {
 
 // ServeHTTP implements the http.Handler interface for AlgodHandler
 func (handler *AlgodHandler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
-	for _, responder := range handler.responders {
+	for i, responder := range handler.responders {
+		_ = i
+		if responder == nil {
+			continue
+		}
 		if responder(req, w) {
 			return
 		}
