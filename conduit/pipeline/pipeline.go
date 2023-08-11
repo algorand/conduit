@@ -636,21 +636,23 @@ func (p *pipelineImpl) exporterHandler(exporter exporters.Exporter, blkChan plug
 				}
 
 				lastError = nil
-				// WARNING: removing the following will BREAK:
-				// - the E2E test (Search for "Pipeline round:" in subslurp.py)
+				// WARNING: removing/re-log-levelling the following will BREAK:
+				// - the E2E test (Search for "Pipeline round" in subslurp.py)
 				// - the internal tools logstats collector (See func ConduitCollector in logstats.go of internal-tools repo)
-				// Modify with CAUTION!!!!
-				p.logger.Infof(
-					"UPDATED Pipeline NextRound=%d after [%s] from round kickoff. FINISHED Pipeline round r=%d (%d txn) exported in %s",
-					nextRound,
-					time.Since(pluginBlk.startRoundTime),
-					lastRound,
-					len(pluginBlk.Payset),
-					time.Since(pluginBlk.finishImportTime),
-				)
+				p.logger.Infof(logstatsE2Elog(nextRound, lastRound, len(pluginBlk.Payset), exportTime))
 			}
 		}
 	}()
+}
+
+func logstatsE2Elog(nextRound, lastRound uint64, topLevelTxnCount int, exportTime time.Duration) string {
+	return fmt.Sprintf(
+		"UPDATED Pipeline NextRound=%d. FINISHED Pipeline round r=%d (%d txn) exported in %s",
+		nextRound,
+		lastRound,
+		topLevelTxnCount,
+		exportTime,
+	)
 }
 
 // Start pushes block data through the pipeline

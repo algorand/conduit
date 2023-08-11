@@ -988,3 +988,22 @@ func TestMetrics(t *testing.T) {
 	}
 	assert.Equal(t, 4, found)
 }
+
+func TestLogStatsE2Elog(t *testing.T) {
+	nextRound := uint64(1337)
+	round := uint64(42)
+	numTxns := 13
+	duration := 12345600 * time.Microsecond
+
+	expectedLog := "UPDATED Pipeline NextRound=1337. FINISHED Pipeline round r=42 (13 txn) exported in 12.3456s"
+	log := logstatsE2Elog(nextRound, round, numTxns, duration)
+	require.Equal(t, expectedLog, log)
+
+	logstatsRex, err := regexp.Compile(`round r=(\d+) \((\d+) txn\) exported in (.*)`)
+	require.NoError(t, err)
+	matches := logstatsRex.FindStringSubmatch(log)
+	require.Len(t, matches, 4)
+	require.Equal(t, "42", matches[1])
+	require.Equal(t, "13", matches[2])
+	require.Equal(t, "12.3456s", matches[3])
+}
