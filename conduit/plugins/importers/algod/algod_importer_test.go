@@ -3,16 +3,17 @@ package algodimporter
 import (
 	"context"
 	"fmt"
-	"github.com/sirupsen/logrus"
-	"github.com/sirupsen/logrus/hooks/test"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
-	"gopkg.in/yaml.v3"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/sirupsen/logrus"
+	"github.com/sirupsen/logrus/hooks/test"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"gopkg.in/yaml.v3"
 
 	"github.com/algorand/go-algorand-sdk/v2/client/v2/algod"
 	"github.com/algorand/go-algorand-sdk/v2/client/v2/common/models"
@@ -681,34 +682,39 @@ func TestGetBlockErrors(t *testing.T) {
 			name:                "Cannot wait for block",
 			rnd:                 123,
 			blockAfterResponder: MakeJsonResponderSeries("/wait-for-block-after", []int{http.StatusOK, http.StatusNotFound}, []interface{}{models.NodeStatus{LastRound: 1}}),
-			err:                 fmt.Sprintf("error getting block for round 123"),
+			blockResponder:      nil,
+			deltaResponder:      nil,
+			err:                 "error getting block for round 123",
 			logs:                []string{"error getting block for round 123"},
 		},
 		{
 			name:                "Cannot get block",
 			rnd:                 123,
 			blockAfterResponder: BlockAfterResponder,
-			deltaResponder:      MakeMsgpStatusResponder("get", "/v2/deltas/", http.StatusNotFound, sdk.LedgerStateDelta{}),
 			blockResponder:      MakeMsgpStatusResponder("get", "/v2/blocks/", http.StatusNotFound, ""),
-			err:                 fmt.Sprintf("error getting block for round 123"),
+			deltaResponder:      MakeMsgpStatusResponder("get", "/v2/deltas/", http.StatusNotFound, sdk.LedgerStateDelta{}),
+			err:                 "error getting block for round 123",
 			logs:                []string{"error getting block for round 123"},
 		},
 		{
-			name:                "Cannot get delta (node behind, re-send sync)",
+			name:                "Cannot get delta - node behind, re-send sync",
 			rnd:                 200,
 			blockAfterResponder: MakeBlockAfterResponder(models.NodeStatus{LastRound: 50}),
 			blockResponder:      BlockResponder,
 			deltaResponder:      MakeMsgpStatusResponder("get", "/v2/deltas/", http.StatusNotFound, ""),
-			err:                 fmt.Sprintf("wrong round returned from status for round: 50 != 200"),
-			logs:                []string{"wrong round returned from status for round: 50 != 200", "Sync error detected, attempting to set the sync round to recover the node"},
+			err:                 "wrong round returned from status for round: retrieved(50) != expected(200)",
+			logs: []string{
+				"wrong round returned from status for round: retrieved(50) != expected(200)",
+				"sync error detected, attempting to set the sync round to recover the node",
+			},
 		},
 		{
-			name:                "Cannot get delta (caught up)",
+			name:                "Cannot get delta - caught up",
 			rnd:                 200,
 			blockAfterResponder: MakeBlockAfterResponder(models.NodeStatus{LastRound: 200}),
 			blockResponder:      BlockResponder,
 			deltaResponder:      MakeMsgpStatusResponder("get", "/v2/deltas/", http.StatusNotFound, ""),
-			err:                 fmt.Sprintf("ledger state delta not found: node round (200), required round (200)"),
+			err:                 "ledger state delta not found: node round (200), required round (200)",
 			logs:                []string{"ledger state delta not found: node round (200), required round (200)"},
 		},
 	}
@@ -752,21 +758,26 @@ func TestGetBlockErrors(t *testing.T) {
 			_, err = testImporter.GetBlock(tc.rnd)
 			noError := assert.ErrorContains(t, err, tc.err)
 
-			// Make sure each of the expected log messages are present
+			// Make sure each of the expected log messages are present in the hookEntries
+			hookEntries := hook.AllEntries()
 			for _, log := range tc.logs {
 				found := false
-				for _, entry := range hook.AllEntries() {
-					fmt.Println(strings.Contains(entry.Message, log))
-					found = found || strings.Contains(entry.Message, log)
+				for _, entry := range hookEntries {
+					logIsSubstring := strings.Contains(entry.Message, log)
+					found = found || logIsSubstring
+					fmt.Printf("logIsSubstring=%t, found=%t:\n\t%s\n", logIsSubstring, found, entry.Message)
 				}
-				noError = noError && assert.True(t, found, "Expected log was not found: '%s'", log)
+				if !found {
+					fmt.Printf(">>>>>>WE HAVE A PROBLEM<<<<<<\n")
+				}
+				noError = noError && assert.True(t, found, "(%s) Expected log was not found: '%s'", tc.name, log)
 			}
 
 			// Print logs if there was an error.
 			if !noError {
-				fmt.Println("An error was detected, printing logs")
+				fmt.Printf("An error was detected, printing logs (%s)\n", tc.name)
 				fmt.Println("------------------------------------")
-				for _, entry := range hook.AllEntries() {
+				for _, entry := range hookEntries {
 					fmt.Printf(" %s\n", entry.Message)
 				}
 				fmt.Println("------------------------------------")
