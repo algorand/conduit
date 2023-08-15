@@ -4,7 +4,7 @@ Write block data to files. This plugin works with the file rerader plugin to cre
 
 ## Configuration
 ```yml @sample.yaml
-name: "file_writer"
+name: file_writer
 config:
     # BlocksDir is the path to a directory where block data should be stored.
     # The directory is created if it doesn't exist. If no directory is provided
