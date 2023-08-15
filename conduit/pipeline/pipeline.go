@@ -60,17 +60,7 @@ type pipelineImpl struct {
 	pipelineMetadata state
 }
 
-type pipelineData struct {
-	startRoundTime   time.Time
-	finishImportTime time.Time
-}
-
-type pipelineBlock struct {
-	data.BlockData
-	pipelineData
-}
-
-type pluginChannel chan pipelineBlock
+type pluginChannel chan data.BlockData
 
 var (
 	errImporterCause  = errors.New("importer cancelled")
@@ -489,18 +479,11 @@ func (p *pipelineImpl) importerHandler(importer importers.Importer, roundChan <-
 				// TODO: Verify that the block was built with a known protocol version.
 
 				importFinish := time.Now()
-				pipelineBlk := pipelineBlock{
-					BlockData: blkData,
-					pipelineData: pipelineData{
-						startRoundTime:   startRound,
-						finishImportTime: importFinish,
-					},
-				}
 
 				select {
 				case <-p.ctx.Done():
 					return
-				case blkOutChan <- pipelineBlk:
+				case blkOutChan <- blkData:
 					waitTime := time.Since(importFinish)
 					totalFeedWait += waitTime
 					p.logger.Tracef("imported round %d into blkOutChan after waiting %dms on channel", rnd, waitTime.Milliseconds())
@@ -528,15 +511,15 @@ func (p *pipelineImpl) processorHandler(idx int, proc processors.Processor, blkI
 			case <-p.ctx.Done():
 				p.logger.Infof("processor[%d] %s handler exiting lastRnd=%d", idx, proc.Metadata().Name, lastRnd)
 				return
-			case pluginBlk := <-blkInChan:
+			case blk := <-blkInChan:
 				waitTime := time.Since(selectStart)
 				totalSelectWait += waitTime
 				p.logger.Tracef("processor[%d] %s handler received block data for round %d after wait of %s", idx, proc.Metadata().Name, lastRnd, waitTime)
-				lastRnd = pluginBlk.Round()
+				lastRnd = blk.Round()
 
 				var procTime time.Duration
 				var lastError error
-				pluginBlk.BlockData, procTime, lastError = Retries(proc.Process, pluginBlk.BlockData, p, proc.Metadata().Name)
+				blk, procTime, lastError = Retries(proc.Process, blk, p, proc.Metadata().Name)
 				if lastError != nil {
 					p.cancelWithProblem(fmt.Errorf("processor[%d] %s handler (%w): failed to process round %d after %dms: %w", idx, proc.Metadata().Name, errProcessorCause, lastRnd, procTime.Milliseconds(), lastError))
 					return
@@ -547,7 +530,7 @@ func (p *pipelineImpl) processorHandler(idx int, proc processors.Processor, blkI
 				select {
 				case <-p.ctx.Done():
 					return
-				case blkOutChan <- pluginBlk:
+				case blkOutChan <- blk:
 					waitTime := time.Since(selectStart)
 					totalFeedWait += waitTime
 					p.logger.Tracef("processor[%d] %s for round %d into blkOutChan after waiting %dms", idx, proc.Metadata().Name, lastRnd, totalFeedWait.Milliseconds())
@@ -588,11 +571,11 @@ func (p *pipelineImpl) exporterHandler(exporter exporters.Exporter, blkChan plug
 			case <-p.ctx.Done():
 				p.logger.Infof("exporter handler exiting lastRnd=%d", lastRound)
 				return
-			case pluginBlk := <-blkChan:
+			case blk := <-blkChan:
 				waitTime := time.Since(selectStart)
 				totalSelectWait += waitTime
 				p.logger.Tracef("exporter handler received block data for round %d after wait of %s", lastRound, waitTime)
-				lastRound = pluginBlk.Round()
+				lastRound = blk.Round()
 
 				if p.pipelineMetadata.NextRound != lastRound {
 					lastError = fmt.Errorf("aborting after out of order block data. %d != %d", p.pipelineMetadata.NextRound, lastRound)
@@ -600,7 +583,7 @@ func (p *pipelineImpl) exporterHandler(exporter exporters.Exporter, blkChan plug
 				}
 
 				var exportTime time.Duration
-				exportTime, lastError = RetriesNoOutput(exporter.Receive, pluginBlk.BlockData, p, eName)
+				exportTime, lastError = RetriesNoOutput(exporter.Receive, blk, p, eName)
 				if lastError != nil {
 					lastError = fmt.Errorf("aborting after failing to export round %d: %w", lastRound, lastError)
 					return
@@ -611,7 +594,7 @@ func (p *pipelineImpl) exporterHandler(exporter exporters.Exporter, blkChan plug
 					// Previously we reported time starting after block fetching is complete
 					// through the end of the export operation. Now that each plugin is running
 					// in its own goroutine, report only the time of the export.
-					addMetrics(pluginBlk.BlockData, exportTime)
+					addMetrics(blk, exportTime)
 				}
 
 				// Increment Round, update metadata
@@ -626,7 +609,7 @@ func (p *pipelineImpl) exporterHandler(exporter exporters.Exporter, blkChan plug
 
 				for i, cb := range p.completeCallback {
 					p.logger.Tracef("exporter %s @ round=%d NextRound=%d executing callback %d", eName, lastRound, nextRound, i)
-					callbackErr := cb(pluginBlk.BlockData)
+					callbackErr := cb(blk)
 					if callbackErr != nil {
 						p.logger.Errorf(
 							"exporter %s # round %d failed callback #%d but CONTINUING to NextRound=%d: %v",
@@ -639,7 +622,7 @@ func (p *pipelineImpl) exporterHandler(exporter exporters.Exporter, blkChan plug
 				// WARNING: removing/re-log-levelling the following will BREAK:
 				// - the E2E test (Search for "Pipeline round" in subslurp.py)
 				// - the internal tools logstats collector (See func ConduitCollector in logstats.go of internal-tools repo)
-				p.logger.Infof(logstatsE2Elog(nextRound, lastRound, len(pluginBlk.Payset), exportTime))
+				p.logger.Infof(logstatsE2Elog(nextRound, lastRound, len(blk.Payset), exportTime))
 			}
 		}
 	}()

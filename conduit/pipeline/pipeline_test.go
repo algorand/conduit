@@ -1006,4 +1006,10 @@ func TestLogStatsE2Elog(t *testing.T) {
 	require.Equal(t, "42", matches[1])
 	require.Equal(t, "13", matches[2])
 	require.Equal(t, "12.3456s", matches[3])
+
+	e2eRex, err := regexp.Compile(`FINISHED Pipeline round r=(\d+)`)
+	require.NoError(t, err)
+	matches = e2eRex.FindStringSubmatch(log)
+	require.Len(t, matches, 2)
+	require.Equal(t, "42", matches[1])
 }
