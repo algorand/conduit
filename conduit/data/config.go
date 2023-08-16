@@ -56,6 +56,11 @@ type Telemetry struct {
 	Password string `yaml:"password"`
 }
 
+// API defines parameters for the Conduit API server.
+type API struct {
+	Address string `yaml:"addr"`
+}
+
 // Config stores configuration specific to the conduit pipeline
 type Config struct {
 	// ConduitArgs are the program inputs. Should not be serialized for config.
@@ -72,6 +77,7 @@ type Config struct {
 	Processors []NameConfigPair `yaml:"processors"`
 	Exporter   NameConfigPair   `yaml:"exporter"`
 	Metrics    Metrics          `yaml:"metrics"`
+	API        API              `yaml:"api"`
 	// RetryCount is the number of retries to perform for an error in the pipeline
 	RetryCount uint64 `yaml:"retry-count"`
 	// RetryDelay is a duration amount interpreted from a string

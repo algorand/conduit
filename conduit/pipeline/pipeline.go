@@ -9,6 +9,7 @@ import (
 	"path"
 	"runtime/pprof"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -37,6 +38,12 @@ type Pipeline interface {
 	Stop()
 	Error() error
 	Wait()
+	Status() (Status, error)
+}
+
+// Status is a struct that contains the current pipeline status.
+type Status struct {
+	Round uint64 `json:"round"`
 }
 
 type pipelineImpl struct {
@@ -530,6 +537,13 @@ func (p *pipelineImpl) Start() {
 
 func (p *pipelineImpl) Wait() {
 	p.wg.Wait()
+}
+
+func (p *pipelineImpl) Status() (Status, error) {
+	rnd := atomic.LoadUint64(&p.pipelineMetadata.NextRound)
+	return Status{
+		Round: rnd,
+	}, nil
 }
 
 // start a http server serving /metrics
