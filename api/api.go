@@ -49,7 +49,7 @@ func StartServer(logger *log.Logger, p StatusProvider, address string) (func(ctx
 	}()
 
 	shutdownCallback := func(ctx context.Context) {
-		if err := srv.Shutdown(ctx); err != nil {
+		if err := srv.Shutdown(ctx); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			logger.Fatalf("failed to shutdown API server: %s", err)
 		}
 	}
