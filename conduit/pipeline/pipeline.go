@@ -9,7 +9,6 @@ import (
 	"path"
 	"runtime/pprof"
 	"sync"
-	"sync/atomic"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -64,6 +63,9 @@ type pipelineImpl struct {
 	completeCallback []conduit.OnCompleteFunc
 
 	pipelineMetadata state
+
+	statusMu sync.Mutex
+	status   Status
 }
 
 func (p *pipelineImpl) Error() error {
@@ -375,6 +377,10 @@ func (p *pipelineImpl) Init() error {
 		go p.startMetricsServer()
 	}
 
+	p.statusMu.Lock()
+	defer p.statusMu.Unlock()
+	p.status.Round = p.pipelineMetadata.NextRound
+
 	return err
 }
 
@@ -506,6 +512,9 @@ func (p *pipelineImpl) Start() {
 
 					// Increment Round, update metadata
 					p.pipelineMetadata.NextRound++
+					p.statusMu.Lock()
+					p.status.Round = p.pipelineMetadata.NextRound
+					p.statusMu.Unlock()
 					err = p.pipelineMetadata.encodeToFile(p.cfg.ConduitArgs.ConduitDataDir)
 					if err != nil {
 						p.logger.Errorf("%v", err)
@@ -540,10 +549,10 @@ func (p *pipelineImpl) Wait() {
 }
 
 func (p *pipelineImpl) Status() (Status, error) {
-	rnd := atomic.LoadUint64(&p.pipelineMetadata.NextRound)
-	return Status{
-		Round: rnd,
-	}, nil
+	p.statusMu.Lock()
+	ret := p.status
+	p.statusMu.Unlock()
+	return ret, nil
 }
 
 // start a http server serving /metrics
