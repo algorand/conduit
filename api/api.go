@@ -31,7 +31,7 @@ func makeHealthHandler(p StatusProvider) func(w http.ResponseWriter, r *http.Req
 	}
 }
 
-// StartServer starts a http server that exposes a health check endpoint.
+// StartServer starts an http server that exposes a health check endpoint.
 // A callback is returned that can be used to gracefully shutdown the server.
 func StartServer(logger *log.Logger, p StatusProvider, address string) (func(ctx context.Context), error) {
 	mux := http.NewServeMux()
