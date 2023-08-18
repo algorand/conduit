@@ -1,0 +1,72 @@
+# Log verbosity: PANIC, FATAL, ERROR, WARN, INFO, DEBUG, TRACE
+log-level: INFO
+
+# If no log file is provided logs are written to stdout.
+#log-file:
+
+# Number of retries to perform after a pipeline plugin error.
+# Set to 0 to retry forever.
+retry-count: 10
+
+# Time duration to wait between retry attempts.
+retry-delay: "1s"
+
+# Optional filepath to use for pidfile.
+#pid-filepath: /path/to/pidfile
+
+# Whether or not to print the conduit banner on startup.
+hide-banner: false
+
+# When enabled prometheus metrics are available on '/metrics'
+metrics:
+    mode: OFF
+    addr: ":9999"
+    prefix: "conduit"
+
+
+# The importer is typically an algod follower node.
+importer:
+    name: file_reader
+    config:
+        # for purposes of fileReadWriteTest.go we have
+        # CWD = conduit/plugins/importers/filereader
+        # so `test_resources` is immediately available
+        block-dir: "test_resources/filereader_blocks"
+        
+        # FilenamePattern is the format used to find block files. It uses go string
+        # formatting and should accept one number for the round.
+        filename-pattern: "%[1]d_block.msgp.gz"
+
+# Zero or more processors may be defined to manipulate what data
+# reaches the exporter.
+processors:
+
+# An exporter is defined to do something with the data.
+exporter:
+  name: "file_writer"
+  config:
+    # BlocksDir is the path to a directory where block data should be stored.
+    # The directory is created if it doesn't exist. If no directory is provided
+    # blocks are written to the Conduit data directory.
+    #block-dir: "/path/to/block/files"
+
+    # FilenamePattern is the format used to write block files. It uses go
+    # string formatting and should accept one number for the round.
+    # If the file has a '.gz' extension, blocks will be gzipped.
+    # Default: "%[1]d_block.msgp.gz"
+    filename-pattern: "%[1]d_block.msgp.gz"
+
+    # DropCertificate is used to remove the vote certificate from the block data before writing files.
+    drop-certificate: false
+
+
+# Enable telemetry for conduit
+telemetry:
+  enabled: false
+
+  # By default the following fields will be configured to send data to Algorand.
+  # To store your own telemetry events, they can be overridden.
+  # uri: ""
+  # index: ""
+  # username: ""
+  # password: ""

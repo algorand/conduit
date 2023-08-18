@@ -3,10 +3,11 @@ package fileimporter
 import (
 	"context"
 	_ "embed" // used to embed config
-	"errors"
 	"fmt"
-	"io/fs"
+	"os"
 	"path"
+	"regexp"
+	"strconv"
 	"time"
 
 	"github.com/sirupsen/logrus"
@@ -25,8 +26,17 @@ const PluginName = "file_reader"
 type fileReader struct {
 	logger *logrus.Logger
 	cfg    Config
+	gzip  bool
+	format filewriter.EncodingFormat
 	ctx    context.Context
 	cancel context.CancelFunc
+}
+
+// package-wide init function
+func init() {
+	importers.Register(PluginName, importers.ImporterConstructorFunc(func() importers.Importer {
+		return &fileReader{}
+	}))
 }
 
 // New initializes an algod importer
@@ -48,13 +58,6 @@ func (r *fileReader) Metadata() plugins.Metadata {
 	return metadata
 }
 
-// package-wide init function
-func init() {
-	importers.Register(PluginName, importers.ImporterConstructorFunc(func() importers.Importer {
-		return &fileReader{}
-	}))
-}
-
 func (r *fileReader) Init(ctx context.Context, _ data.InitProvider, cfg plugins.PluginConfig, logger *logrus.Logger) error {
 	r.ctx, r.cancel = context.WithCancel(ctx)
 	r.logger = logger
@@ -66,19 +69,34 @@ func (r *fileReader) Init(ctx context.Context, _ data.InitProvider, cfg plugins.
 	if r.cfg.FilenamePattern == "" {
 		r.cfg.FilenamePattern = filewriter.FilePattern
 	}
+	r.format, r.gzip, err = filewriter.ParseFilenamePattern(r.cfg.FilenamePattern)
+	if err != nil {
+		return fmt.Errorf("Init() error: %w", err)
+	}
 
 	return nil
 }
 
+// GetGenesis returns the genesis. Is is assumed that
+// the genesis file is available __in addition to__ the round 0 block file.
+// This is because the encoding assumed for the genesis is different
+// from the encoding assumed for blocks.
+// TODO: handle the case of a multipurpose file that contains both encodings.
 func (r *fileReader) GetGenesis() (*sdk.Genesis, error) {
-	genesisFile := path.Join(r.cfg.BlocksDir, "genesis.json")
+	genesisFile, err := filewriter.GenesisFilename(r.format, r.gzip)
+	if err != nil {
+		return nil, fmt.Errorf("GetGenesis(): failed to get genesis filename: %w", err)
+	}
+	genesisFile = path.Join(r.cfg.BlocksDir, genesisFile)
+
 	var genesis sdk.Genesis
-	err := filewriter.DecodeJSONFromFile(genesisFile, &genesis, false)
+	err = filewriter.DecodeFromFile(genesisFile, &genesis, r.format, r.gzip)
 	if err != nil {
 		return nil, fmt.Errorf("GetGenesis(): failed to process genesis file: %w", err)
 	}
 	return &genesis, nil
 }
+
 
 func (r *fileReader) Close() error {
 	if r.cancel != nil {
@@ -87,32 +105,53 @@ func (r *fileReader) Close() error {
 	return nil
 }
 
-func (r *fileReader) GetBlock(rnd uint64) (data.BlockData, error) {
-	attempts := r.cfg.RetryCount
-	for {
-		filename := path.Join(r.cfg.BlocksDir, fmt.Sprintf(r.cfg.FilenamePattern, rnd))
-		var blockData data.BlockData
-		start := time.Now()
-		err := filewriter.DecodeJSONFromFile(filename, &blockData, false)
-		if err != nil && errors.Is(err, fs.ErrNotExist) {
-			// If the file read failed because the file didn't exist, wait before trying again
-			if attempts == 0 {
-				return data.BlockData{}, fmt.Errorf("GetBlock(): block not found after (%d) attempts", r.cfg.RetryCount)
-			}
-			attempts--
+func posErr(file string, err error) error {
+	pattern := `pos (\d+)`
+	re := regexp.MustCompile(pattern)
 
-			select {
-			case <-time.After(r.cfg.RetryDuration):
-			case <-r.ctx.Done():
-				return data.BlockData{}, fmt.Errorf("GetBlock() context finished: %w", r.ctx.Err())
-			}
-		} else if err != nil {
-			// Other error, return error to pipeline
-			return data.BlockData{}, fmt.Errorf("GetBlock(): unable to read block file '%s': %w", filename, err)
-		} else {
-			r.logger.Infof("Block %d read time: %s", rnd, time.Since(start))
-			// The read was fine, return the data.
-			return blockData, nil
+	// Find the position
+	match := re.FindStringSubmatch(err.Error())
+	var position int
+	if len(match) > 1 {
+		var err2 error
+		position, err2 = strconv.Atoi(match[1])
+		if err2 != nil {
+			return fmt.Errorf("unable to parse position: %w, err: %w", err2, err)
 		}
+	} else {
+		return fmt.Errorf("unknown error: %w", err)
 	}
+
+	content, err2 := os.ReadFile(file)
+	if err2 != nil {
+		return fmt.Errorf("error reading file: %w, err: %w", err2, err)
+	}
+
+	radius := 20
+	start := position - radius
+	if start < 0 {
+		start = 0
+	}
+	end := position + radius
+	if end > len(content) {
+		end = len(content)
+	}
+
+	return fmt.Errorf(`error in %s @position %d: %w
+<<<<<%s>>>>>`, file, position, err, string(content[start:end]))
+}
+
+func (r *fileReader) GetBlock(rnd uint64) (data.BlockData, error) {
+	filename := path.Join(r.cfg.BlocksDir, fmt.Sprintf(r.cfg.FilenamePattern, rnd))
+	var blockData data.BlockData
+	start := time.Now()
+
+	// Read file content
+	err := filewriter.DecodeFromFile(filename, &blockData, r.format, r.gzip)
+	if err != nil {
+		err = posErr(filename, err)
+		return data.BlockData{}, fmt.Errorf("GetBlock(): unable to read block file '%s': %w", filename, err)
+	}
+	r.logger.Infof("Block %d read time: %s", rnd, time.Since(start))
+	return blockData, nil
 }

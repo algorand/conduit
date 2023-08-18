@@ -9,7 +9,6 @@ import (
 
 	"github.com/sirupsen/logrus"
 	"github.com/sirupsen/logrus/hooks/test"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v3"
 
@@ -21,29 +20,45 @@ import (
 	sdk "github.com/algorand/go-algorand-sdk/v2/types"
 )
 
+const (
+	defaultEncodingFormat = MessagepackFormat
+	defaultIsGzip         = true
+)
+
 var logger *logrus.Logger
 var fileCons = exporters.ExporterConstructorFunc(func() exporters.Exporter {
 	return &fileExporter{}
 })
-var configTemplate = "block-dir: %s/blocks\n"
+var configTemplatePrefix = "block-dir: %s/blocks\n"
 var round = sdk.Round(2)
 
 func init() {
 	logger, _ = test.NewNullLogger()
 }
 
-func getConfig(t *testing.T) (config, tempdir string) {
+func getConfigWithoutPattern(t *testing.T) (config, tempdir string) {
 	tempdir = t.TempDir()
-	config = fmt.Sprintf(configTemplate, tempdir)
+	config = fmt.Sprintf(configTemplatePrefix, tempdir)
 	return
+}
+
+func getConfigWithPattern(t *testing.T, pattern string) (config, tempdir string) {
+	config, tempdir = getConfigWithoutPattern(t)
+	config = fmt.Sprintf("%sfilename-pattern: '%s'\n", config, pattern)
+	return
+}
+
+func TestDefaults(t *testing.T) {
+	require.Equal(t, defaultEncodingFormat, MessagepackFormat)
+	require.Equal(t, defaultIsGzip, true)
 }
 
 func TestExporterMetadata(t *testing.T) {
 	fileExp := fileCons.New()
 	meta := fileExp.Metadata()
-	assert.Equal(t, metadata.Name, meta.Name)
-	assert.Equal(t, metadata.Description, meta.Description)
-	assert.Equal(t, metadata.Deprecated, meta.Deprecated)
+	require.Equal(t, metadata.Name, meta.Name)
+	require.Equal(t, metadata.Description, meta.Description)
+	require.Equal(t, metadata.Deprecated, meta.Deprecated)
 }
 
 func TestExporterInitDefaults(t *testing.T) {
@@ -87,18 +102,18 @@ func TestExporterInitDefaults(t *testing.T) {
 }
 
 func TestExporterInit(t *testing.T) {
-	config, _ := getConfig(t)
+	config, _ := getConfigWithPattern(t, "%[1]d_block.json")
 	fileExp := fileCons.New()
 	defer fileExp.Close()
 
 	// creates a new output file
 	err := fileExp.Init(context.Background(), conduit.MakePipelineInitProvider(&round, nil, nil), plugins.MakePluginConfig(config), logger)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	fileExp.Close()
 
 	// can open existing file
 	err = fileExp.Init(context.Background(), conduit.MakePipelineInitProvider(&round, nil, nil), plugins.MakePluginConfig(config), logger)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	fileExp.Close()
 }
 
@@ -155,8 +170,56 @@ func sendData(t *testing.T, fileExp exporters.Exporter, config string, numRounds
 }
 
 func TestExporterReceive(t *testing.T) {
-	config, tempdir := getConfig(t)
+	patterns := []string{
+		"%[1]d_block.json",
+		"%[1]d_block.json.gz",
+		"%[1]d_block.msgp",
+		"%[1]d_block.msgp.gz",
+	}
+	for _, pattern := range patterns {
+		pattern := pattern
+		t.Run(pattern, func(t *testing.T) {
+			t.Parallel()
+
+			format, isGzip, err := ParseFilenamePattern(pattern)
+			require.NoError(t, err)
+			config, tempdir := getConfigWithPattern(t, pattern)
+			fileExp := fileCons.New()
+			numRounds := 5
+			sendData(t, fileExp, config, numRounds)
+
+			// block data is valid
+			for i := 0; i < 5; i++ {
+				filename := fmt.Sprintf(pattern, i)
+				path := fmt.Sprintf("%s/blocks/%s", tempdir, filename)
+				require.FileExists(t, path)
+
+				blockBytes, err := os.ReadFile(path)
+				require.NoError(t, err)
+				require.NotContains(t, string(blockBytes), " 0: ")
+
+				var blockData data.BlockData
+				err = DecodeFromFile(path, &blockData, format, isGzip)
+				require.NoError(t, err)
+				require.Equal(t, sdk.Round(i), blockData.BlockHeader.Round)
+				require.NotNil(t, blockData.Certificate)
+			}
+		})
+	}
+}
+
+func TestExporterClose(t *testing.T) {
+	config, _ := getConfigWithoutPattern(t)
 	fileExp := fileCons.New()
+	rnd := sdk.Round(0)
+	fileExp.Init(context.Background(), conduit.MakePipelineInitProvider(&rnd, nil, nil), plugins.MakePluginConfig(config), logger)
+	require.NoError(t, fileExp.Close())
+}
+
+func TestPatternDefault(t *testing.T) {
+	config, tempdir := getConfigWithoutPattern(t)
+	fileExp := fileCons.New()
+
 	numRounds := 5
 	sendData(t, fileExp, config, numRounds)
 
@@ -166,44 +229,8 @@ func TestExporterReceive(t *testing.T) {
 		path := fmt.Sprintf("%s/blocks/%s", tempdir, filename)
 		require.FileExists(t, path)
 
-		blockBytes, err := os.ReadFile(path)
-		require.NoError(t, err)
-		assert.NotContains(t, string(blockBytes), " 0: ")
-
 		var blockData data.BlockData
-		err = DecodeJSONFromFile(path, &blockData, true)
-		require.Equal(t, sdk.Round(i), blockData.BlockHeader.Round)
-		require.NoError(t, err)
-		require.NotNil(t, blockData.Certificate)
-	}
-}
-
-func TestExporterClose(t *testing.T) {
-	config, _ := getConfig(t)
-	fileExp := fileCons.New()
-	rnd := sdk.Round(0)
-	fileExp.Init(context.Background(), conduit.MakePipelineInitProvider(&rnd, nil, nil), plugins.MakePluginConfig(config), logger)
-	require.NoError(t, fileExp.Close())
-}
-
-func TestPatternOverride(t *testing.T) {
-	config, tempdir := getConfig(t)
-	fileExp := fileCons.New()
-
-	patternOverride := "PREFIX_%[1]d_block.json"
-	config = fmt.Sprintf("%sfilename-pattern: '%s'\n", config, patternOverride)
-
-	numRounds := 5
-	sendData(t, fileExp, config, numRounds)
-
-	// block data is valid
-	for i := 0; i < 5; i++ {
-		filename := fmt.Sprintf(patternOverride, i)
-		path := fmt.Sprintf("%s/blocks/%s", tempdir, filename)
-		assert.FileExists(t, path)
-
-		var blockData data.BlockData
-		err := DecodeJSONFromFile(path, &blockData, true)
+		err := DecodeFromFile(path, &blockData, defaultEncodingFormat, defaultIsGzip)
 		require.Equal(t, sdk.Round(i), blockData.BlockHeader.Round)
 		require.NoError(t, err)
 		require.NotNil(t, blockData.Certificate)
@@ -227,10 +254,10 @@ func TestDropCertificate(t *testing.T) {
 	for i := 0; i < numRounds; i++ {
 		filename := fmt.Sprintf(FilePattern, i)
 		path := fmt.Sprintf("%s/%s", tempdir, filename)
-		assert.FileExists(t, path)
+		require.FileExists(t, path)
 		var blockData data.BlockData
-		err := DecodeJSONFromFile(path, &blockData, true)
-		assert.NoError(t, err)
-		assert.Nil(t, blockData.Certificate)
+		err := DecodeFromFile(path, &blockData, defaultEncodingFormat, defaultIsGzip)
+		require.NoError(t, err)
+		require.Nil(t, blockData.Certificate)
 	}
 }
