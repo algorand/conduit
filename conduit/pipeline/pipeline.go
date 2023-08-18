@@ -480,6 +480,7 @@ func (p *pipelineImpl) importerHandler(importer importers.Importer, roundChan <-
 
 				importFinish := time.Now()
 
+				// check context in case out channel is full.
 				select {
 				case <-p.ctx.Done():
 					return
@@ -527,6 +528,7 @@ func (p *pipelineImpl) processorHandler(idx int, proc processors.Processor, blkI
 				metrics.ProcessorTimeSeconds.WithLabelValues(proc.Metadata().Name).Observe(procTime.Seconds())
 
 				selectStart := time.Now()
+				// check context in case out channel is full.
 				select {
 				case <-p.ctx.Done():
 					return
