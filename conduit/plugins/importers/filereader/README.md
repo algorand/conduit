@@ -13,5 +13,5 @@ config:
         
     # FilenamePattern is the format used to find block files. It uses go string
     # formatting and should accept one number for the round.
-    filename-pattern: "%[1]d_block.json"
+    filename-pattern: "%[1]d_block.msgp.gz"
 ```
