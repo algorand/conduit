@@ -102,7 +102,7 @@ func EncodeToFile(filename string, v interface{}, format EncodingFormat, isGzip 
 	return Encode(format, writer, v)
 }
 
-// Encode encodes an object to a writer using a given an EncodingFormat.
+// Encode an object to a writer using a given an EncodingFormat.
 func Encode(format EncodingFormat, writer io.Writer, v interface{}) error {
 	var handle codec.Handle
 	switch format {
