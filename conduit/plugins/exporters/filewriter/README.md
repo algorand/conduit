@@ -3,6 +3,7 @@
 Write block data to files. This plugin works with the file rerader plugin to create a simple file-based pipeine.
 
 ## Configuration
+
 ```yml @sample.yaml
 name: file_writer
 config:
@@ -13,7 +14,9 @@ config:
 
     # FilenamePattern is the format used to write block files. It uses go
     # string formatting and should accept one number for the round.
-    # If the file has a '.gz' extension, blocks will be gzipped.
+    # To specify JSON encoding, add a '.json' extension to the filename.
+    # To specify MessagePack encoding, add a '.msgp' extension to the filename.
+    # If the file has a '.gz' extension, blocks will be gzipped regardless of encoding.
     # Default: "%[1]d_block.msgp.gz"
     filename-pattern: "%[1]d_block.msgp.gz"
 

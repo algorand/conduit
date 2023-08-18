@@ -3,6 +3,7 @@
 Read files from a directory and import them as blocks. This plugin works with the file exporter plugin to create a simple file-based pipeline.
 
 ## Configuration
+
 ```yml @sample.yaml
 name: file_reader
 config:
@@ -13,5 +14,6 @@ config:
         
     # FilenamePattern is the format used to find block files. It uses go string
     # formatting and should accept one number for the round.
+    # The pattern should match the extension of the files to be read.
     filename-pattern: "%[1]d_block.msgp.gz"
 ```
