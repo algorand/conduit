@@ -43,7 +43,7 @@ processors:
 
 # An exporter is defined to do something with the data.
 exporter:
-  name: "file_writer"
+  name: file_writer
   config:
     # BlocksDir is the path to a directory where block data should be stored.
     # The directory is created if it doesn't exist. If no directory is provided
