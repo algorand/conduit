@@ -26,7 +26,6 @@ const (
 	defaultIsGzip         = true
 )
 
-
 var (
 	logger       *logrus.Logger
 	testImporter importers.Importer
@@ -44,7 +43,6 @@ func TestDefaults(t *testing.T) {
 	require.Equal(t, defaultEncodingFormat, filewriter.MessagepackFormat)
 	require.Equal(t, defaultIsGzip, true)
 }
-
 
 func TestImporterorterMetadata(t *testing.T) {
 	testImporter = New()
@@ -94,7 +92,7 @@ func initializeImporter(t *testing.T, numRounds int) (importer importers.Importe
 	genesisExpected := initializeTestData(t, tempdir, numRounds)
 	importer = New()
 	cfg := Config{
-		BlocksDir:     tempdir,
+		BlocksDir: tempdir,
 	}
 	data, err := yaml.Marshal(cfg)
 	require.NoError(t, err)

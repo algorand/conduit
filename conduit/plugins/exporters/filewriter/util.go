@@ -12,6 +12,20 @@ import (
 	"github.com/algorand/go-codec/codec"
 )
 
+// EncodingFormat enumerates the acceptable encoding formats for Conduit file-based plugins.
+type EncodingFormat byte
+
+const (
+	// MessagepackFormat indicates the file is encoded using MessagePack.
+	MessagepackFormat EncodingFormat = iota
+
+	// JSONFormat indicates the file is encoded using JSON.
+	JSONFormat
+
+	// UnrecognizedFormat indicates the file's encoding is unknown to Conduit.
+	UnrecognizedFormat
+)
+
 var jsonPrettyHandle *codec.JsonHandle
 
 func init() {
@@ -26,6 +40,7 @@ func init() {
 	jsonPrettyHandle.Indent = 2
 }
 
+// ParseFilenamePattern parses a filename pattern into an EncodingFormat and gzip flag.
 func ParseFilenamePattern(pattern string) (EncodingFormat, bool, error) {
 	originalPattern := pattern
 	gzip := false
@@ -46,9 +61,10 @@ func ParseFilenamePattern(pattern string) (EncodingFormat, bool, error) {
 	return blockFormat, gzip, nil
 }
 
+// GenesisFilename returns the filename for a genesis file using a given format and possible gzip compression.
 func GenesisFilename(format EncodingFormat, isGzip bool) (string, error) {
 	var ext string
-	
+
 	switch format {
 	case JSONFormat:
 		ext = ".json"
@@ -86,6 +102,7 @@ func EncodeToFile(filename string, v interface{}, format EncodingFormat, isGzip 
 	return Encode(format, writer, v)
 }
 
+// Encode encodes an object to a writer using a given an EncodingFormat.
 func Encode(format EncodingFormat, writer io.Writer, v interface{}) error {
 	var handle codec.Handle
 	switch format {

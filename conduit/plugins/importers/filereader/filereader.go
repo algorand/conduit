@@ -26,7 +26,7 @@ const PluginName = "file_reader"
 type fileReader struct {
 	logger *logrus.Logger
 	cfg    Config
-	gzip  bool
+	gzip   bool
 	format filewriter.EncodingFormat
 	ctx    context.Context
 	cancel context.CancelFunc
@@ -96,7 +96,6 @@ func (r *fileReader) GetGenesis() (*sdk.Genesis, error) {
 	}
 	return &genesis, nil
 }
-
 
 func (r *fileReader) Close() error {
 	if r.cancel != nil {

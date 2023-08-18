@@ -23,14 +23,6 @@ const (
 	FilePattern = "%[1]d_block.msgp.gz"
 )
 
-type EncodingFormat byte
-
-const (
-	MessagepackFormat EncodingFormat = iota
-	JSONFormat
-	UnrecognizedFormat
-)
-
 type fileExporter struct {
 	round  uint64
 	cfg    Config
@@ -73,12 +65,11 @@ func (exp *fileExporter) Init(_ context.Context, initProvider data.InitProvider,
 	}
 	// create block directory
 	err = os.Mkdir(exp.cfg.BlocksDir, 0755)
-	if err != nil && errors.Is(err, os.ErrExist) {
-		// Ignore mkdir if the dir exists
-		err = nil
-	} else if err != nil {
+	if err != nil && !errors.Is(err, os.ErrExist) {
+		// Ignore mkdir err if the dir exists (case errors.Is(err, os.ErrExist))
 		return fmt.Errorf("Init() error: %w", err)
 	}
+
 	exp.round = uint64(initProvider.NextDBRound())
 
 	// export the genesis as well in the same format
