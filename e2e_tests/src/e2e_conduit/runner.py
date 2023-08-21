@@ -47,6 +47,7 @@ class ConduitE2ETestRunner:
             yaml.dump(
                 {
                     "log-level": "info",
+                    "retry-count": 1,
                     "importer": {
                         "name": scenario.importer.name,
                         "config": scenario.importer.config_input,
@@ -91,7 +92,7 @@ class ConduitE2ETestRunner:
             return 1
 
         if indexerout.round < scenario.importer.lastblock:
-            logger.error("conduit did not reach round={scenario.importer.lastblock}")
+            logger.error(f"conduit did not reach round={scenario.importer.lastblock}")
             sys.stderr.write(indexerout.dump())
             return 1
 

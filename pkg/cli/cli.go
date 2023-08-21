@@ -81,7 +81,7 @@ func runConduitCmdWithConfig(args *data.Args) error {
 	}
 
 	ctx := context.Background()
-	pipeline, err := pipeline.MakePipeline(ctx, pCfg, logger)
+	pline, err := pipeline.MakePipeline(ctx, pCfg, logger)
 	if err != nil {
 		err = fmt.Errorf("pipeline creation error: %w", err)
 
@@ -92,7 +92,7 @@ func runConduitCmdWithConfig(args *data.Args) error {
 		return err
 	}
 
-	err = pipeline.Init()
+	err = pline.Init()
 	if err != nil {
 		// Suppress log, it is about to be printed to stderr.
 		if pCfg.LogFile != "" {
@@ -100,8 +100,8 @@ func runConduitCmdWithConfig(args *data.Args) error {
 		}
 		return fmt.Errorf("pipeline init error: %w", err)
 	}
-	pipeline.Start()
-	defer pipeline.Stop()
+	pline.Start()
+	defer pline.Stop()
 
 	// Start server
 	if pCfg.API.Address != "" {
@@ -116,8 +116,8 @@ func runConduitCmdWithConfig(args *data.Args) error {
 		defer shutdown(context.Background())
 	}
 
-	pipeline.Wait()
-	return pipeline.Error()
+	pline.Wait()
+	return pline.Error()
 }
 
 // MakeConduitCmdWithUtilities creates the main cobra command with all utilities
@@ -149,7 +149,7 @@ Detailed documentation is online: https://github.com/algorand/conduit`,
 		Run: func(cmd *cobra.Command, args []string) {
 			err := runConduitCmdWithConfig(cfg)
 			if err != nil {
-				fmt.Fprintf(os.Stderr, "\nExiting with error:\n%s.\n", err)
+				fmt.Fprintf(os.Stderr, "\nExiting with error:\t%s.\n", err)
 				os.Exit(1)
 			}
 		},
