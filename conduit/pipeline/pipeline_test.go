@@ -34,10 +34,14 @@ import (
 	"github.com/algorand/conduit/conduit/telemetry"
 )
 
+const (
+	initialRound = 1337
+)
+
 // a unique block data to validate with tests
 var uniqueBlockData = data.BlockData{
 	BlockHeader: sdk.BlockHeader{
-		Round: 1337,
+		Round: initialRound,
 	},
 }
 
@@ -52,6 +56,8 @@ type mockImporter struct {
 	subsystem       string
 	rndOverride     uint64
 	rndReqErr       error
+	getBlockCalls   int
+	onCompleteCalls int
 }
 
 func (m *mockImporter) Init(_ context.Context, _ data.InitProvider, cfg plugins.PluginConfig, _ *log.Logger) error {
@@ -77,8 +83,12 @@ func (m *mockImporter) GetBlock(rnd uint64) (data.BlockData, error) {
 		err = fmt.Errorf("importer")
 	}
 	m.Called(rnd)
-	// Return an error to make sure we
-	return uniqueBlockData, err
+	m.getBlockCalls++
+	return data.BlockData{
+		BlockHeader: sdk.BlockHeader{
+			Round: sdk.Round(rnd),
+		},
+	}, err
 }
 
 func (m *mockImporter) OnComplete(input data.BlockData) error {
@@ -88,6 +98,7 @@ func (m *mockImporter) OnComplete(input data.BlockData) error {
 	}
 	m.finalRound = sdk.Round(input.BlockHeader.Round)
 	m.Called(input)
+	m.onCompleteCalls++
 	return err
 }
 
@@ -109,6 +120,8 @@ type mockProcessor struct {
 	onCompleteError bool
 	rndOverride     uint64
 	rndReqErr       error
+	processCalls    int
+	onCompleteCalls int
 }
 
 func (m *mockProcessor) Init(_ context.Context, _ data.InitProvider, cfg plugins.PluginConfig, _ *log.Logger) error {
@@ -135,8 +148,8 @@ func (m *mockProcessor) Process(input data.BlockData) (data.BlockData, error) {
 	if m.returnError {
 		err = fmt.Errorf("process")
 	}
+	m.processCalls++
 	m.Called(input)
-	input.BlockHeader.Round++
 	return input, err
 }
 
@@ -146,6 +159,7 @@ func (m *mockProcessor) OnComplete(input data.BlockData) error {
 		err = fmt.Errorf("on complete")
 	}
 	m.finalRound = sdk.Round(input.BlockHeader.Round)
+	m.onCompleteCalls++
 	m.Called(input)
 	return err
 }
@@ -159,6 +173,8 @@ type mockExporter struct {
 	onCompleteError bool
 	rndOverride     uint64
 	rndReqErr       error
+	receiveCalls    int
+	onCompleteCalls int
 }
 
 func (m *mockExporter) Metadata() plugins.Metadata {
@@ -185,6 +201,7 @@ func (m *mockExporter) Receive(exportData data.BlockData) error {
 	if m.returnError {
 		err = fmt.Errorf("receive")
 	}
+	m.receiveCalls++
 	m.Called(exportData)
 	return err
 }
@@ -195,6 +212,7 @@ func (m *mockExporter) OnComplete(input data.BlockData) error {
 		err = fmt.Errorf("on complete")
 	}
 	m.finalRound = sdk.Round(input.BlockHeader.Round)
+	m.onCompleteCalls++
 	m.Called(input)
 	return err
 }
@@ -249,33 +267,31 @@ func mockPipeline(t *testing.T, dataDir string) (*pipelineImpl, *test.Hook, *moc
 
 // TestPipelineRun tests that running the pipeline calls the correct functions with mocking
 func TestPipelineRun(t *testing.T) {
-	mImporter := mockImporter{}
-	mImporter.On("GetBlock", mock.Anything).Return(uniqueBlockData, nil)
+	mImporter := mockImporter{rndOverride: initialRound + 1}
+	mImporter.On("GetBlock", mock.Anything).Return(mock.Anything, nil)
+	mImporter.On("OnComplete", mock.Anything).Return(nil)
 	mProcessor := mockProcessor{}
-	processorData := uniqueBlockData
-	processorData.BlockHeader.Round++
-	mProcessor.On("Process", mock.Anything).Return(processorData)
+	mProcessor.On("Process", mock.Anything).Return(mock.Anything)
 	mProcessor.On("OnComplete", mock.Anything).Return(nil)
 	mExporter := mockExporter{}
 	mExporter.On("Receive", mock.Anything).Return(nil)
+	mExporter.On("OnComplete", mock.Anything).Return(nil)
 
 	var pImporter importers.Importer = &mImporter
 	var pProcessor processors.Processor = &mProcessor
 	var pExporter exporters.Exporter = &mExporter
-	var cbComplete conduit.Completed = &mProcessor
 
-	ctx, cf := context.WithCancel(context.Background())
+	ctx, ccf := context.WithCancelCause(context.Background())
 
 	l, _ := test.NewNullLogger()
 	pImpl := pipelineImpl{
-		ctx:              ctx,
-		cf:               cf,
-		logger:           l,
-		initProvider:     nil,
-		importer:         pImporter,
-		processors:       []processors.Processor{pProcessor},
-		exporter:         pExporter,
-		completeCallback: []conduit.OnCompleteFunc{cbComplete.OnComplete},
+		ctx:          ctx,
+		ccf:          ccf,
+		logger:       l,
+		initProvider: nil,
+		importer:     pImporter,
+		processors:   []processors.Processor{pProcessor},
+		exporter:     pExporter,
 		pipelineMetadata: state{
 			NextRound:   0,
 			GenesisHash: "",
@@ -283,25 +299,50 @@ func TestPipelineRun(t *testing.T) {
 		cfg: &data.Config{
 			RetryDelay: 0 * time.Second,
 			RetryCount: math.MaxUint64,
+			Processors: []data.NameConfigPair{{
+				Name:   "mockProcessor",
+				Config: map[string]interface{}{},
+			}},
 			ConduitArgs: &data.Args{
 				ConduitDataDir: t.TempDir(),
 			},
 		},
 	}
 
+	errTestCancellation := errors.New("test cancellation")
 	go func() {
 		time.Sleep(1 * time.Second)
-		cf()
+		ccf(errTestCancellation)
 	}()
 
+	err := pImpl.Init()
+	assert.NoError(t, err)
 	pImpl.Start()
 	pImpl.Wait()
 	assert.NoError(t, pImpl.Error())
 
-	assert.Equal(t, mProcessor.finalRound, uniqueBlockData.BlockHeader.Round+1)
+	finishedRounds := mExporter.receiveCalls
+	assert.Equal(t, finishedRounds, mExporter.onCompleteCalls)
+	assert.Len(t, mExporter.Calls, 2*finishedRounds)
+
+	assert.Equal(t, finishedRounds, mProcessor.onCompleteCalls)
+	assert.LessOrEqual(t, mProcessor.processCalls, finishedRounds+1)  // 1 additional Process() in the pipeline @ cancellation
+	assert.GreaterOrEqual(t, mProcessor.processCalls, finishedRounds) // 1 additional Process() in the pipeline @ cancellation
+	assert.Len(t, mProcessor.Calls, mProcessor.processCalls+mProcessor.onCompleteCalls)
+
+	assert.Equal(t, finishedRounds, mImporter.onCompleteCalls)
+	assert.LessOrEqual(t, mImporter.getBlockCalls, finishedRounds+2)  // 2 additional GetBlock() in the pipeline @ cancellation
+	assert.GreaterOrEqual(t, mImporter.getBlockCalls, finishedRounds) // 2 additional GetBlock() in the pipeline @ cancellation
+	assert.Len(t, mImporter.Calls, mImporter.getBlockCalls+mImporter.onCompleteCalls)
+
+	finalRound := sdk.Round(initialRound + finishedRounds)
+	assert.Equal(t, finalRound, mExporter.finalRound)
+	assert.Equal(t, finalRound, mProcessor.finalRound)
+	assert.Equal(t, finalRound, mImporter.finalRound)
 
 	mock.AssertExpectationsForObjects(t, &mImporter, &mProcessor, &mExporter)
 
+	assert.ErrorIs(t, context.Cause(pImpl.ctx), errTestCancellation)
 }
 
 // TestPipelineCpuPidFiles tests that cpu and pid files are created when specified
@@ -358,11 +399,11 @@ func TestPipelineErrors(t *testing.T) {
 	var pExporter exporters.Exporter = &mExporter
 	var cbComplete conduit.Completed = &mProcessor
 
-	ctx, cf := context.WithCancel(context.Background())
+	ctx, ccf := context.WithCancelCause(context.Background())
 	l, _ := test.NewNullLogger()
 	pImpl := pipelineImpl{
 		ctx: ctx,
-		cf:  cf,
+		ccf: ccf,
 		cfg: &data.Config{
 			RetryDelay: 0 * time.Second,
 			RetryCount: math.MaxUint64,
@@ -383,37 +424,38 @@ func TestPipelineErrors(t *testing.T) {
 
 	go pImpl.Start()
 	time.Sleep(time.Millisecond)
-	pImpl.cf()
+	cancel := errors.New("testing timeout")
+	pImpl.ccf(cancel)
 	pImpl.Wait()
 	assert.Error(t, pImpl.Error(), fmt.Errorf("importer"))
 
 	mImporter.returnError = false
 	mProcessor.returnError = true
-	pImpl.ctx, pImpl.cf = context.WithCancel(context.Background())
-	pImpl.setError(nil)
+	pImpl.ctx, pImpl.ccf = context.WithCancelCause(context.Background())
+	pImpl.joinError(nil)
 	go pImpl.Start()
 	time.Sleep(time.Millisecond)
-	pImpl.cf()
+	pImpl.ccf(cancel)
 	pImpl.Wait()
 	assert.Error(t, pImpl.Error(), fmt.Errorf("process"))
 
 	mProcessor.returnError = false
 	mProcessor.onCompleteError = true
-	pImpl.ctx, pImpl.cf = context.WithCancel(context.Background())
-	pImpl.setError(nil)
+	pImpl.ctx, pImpl.ccf = context.WithCancelCause(context.Background())
+	pImpl.joinError(nil)
 	go pImpl.Start()
 	time.Sleep(time.Millisecond)
-	pImpl.cf()
+	pImpl.ccf(cancel)
 	pImpl.Wait()
 	assert.Error(t, pImpl.Error(), fmt.Errorf("on complete"))
 
 	mProcessor.onCompleteError = false
 	mExporter.returnError = true
-	pImpl.ctx, pImpl.cf = context.WithCancel(context.Background())
-	pImpl.setError(nil)
+	pImpl.ctx, pImpl.ccf = context.WithCancelCause(context.Background())
+	pImpl.joinError(nil)
 	go pImpl.Start()
 	time.Sleep(time.Millisecond)
-	pImpl.cf()
+	pImpl.ccf(cancel)
 	pImpl.Wait()
 	assert.Error(t, pImpl.Error(), fmt.Errorf("exporter"))
 }
@@ -433,11 +475,11 @@ func Test_pipelineImpl_registerLifecycleCallbacks(t *testing.T) {
 	var pProcessor processors.Processor = &mProcessor
 	var pExporter exporters.Exporter = &mExporter
 
-	ctx, cf := context.WithCancel(context.Background())
+	ctx, ccf := context.WithCancelCause(context.Background())
 	l, _ := test.NewNullLogger()
 	pImpl := pipelineImpl{
 		ctx:          ctx,
-		cf:           cf,
+		ccf:          ccf,
 		cfg:          &data.Config{},
 		logger:       l,
 		initProvider: nil,
@@ -771,9 +813,10 @@ func TestPipelineRetryVariables(t *testing.T) {
 			var pProcessor processors.Processor = &mockProcessor{}
 			var pExporter exporters.Exporter = &mockExporter{}
 			l, hook := test.NewNullLogger()
-			ctx, cf := context.WithCancel(context.Background())
+			ctx, ccf := context.WithCancelCause(context.Background())
 			pImpl := pipelineImpl{
 				ctx: ctx,
+				ccf: ccf,
 				cfg: &data.Config{
 					RetryCount: testCase.retryCount,
 					RetryDelay: testCase.retryDelay,
@@ -817,7 +860,7 @@ func TestPipelineRetryVariables(t *testing.T) {
 			go func() {
 				time.Sleep(maxDuration)
 				if !done {
-					cf()
+					ccf(errors.New("test over timeout"))
 					assert.Equal(t, testCase.totalDuration, maxDuration)
 				}
 			}()
@@ -944,4 +987,29 @@ func TestMetrics(t *testing.T) {
 		}
 	}
 	assert.Equal(t, 4, found)
+}
+
+func TestLogStatsE2Elog(t *testing.T) {
+	nextRound := uint64(1337)
+	round := uint64(42)
+	numTxns := 13
+	duration := 12345600 * time.Microsecond
+
+	expectedLog := "UPDATED Pipeline NextRound=1337. FINISHED Pipeline round r=42 (13 txn) exported in 12.3456s"
+	log := logstatsE2Elog(nextRound, round, numTxns, duration)
+	require.Equal(t, expectedLog, log)
+
+	logstatsRex, err := regexp.Compile(`round r=(\d+) \((\d+) txn\) exported in (.*)`)
+	require.NoError(t, err)
+	matches := logstatsRex.FindStringSubmatch(log)
+	require.Len(t, matches, 4)
+	require.Equal(t, "42", matches[1])
+	require.Equal(t, "13", matches[2])
+	require.Equal(t, "12.3456s", matches[3])
+
+	e2eRex, err := regexp.Compile(`FINISHED Pipeline round r=(\d+)`)
+	require.NoError(t, err)
+	matches = e2eRex.FindStringSubmatch(log)
+	require.Len(t, matches, 2)
+	require.Equal(t, "42", matches[1])
 }

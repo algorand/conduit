@@ -62,11 +62,15 @@ The context provided to this function should be saved, and used to terminate any
 
 ### Per-round function
 
-Each plugin type has a function which is called once per round:
+Each plugin type has a function termed the _Plugin Method_ which is called once per round:
 
 * Importer: `GetBlock` is called when a particular round is required.
 * Processor: `Process` is called to process a round.
-* Exporter: `Receive` for consuming a round.
+* Exporter: `Receive` for consuming and typically persisting a round.
+
+> NOTE: When a _Plugin Method_ returns an error, the pipeline will retry according to the configured `retry-count` employing a delay of `retry-delay`
+> between tries. In most cases, it is recommended that you use Conduit's
+> built-in retry mechanism rather than implementing your own.
 
 ### Close
 
@@ -103,6 +107,8 @@ type RoundRequestor interface {
 #### Completed
 
 When all processing has completed for a round, the `OnComplete` function is called on any plugin that implements it.
+
+> NOTE: The error that `OnComplete()` returns is non-fatal and Conduit's pipeline will continue on to the next round.
 
 ```go
 // Completed is called by the conduit pipeline after every exporter has
