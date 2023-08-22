@@ -1,27 +1,27 @@
 # Log verbosity: PANIC, FATAL, ERROR, WARN, INFO, DEBUG, TRACE
-log-level: INFO
+# log-level: INFO
 
 # If no log file is provided logs are written to stdout.
 #log-file:
 
 # Number of retries to perform after a pipeline plugin error.
 # Set to 0 to retry forever.
-retry-count: 10
+# retry-count: 10
 
 # Time duration to wait between retry attempts.
-retry-delay: "1s"
+# retry-delay: "1s"
 
 # Optional filepath to use for pidfile.
 #pid-filepath: /path/to/pidfile
 
 # Whether or not to print the conduit banner on startup.
-hide-banner: false
+# hide-banner: false
 
 # When enabled prometheus metrics are available on '/metrics'
-metrics:
-    mode: OFF
-    addr: ":9999"
-    prefix: "conduit"
+# metrics:
+#     mode: OFF
+#     addr: ":9999"
+#     prefix: "conduit"
 
 
 # The importer is typically an algod follower node.
@@ -61,9 +61,8 @@ exporter:
 
 
 # Enable telemetry for conduit
-telemetry:
-  enabled: false
-
+# telemetry:
+#   enabled: false
   # By default the following fields will be configured to send data to Algorand.
   # To store your own telemetry events, they can be overridden.
   # uri: ""
