@@ -74,20 +74,14 @@ func (r *fileReader) Init(ctx context.Context, _ data.InitProvider, cfg plugins.
 	return nil
 }
 
-// GetGenesis returns the genesis. Is is assumed that
-// the genesis file is available __in addition to__ the round 0 block file.
-// This is because the encoding assumed for the genesis is different
-// from the encoding assumed for blocks.
-// TODO: handle the case of a multipurpose file that contains both encodings.
+// GetGenesis returns the genesis. Is is assumed that the genesis file is available as `genesis.json`
+// regardless of chosen encoding format and gzip flag.
+// It is also assumed that there is a seperate round 0 block file adhering to the expected filename pattern with encoding.
+// This is because genesis and round 0 block have different data and encodings,
+// and the official network genesis files are plain uncompressed JSON.
 func (r *fileReader) GetGenesis() (*sdk.Genesis, error) {
-	genesisFile, err := filewriter.GenesisFilename(r.format, r.gzip)
-	if err != nil {
-		return nil, fmt.Errorf("GetGenesis(): failed to get genesis filename: %w", err)
-	}
-	genesisFile = path.Join(r.cfg.BlocksDir, genesisFile)
-
 	var genesis sdk.Genesis
-	err = filewriter.DecodeFromFile(genesisFile, &genesis, r.format, r.gzip)
+	err := filewriter.DecodeFromFile(path.Join(r.cfg.BlocksDir, filewriter.GenesisFilename), &genesis, filewriter.JSONFormat, false)
 	if err != nil {
 		return nil, fmt.Errorf("GetGenesis(): failed to process genesis file: %w", err)
 	}

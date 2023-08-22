@@ -104,59 +104,6 @@ func TestParseFilenameFormat(t *testing.T) {
 	}
 }
 
-func TestGenesisFilename(t *testing.T) {
-	testCases := []struct {
-		blockFormat EncodingFormat
-		gzip        bool
-		result      string
-		err         string
-	}{
-		{
-			blockFormat: MessagepackFormat,
-			gzip:        false,
-			result:      "genesis.msgp",
-			err:         "",
-		},
-		{
-			blockFormat: MessagepackFormat,
-			gzip:        true,
-			result:      "genesis.msgp.gz",
-			err:         "",
-		},
-		{
-			blockFormat: JSONFormat,
-			gzip:        false,
-			result:      "genesis.json",
-			err:         "",
-		},
-		{
-			blockFormat: JSONFormat,
-			gzip:        true,
-			result:      "genesis.json.gz",
-			err:         "",
-		},
-		{
-			result:      "error case",
-			blockFormat: EncodingFormat(42),
-			err:         "GenesisFilename(): unhandled format 42",
-		},
-	}
-	for _, tc := range testCases {
-		tc := tc
-		t.Run(tc.result, func(t *testing.T) {
-			t.Parallel()
-
-			filename, err := GenesisFilename(tc.blockFormat, tc.gzip)
-			if tc.err == "" {
-				require.NoError(t, err)
-				require.Equal(t, tc.result, filename)
-			} else {
-				require.ErrorContains(t, err, tc.err)
-			}
-		})
-	}
-}
-
 func TestEncodeToAndFromFile(t *testing.T) {
 	tempdir := t.TempDir()
 

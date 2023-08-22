@@ -64,10 +64,9 @@ func initializeTestData(t *testing.T, dir string, numRounds int) sdk.Genesis {
 		Timestamp:   1234,
 	}
 
-	genesisFilename, err := filewriter.GenesisFilename(defaultEncodingFormat, defaultIsGzip)
-	require.NoError(t, err)
+	genesisFilename := filewriter.GenesisFilename
 
-	err = filewriter.EncodeToFile(path.Join(dir, genesisFilename), genesisA, defaultEncodingFormat, defaultIsGzip)
+	err := filewriter.EncodeToFile(path.Join(dir, genesisFilename), genesisA, filewriter.JSONFormat, false)
 	require.NoError(t, err)
 
 	for i := 0; i < numRounds; i++ {

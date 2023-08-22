@@ -2,6 +2,8 @@
 
 Write block data to files. This plugin works with the file rerader plugin to create a simple file-based pipeine.
 
+The genesis is always exported to a plain JSON file named `genesis.json` regardless of the `FilenamePattern`.
+
 ## Configuration
 
 ```yml @sample.yaml

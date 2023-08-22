@@ -2,6 +2,8 @@
 
 Read files from a directory and import them as blocks. This plugin works with the file exporter plugin to create a simple file-based pipeline.
 
+The genesis must be a plain JSON file named `genesis.json` regardless of the `FilenamePattern`.
+
 ## Configuration
 
 ```yml @sample.yaml

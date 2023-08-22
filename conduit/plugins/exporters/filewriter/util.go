@@ -61,26 +61,6 @@ func ParseFilenamePattern(pattern string) (EncodingFormat, bool, error) {
 	return blockFormat, gzip, nil
 }
 
-// GenesisFilename returns the filename for a genesis file using a given format and possible gzip compression.
-func GenesisFilename(format EncodingFormat, isGzip bool) (string, error) {
-	var ext string
-
-	switch format {
-	case JSONFormat:
-		ext = ".json"
-	case MessagepackFormat:
-		ext = ".msgp"
-	default:
-		return "", fmt.Errorf("GenesisFilename(): unhandled format %d", format)
-	}
-
-	if isGzip {
-		ext += ".gz"
-	}
-
-	return fmt.Sprintf("genesis%s", ext), nil
-}
-
 // EncodeToFile enocods an object to a file using a given format and possible gzip compression.
 func EncodeToFile(filename string, v interface{}, format EncodingFormat, isGzip bool) error {
 	file, err := os.Create(filename)
