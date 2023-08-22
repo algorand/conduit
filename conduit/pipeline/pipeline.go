@@ -38,6 +38,12 @@ type Pipeline interface {
 	Stop()
 	Error() error
 	Wait()
+	Status() (Status, error)
+}
+
+// Status is a struct that contains the current pipeline status.
+type Status struct {
+	Round uint64 `json:"round"`
 }
 
 type pipelineImpl struct {
@@ -58,6 +64,9 @@ type pipelineImpl struct {
 	completeCallback []conduit.OnCompleteFunc
 
 	pipelineMetadata state
+
+	statusMu sync.Mutex
+	status   Status
 }
 
 type pluginChannel chan data.BlockData
@@ -382,6 +391,10 @@ func (p *pipelineImpl) Init() error {
 		go p.startMetricsServer()
 	}
 
+	p.statusMu.Lock()
+	defer p.statusMu.Unlock()
+	p.status.Round = p.pipelineMetadata.NextRound
+
 	return err
 }
 
@@ -602,6 +615,9 @@ func (p *pipelineImpl) exporterHandler(exporter exporters.Exporter, blkChan plug
 				// Increment Round, update metadata
 				nextRound := lastRound + 1
 				p.pipelineMetadata.NextRound = nextRound
+				p.statusMu.Lock()
+				p.status.Round = nextRound
+				p.statusMu.Unlock()
 				lastError = p.pipelineMetadata.encodeToFile(p.cfg.ConduitArgs.ConduitDataDir)
 				if lastError != nil {
 					lastError = fmt.Errorf("aborting after updating NextRound=%d BUT failing to save metadata: %w", nextRound, lastError)
@@ -686,6 +702,13 @@ func (p *pipelineImpl) Start() {
 
 func (p *pipelineImpl) Wait() {
 	p.wg.Wait()
+}
+
+func (p *pipelineImpl) Status() (Status, error) {
+	p.statusMu.Lock()
+	ret := p.status
+	p.statusMu.Unlock()
+	return ret, nil
 }
 
 // start a http server serving /metrics
