@@ -22,6 +22,7 @@ const (
 	// FilePattern is used to name the output files.
 	FilePattern = "%[1]d_block.msgp.gz"
 
+	// GenesisFilename is the name of the genesis file.
 	GenesisFilename = "genesis.json"
 )
 
