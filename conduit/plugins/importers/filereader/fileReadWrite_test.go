@@ -139,7 +139,7 @@ func getConfig(t *testing.T, pt plugins.PluginType, cfg data.NameConfigPair, dat
 
 // TestRoundTrip tests that blocks read by the filereader importer
 // under the msgp.gz encoding are written to identical files by the filewriter exporter.
-// This includes both a genesis block and a round-0 block with differend encodings.
+// This includes both a genesis block and a round-0 block with different encodings.
 func TestRoundTrip(t *testing.T) {
 	cleanArtifacts(t)
 	defer cleanArtifacts(t)
