@@ -21,4 +21,3 @@ const (
 	// Importer PluginType
 	Importer PluginType = "importer"
 )
-
