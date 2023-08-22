@@ -10,7 +10,7 @@ This is where external and third party plugins will be listed. If you create a
 plugin, please make a PR adding a bullet for it below.
 
 * [conduit-plugin-template](https://github.com/algorand/conduit-plugin-template): A collection of templates.
-*
+* [conduit-cockroachdb](https://github.com/algorand/conduit-cockroachdb): Experimental CockroachDB exporter for Conduit.
 
 # Configuring a Deployment that Includes External Plugins
 
