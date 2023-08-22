@@ -105,7 +105,7 @@ func runConduitCmdWithConfig(args *data.Args) error {
 
 	// Start server
 	if pCfg.API.Address != "" {
-		shutdown, err := api.StartServer(logger, pipeline, pCfg.API.Address)
+		shutdown, err := api.StartServer(logger, pline, pCfg.API.Address)
 		if err != nil {
 			// Suppress log, it is about to be printed to stderr.
 			if pCfg.LogFile != "" {
