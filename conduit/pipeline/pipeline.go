@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"path"
 	"runtime/pprof"
 	"sync"
 	"time"
@@ -14,6 +15,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	log "github.com/sirupsen/logrus"
+	yaml "gopkg.in/yaml.v3"
 
 	sdk "github.com/algorand/go-algorand-sdk/v2/types"
 
@@ -124,16 +126,27 @@ func (p *pipelineImpl) registerPluginMetricsCallbacks() {
 	}
 }
 
-// configWithLogger creates a plugin config from a name and config pair.
+// makeConfig creates a plugin config from a name and config pair.
 // It also creates a logger for the plugin and configures it using the pipeline's log settings.
-func (p *pipelineImpl) configWithLogger(cfg data.NameConfigPair, pluginType plugins.PluginType) (*log.Logger, plugins.PluginConfig, error) {
+func (p *pipelineImpl) makeConfig(cfg data.NameConfigPair, pluginType plugins.PluginType) (*log.Logger, plugins.PluginConfig, error) {
 	var dataDir string
 	if p.cfg.ConduitArgs != nil {
 		dataDir = p.cfg.ConduitArgs.ConduitDataDir
 	}
-	config, err := pluginType.GetConfig(cfg, dataDir)
+
+	configs, err := yaml.Marshal(cfg.Config)
 	if err != nil {
-		return nil, plugins.PluginConfig{}, fmt.Errorf("configWithLogger(): unable to create plugin config: %w", err)
+		return nil, plugins.PluginConfig{}, fmt.Errorf("makeConfig(): could not serialize config: %w", err)
+	}
+
+	var config plugins.PluginConfig
+	config.Config = string(configs)
+	if dataDir != "" {
+		config.DataDir = path.Join(dataDir, fmt.Sprintf("%s_%s", pluginType, cfg.Name))
+		err = os.MkdirAll(config.DataDir, os.ModePerm)
+		if err != nil {
+			return nil, plugins.PluginConfig{}, fmt.Errorf("makeConfig: unable to create plugin data directory: %w", err)
+		}
 	}
 
 	lgr := log.New()
@@ -186,7 +199,7 @@ func (p *pipelineImpl) pluginRoundOverride() (uint64, error) {
 	var pluginOverride uint64
 	var pluginOverrideName string // cache this in case of error.
 	for _, part := range parts {
-		_, config, err := p.configWithLogger(part.cfg, part.t)
+		_, config, err := p.makeConfig(part.cfg, part.t)
 		if err != nil {
 			return 0, err
 		}
@@ -317,7 +330,7 @@ func (p *pipelineImpl) Init() error {
 
 	// Initialize Importer
 	{
-		importerLogger, pluginConfig, err := p.configWithLogger(p.cfg.Importer, plugins.Importer)
+		importerLogger, pluginConfig, err := p.makeConfig(p.cfg.Importer, plugins.Importer)
 		if err != nil {
 			return fmt.Errorf("Pipeline.Init(): could not make %s config: %w", p.cfg.Importer.Name, err)
 		}
@@ -350,7 +363,7 @@ func (p *pipelineImpl) Init() error {
 	// Initialize Processors
 	for idx, processor := range p.processors {
 		ncPair := p.cfg.Processors[idx]
-		logger, config, err := p.configWithLogger(ncPair, plugins.Processor)
+		logger, config, err := p.makeConfig(ncPair, plugins.Processor)
 		if err != nil {
 			return fmt.Errorf("Pipeline.Init(): could not initialize processor (%s): %w", ncPair, err)
 		}
@@ -363,7 +376,7 @@ func (p *pipelineImpl) Init() error {
 
 	// Initialize Exporter
 	{
-		logger, config, err := p.configWithLogger(p.cfg.Exporter, plugins.Exporter)
+		logger, config, err := p.makeConfig(p.cfg.Exporter, plugins.Exporter)
 		if err != nil {
 			return fmt.Errorf("Pipeline.Init(): could not initialize processor (%s): %w", p.cfg.Exporter.Name, err)
 		}
