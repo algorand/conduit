@@ -42,7 +42,7 @@ telemetry:
   
   # By default the following fields will be configured to send data to Algorand.
   # To store your own telemetry events, they can be overridden.
-  # uri: ""
-  # index: ""
-  # username: ""
-  # password: ""
+  # uri: "https://conduit-telemetry.deveks.algodev.network"
+  # index: "conduit-telemetry-testing"
+  # username: "conduit-telemetry"
+  # password: "ratchet-tahiti-hunker-plebs-hamburg-wiretap-aplomb-mongoose-roomful"
