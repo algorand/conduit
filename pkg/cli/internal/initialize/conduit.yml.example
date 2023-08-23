@@ -42,16 +42,6 @@ exporter:
 
 # Enable telemetry for conduit
 telemetry:
-<<<<<<< Updated upstream
-  enabled: false
-
-  # By default the following fields will be configured to send data to Algorand.
-  # To store your own telemetry events, they can be overridden.
-  # uri: ""
-  # index: ""
-  # username: ""
-  # password: ""
-=======
     enabled: false
 
     # By default the following fields will be configured to send data to Algorand.
@@ -60,5 +50,3 @@ telemetry:
     # index: "conduit-telemetry-testing"
     # username: "conduit-telemetry"
     # password: "ratchet-tahiti-hunker-plebs-hamburg-wiretap-aplomb-mongoose-roomful"
->>>>>>> Stashed changes
->>>>>>> Stashed changes
