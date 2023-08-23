@@ -37,8 +37,6 @@ processors:
 # An exporter is defined to do something with the data.
 exporter:
 %s
-<<<<<<< Updated upstream
-=======
 
 # Enable telemetry for conduit
 telemetry:
