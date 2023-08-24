@@ -1,5 +1,5 @@
 env:
-  - DOCKER_NAME=algorand/conduit
+  - DOCKER_GITHUB_NAME=algorand/conduit
 
 before:
   hooks:
@@ -37,8 +37,8 @@ dockers:
     goos: linux
     goarch: amd64
     image_templates:
-    - "{{ .Env.DOCKER_NAME }}:latest{{ if .IsSnapshot }}-snapshot{{ end }}-amd64"
-    - "{{ .Env.DOCKER_NAME }}:{{ .Version }}-amd64"
+    - "{{ .Env.DOCKER_GITHUB_NAME }}:latest{{ if .IsSnapshot }}-snapshot{{ end }}-amd64"
+    - "{{ .Env.DOCKER_GITHUB_NAME }}:{{ .Version }}-amd64"
     build_flag_templates:
     - --platform=linux/amd64
     - --label=org.opencontainers.image.title={{ .ProjectName }}
@@ -52,8 +52,8 @@ dockers:
     goos: linux
     goarch: arm64
     image_templates:
-    - "{{ .Env.DOCKER_NAME }}:latest{{ if .IsSnapshot }}-snapshot{{ end }}-arm64"
-    - "{{ .Env.DOCKER_NAME }}:{{ .Version }}-arm64"
+    - "{{ .Env.DOCKER_GITHUB_NAME }}:latest{{ if .IsSnapshot }}-snapshot{{ end }}-arm64"
+    - "{{ .Env.DOCKER_GITHUB_NAME }}:{{ .Version }}-arm64"
     build_flag_templates:
     - --platform=linux/arm64
     - --label=org.opencontainers.image.title={{ .ProjectName }}
@@ -66,14 +66,14 @@ dockers:
 
 # automatically select amd64/arm64 when using image.
 docker_manifests:
-  - name_template: "{{ .Env.DOCKER_NAME }}:{{ .Version }}"
+  - name_template: "{{ .Env.DOCKER_GITHUB_NAME }}:{{ .Version }}"
     image_templates:
-    - "{{ .Env.DOCKER_NAME }}:{{ .Version }}-amd64"
-    - "{{ .Env.DOCKER_NAME }}:{{ .Version }}-arm64"
-  - name_template: "{{ .Env.DOCKER_NAME }}:latest{{ if .IsSnapshot }}-snapshot{{ end }}"
+    - "{{ .Env.DOCKER_GITHUB_NAME }}:{{ .Version }}-amd64"
+    - "{{ .Env.DOCKER_GITHUB_NAME }}:{{ .Version }}-arm64"
+  - name_template: "{{ .Env.DOCKER_GITHUB_NAME }}:latest{{ if .IsSnapshot }}-snapshot{{ end }}"
     image_templates:
-    - "{{ .Env.DOCKER_NAME }}:latest{{ if .IsSnapshot }}-snapshot{{ end }}-amd64"
-    - "{{ .Env.DOCKER_NAME }}:latest{{ if .IsSnapshot }}-snapshot{{ end }}-arm64"
+    - "{{ .Env.DOCKER_GITHUB_NAME }}:latest{{ if .IsSnapshot }}-snapshot{{ end }}-amd64"
+    - "{{ .Env.DOCKER_GITHUB_NAME }}:latest{{ if .IsSnapshot }}-snapshot{{ end }}-arm64"
 
 archives:
   - name_template: >-
@@ -94,3 +94,12 @@ changelog:
       - '^chore:'
       - '^docs:'
       - '^test:'
+
+release:
+  draft: true
+  header: |
+    ![GitHub Logo](https://raw.githubusercontent.com/algorand/go-algorand/master/release/release-banner.jpg)
+  footer: |
+    **Full Changelog**: https://github.com/{{ .Env.DOCKER_GITHUB_NAME }}/compare{{ .PreviousTag }}...{{ .Tag }}
+    ---
+    [Docker images for this release are available on Docker Hub.](https://hub.docker.com/r/algorand/conduit)
