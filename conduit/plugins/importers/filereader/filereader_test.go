@@ -40,8 +40,10 @@ func init() {
 }
 
 func TestDefaults(t *testing.T) {
-	require.Equal(t, defaultEncodingFormat, filewriter.MessagepackFormat)
-	require.Equal(t, defaultIsGzip, true)
+	format, gzip, err := filewriter.ParseFilenamePattern(filewriter.FilePattern)
+	require.NoError(t, err)
+	require.Equal(t, format, defaultEncodingFormat)
+	require.Equal(t, gzip, defaultIsGzip)
 }
 
 func TestImporterorterMetadata(t *testing.T) {

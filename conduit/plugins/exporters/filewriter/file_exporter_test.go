@@ -49,8 +49,10 @@ func getConfigWithPattern(t *testing.T, pattern string) (config, tempdir string)
 }
 
 func TestDefaults(t *testing.T) {
-	require.Equal(t, defaultEncodingFormat, MessagepackFormat)
-	require.Equal(t, defaultIsGzip, true)
+	format, gzip, err := ParseFilenamePattern(FilePattern)
+	require.NoError(t, err)
+	require.Equal(t, format, defaultEncodingFormat)
+	require.Equal(t, gzip, defaultIsGzip)
 }
 
 func TestExporterMetadata(t *testing.T) {
