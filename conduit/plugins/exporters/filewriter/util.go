@@ -91,7 +91,7 @@ func Encode(format EncodingFormat, writer io.Writer, v interface{}) error {
 	case MessagepackFormat:
 		handle = msgpack.LenientCodecHandle
 	default:
-		return fmt.Errorf("EncodeToFile(): unhandled format %d", format)
+		return fmt.Errorf("Encode(): unhandled format %d", format)
 	}
 	return codec.NewEncoder(writer, handle).Encode(v)
 }
