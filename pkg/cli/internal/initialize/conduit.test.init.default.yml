@@ -7,6 +7,17 @@ metrics:
   addr: ":9999"
   prefix: "conduit"
 
+# Enable telemetry for conduit
+telemetry:
+  enabled: false
+  
+  # By default the following fields will be configured to send data to Algorand.
+  # To store your own telemetry events, they can be overridden.
+  # uri: "https://conduit-telemetry.deveks.algodev.network"
+  # index: "conduit-telemetry-testing"
+  # username: "conduit-telemetry"
+  # password: "ratchet-tahiti-hunker-plebs-hamburg-wiretap-aplomb-mongoose-roomful"
+
 # The importer is typically an algod archival instance.
 importer:
   name: algod
@@ -35,14 +46,3 @@ exporter:
     filename-pattern: "%[1]d_block.json"
     # DropCertificate is used to remove the vote certificate from the block data before writing files.
     drop-certificate: true
-
-# Enable telemetry for conduit
-telemetry:
-  enabled: false
-  
-  # By default the following fields will be configured to send data to Algorand.
-  # To store your own telemetry events, they can be overridden.
-  # uri: "https://conduit-telemetry.deveks.algodev.network"
-  # index: "conduit-telemetry-testing"
-  # username: "conduit-telemetry"
-  # password: "ratchet-tahiti-hunker-plebs-hamburg-wiretap-aplomb-mongoose-roomful"
