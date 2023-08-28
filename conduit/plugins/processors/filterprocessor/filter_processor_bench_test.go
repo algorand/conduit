@@ -163,8 +163,6 @@ func BenchmarkProcess(b *testing.B) {
 	for _, v := range table {
 		b.Run(fmt.Sprintf("inner_txn_count_%d_omitGrouptxns_%t", v.numInner, v.omitGroupTxns), func(b *testing.B) {
 			bd := testBlock(v.numInner)
-
-			//bd := blockData(addr, v.numInner)
 			cfgStr := fmt.Sprintf(`search-inner: true
 omit-group-transactions: %t
 filters:
