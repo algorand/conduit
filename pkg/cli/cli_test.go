@@ -160,12 +160,10 @@ func TestHealthEndpoint(t *testing.T) {
 		}
 		args := setupDataDir(t, cfg)
 
-		
 		go func() {
 			runConduitCmdWithConfig(args)
 		}()
 		time.Sleep(1 * time.Second)
-
 
 		resp, err := http.Get(healthNet)
 		if address != "" {

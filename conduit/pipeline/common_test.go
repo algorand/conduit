@@ -53,7 +53,6 @@ func TestRetries(t *testing.T) {
 		}
 	}
 
-
 	cases := []struct {
 		name         string
 		retryCount   uint64
