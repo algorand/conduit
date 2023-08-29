@@ -18,13 +18,19 @@ import (
 const (
 	// PluginName to use when configuring.
 	PluginName = "file_writer"
+
 	// FilePattern is used to name the output files.
-	FilePattern = "%[1]d_block.json"
+	FilePattern = "%[1]d_block.msgp.gz"
+
+	// GenesisFilename is the name of the genesis file.
+	GenesisFilename = "genesis.json"
 )
 
 type fileExporter struct {
 	round  uint64
 	cfg    Config
+	gzip   bool
+	format EncodingFormat
 	logger *logrus.Logger
 }
 
@@ -51,20 +57,34 @@ func (exp *fileExporter) Init(_ context.Context, initProvider data.InitProvider,
 	if exp.cfg.FilenamePattern == "" {
 		exp.cfg.FilenamePattern = FilePattern
 	}
+	exp.format, exp.gzip, err = ParseFilenamePattern(exp.cfg.FilenamePattern)
+	if err != nil {
+		return fmt.Errorf("Init() error: %w", err)
+	}
+
 	// default to the data directory if no override provided.
 	if exp.cfg.BlocksDir == "" {
 		exp.cfg.BlocksDir = cfg.DataDir
 	}
 	// create block directory
 	err = os.Mkdir(exp.cfg.BlocksDir, 0755)
-	if err != nil && errors.Is(err, os.ErrExist) {
-		// Ignore mkdir if the dir exists
-		err = nil
-	} else if err != nil {
+	if err != nil && !errors.Is(err, os.ErrExist) {
+		// Ignore mkdir err if the dir exists (case errors.Is(err, os.ErrExist))
 		return fmt.Errorf("Init() error: %w", err)
 	}
+
 	exp.round = uint64(initProvider.NextDBRound())
-	return err
+
+	genesis := initProvider.GetGenesis()
+	genesisPath := path.Join(exp.cfg.BlocksDir, GenesisFilename)
+
+	// the genesis is always exported as plain JSON:
+	err = EncodeToFile(genesisPath, genesis, JSONFormat, false)
+	if err != nil {
+		return fmt.Errorf("Init() error sending to genesisPath=%s: %w", genesisPath, err)
+	}
+
+	return nil
 }
 
 func (exp *fileExporter) Close() error {
@@ -87,10 +107,12 @@ func (exp *fileExporter) Receive(exportData data.BlockData) error {
 		}
 
 		blockFile := path.Join(exp.cfg.BlocksDir, fmt.Sprintf(exp.cfg.FilenamePattern, exportData.Round()))
-		err := EncodeJSONToFile(blockFile, exportData, true)
+
+		err := EncodeToFile(blockFile, &exportData, exp.format, exp.gzip)
 		if err != nil {
 			return fmt.Errorf("Receive(): failed to write file %s: %w", blockFile, err)
 		}
+
 		exp.logger.Infof("Wrote block %d to %s", exportData.Round(), blockFile)
 	}
 

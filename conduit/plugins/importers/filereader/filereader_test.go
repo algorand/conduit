@@ -6,7 +6,6 @@ import (
 	"os"
 	"path"
 	"testing"
-	"time"
 
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
@@ -22,10 +21,13 @@ import (
 	sdk "github.com/algorand/go-algorand-sdk/v2/types"
 )
 
+const (
+	defaultEncodingFormat = filewriter.MessagepackFormat
+	defaultIsGzip         = true
+)
+
 var (
 	logger       *logrus.Logger
-	ctx          context.Context
-	cancel       context.CancelFunc
 	testImporter importers.Importer
 	pRound       sdk.Round
 )
@@ -35,6 +37,13 @@ func init() {
 	logger.SetOutput(os.Stdout)
 	logger.SetLevel(logrus.InfoLevel)
 	pRound = sdk.Round(1)
+}
+
+func TestDefaults(t *testing.T) {
+	format, gzip, err := filewriter.ParseFilenamePattern(filewriter.FilePattern)
+	require.NoError(t, err)
+	require.Equal(t, format, defaultEncodingFormat)
+	require.Equal(t, gzip, defaultIsGzip)
 }
 
 func TestImporterorterMetadata(t *testing.T) {
@@ -57,7 +66,7 @@ func initializeTestData(t *testing.T, dir string, numRounds int) sdk.Genesis {
 		Timestamp:   1234,
 	}
 
-	err := filewriter.EncodeJSONToFile(path.Join(dir, "genesis.json"), genesisA, true)
+	err := filewriter.EncodeToFile(path.Join(dir, filewriter.GenesisFilename), genesisA, filewriter.JSONFormat, false)
 	require.NoError(t, err)
 
 	for i := 0; i < numRounds; i++ {
@@ -70,7 +79,7 @@ func initializeTestData(t *testing.T, dir string, numRounds int) sdk.Genesis {
 			Certificate: nil,
 		}
 		blockFile := path.Join(dir, fmt.Sprintf(filewriter.FilePattern, i))
-		err = filewriter.EncodeJSONToFile(blockFile, block, true)
+		err = filewriter.EncodeToFile(blockFile, block, defaultEncodingFormat, defaultIsGzip)
 		require.NoError(t, err)
 	}
 
@@ -82,8 +91,7 @@ func initializeImporter(t *testing.T, numRounds int) (importer importers.Importe
 	genesisExpected := initializeTestData(t, tempdir, numRounds)
 	importer = New()
 	cfg := Config{
-		BlocksDir:     tempdir,
-		RetryDuration: 0,
+		BlocksDir: tempdir,
 	}
 	data, err := yaml.Marshal(cfg)
 	require.NoError(t, err)
@@ -121,55 +129,4 @@ func TestGetBlockSuccess(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, sdk.Round(i), block.BlockHeader.Round)
 	}
-}
-
-func TestRetryAndDuration(t *testing.T) {
-	tempdir := t.TempDir()
-	initializeTestData(t, tempdir, 0)
-	importer := New()
-	cfg := Config{
-		BlocksDir:     tempdir,
-		RetryDuration: 10 * time.Millisecond,
-		RetryCount:    3,
-	}
-	data, err := yaml.Marshal(cfg)
-	require.NoError(t, err)
-	err = importer.Init(context.Background(), conduit.MakePipelineInitProvider(&pRound, nil, nil), plugins.MakePluginConfig(string(data)), logger)
-	assert.NoError(t, err)
-
-	start := time.Now()
-	_, err = importer.GetBlock(0)
-	assert.ErrorContains(t, err, "GetBlock(): block not found after (3) attempts")
-
-	expectedDuration := cfg.RetryDuration*time.Duration(cfg.RetryCount) + 10*time.Millisecond
-	assert.WithinDuration(t, start, time.Now(), expectedDuration, "Error should generate after retry count * retry duration")
-}
-
-func TestRetryWithCancel(t *testing.T) {
-	tempdir := t.TempDir()
-	initializeTestData(t, tempdir, 0)
-	importer := New()
-	cfg := Config{
-		BlocksDir:     tempdir,
-		RetryDuration: 1 * time.Hour,
-		RetryCount:    3,
-	}
-	data, err := yaml.Marshal(cfg)
-	ctx, cancel := context.WithCancel(context.Background())
-	require.NoError(t, err)
-	err = importer.Init(ctx, conduit.MakePipelineInitProvider(&pRound, nil, nil), plugins.MakePluginConfig(string(data)), logger)
-	assert.NoError(t, err)
-
-	// Cancel after delay
-	delay := 5 * time.Millisecond
-	go func() {
-		time.Sleep(delay)
-		cancel()
-	}()
-	start := time.Now()
-	_, err = importer.GetBlock(0)
-	assert.ErrorContains(t, err, "GetBlock() context finished: context canceled")
-
-	// within 1ms of the expected time (but much less than the 3hr configuration.
-	assert.WithinDuration(t, start, time.Now(), 2*delay)
 }

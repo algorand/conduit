@@ -13,11 +13,11 @@ type PluginType string
 
 const (
 	// Exporter PluginType
-	Exporter = "exporter"
+	Exporter PluginType = "exporter"
 
 	// Processor PluginType
-	Processor = "processor"
+	Processor PluginType = "processor"
 
 	// Importer PluginType
-	Importer = "importer"
+	Importer PluginType = "importer"
 )

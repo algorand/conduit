@@ -1,0 +1,30 @@
+{
+  "alloc": [
+    {
+      "addr": "AEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAKE3PRHE",
+      "comment": "",
+      "state": {
+        "algo": 1000000000000
+      }
+    },
+    {
+      "addr": "AIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAGFFWAF4",
+      "comment": "",
+      "state": {
+        "algo": 1000000000000
+      }
+    },
+    {
+      "addr": "AMAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAANVWEXNA",
+      "comment": "",
+      "state": {
+        "algo": 1000000000000
+      }
+    }
+  ],
+  "fees": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAVIOOBQA",
+  "id": "v1",
+  "network": "generated-network",
+  "proto": "future",
+  "rwd": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABFFF5B2Y"
+}

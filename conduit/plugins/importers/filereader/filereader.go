@@ -3,9 +3,7 @@ package fileimporter
 import (
 	"context"
 	_ "embed" // used to embed config
-	"errors"
 	"fmt"
-	"io/fs"
 	"path"
 	"time"
 
@@ -25,8 +23,17 @@ const PluginName = "file_reader"
 type fileReader struct {
 	logger *logrus.Logger
 	cfg    Config
+	gzip   bool
+	format filewriter.EncodingFormat
 	ctx    context.Context
 	cancel context.CancelFunc
+}
+
+// package-wide init function
+func init() {
+	importers.Register(PluginName, importers.ImporterConstructorFunc(func() importers.Importer {
+		return &fileReader{}
+	}))
 }
 
 // New initializes an algod importer
@@ -48,13 +55,6 @@ func (r *fileReader) Metadata() plugins.Metadata {
 	return metadata
 }
 
-// package-wide init function
-func init() {
-	importers.Register(PluginName, importers.ImporterConstructorFunc(func() importers.Importer {
-		return &fileReader{}
-	}))
-}
-
 func (r *fileReader) Init(ctx context.Context, _ data.InitProvider, cfg plugins.PluginConfig, logger *logrus.Logger) error {
 	r.ctx, r.cancel = context.WithCancel(ctx)
 	r.logger = logger
@@ -66,14 +66,22 @@ func (r *fileReader) Init(ctx context.Context, _ data.InitProvider, cfg plugins.
 	if r.cfg.FilenamePattern == "" {
 		r.cfg.FilenamePattern = filewriter.FilePattern
 	}
+	r.format, r.gzip, err = filewriter.ParseFilenamePattern(r.cfg.FilenamePattern)
+	if err != nil {
+		return fmt.Errorf("Init() error: %w", err)
+	}
 
 	return nil
 }
 
+// GetGenesis returns the genesis. Is is assumed that the genesis file is available as `genesis.json`
+// regardless of chosen encoding format and gzip flag.
+// It is also assumed that there is a separate round 0 block file adhering to the expected filename pattern with encoding.
+// This is because genesis and round 0 block have different data and encodings,
+// and the official network genesis files are plain uncompressed JSON.
 func (r *fileReader) GetGenesis() (*sdk.Genesis, error) {
-	genesisFile := path.Join(r.cfg.BlocksDir, "genesis.json")
 	var genesis sdk.Genesis
-	err := filewriter.DecodeJSONFromFile(genesisFile, &genesis, false)
+	err := filewriter.DecodeFromFile(path.Join(r.cfg.BlocksDir, filewriter.GenesisFilename), &genesis, filewriter.JSONFormat, false)
 	if err != nil {
 		return nil, fmt.Errorf("GetGenesis(): failed to process genesis file: %w", err)
 	}
@@ -88,31 +96,15 @@ func (r *fileReader) Close() error {
 }
 
 func (r *fileReader) GetBlock(rnd uint64) (data.BlockData, error) {
-	attempts := r.cfg.RetryCount
-	for {
-		filename := path.Join(r.cfg.BlocksDir, fmt.Sprintf(r.cfg.FilenamePattern, rnd))
-		var blockData data.BlockData
-		start := time.Now()
-		err := filewriter.DecodeJSONFromFile(filename, &blockData, false)
-		if err != nil && errors.Is(err, fs.ErrNotExist) {
-			// If the file read failed because the file didn't exist, wait before trying again
-			if attempts == 0 {
-				return data.BlockData{}, fmt.Errorf("GetBlock(): block not found after (%d) attempts", r.cfg.RetryCount)
-			}
-			attempts--
+	filename := path.Join(r.cfg.BlocksDir, fmt.Sprintf(r.cfg.FilenamePattern, rnd))
+	var blockData data.BlockData
+	start := time.Now()
 
-			select {
-			case <-time.After(r.cfg.RetryDuration):
-			case <-r.ctx.Done():
-				return data.BlockData{}, fmt.Errorf("GetBlock() context finished: %w", r.ctx.Err())
-			}
-		} else if err != nil {
-			// Other error, return error to pipeline
-			return data.BlockData{}, fmt.Errorf("GetBlock(): unable to read block file '%s': %w", filename, err)
-		} else {
-			r.logger.Infof("Block %d read time: %s", rnd, time.Since(start))
-			// The read was fine, return the data.
-			return blockData, nil
-		}
+	// Read file content
+	err := filewriter.DecodeFromFile(filename, &blockData, r.format, r.gzip)
+	if err != nil {
+		return data.BlockData{}, fmt.Errorf("GetBlock(): unable to read block file '%s': %w", filename, err)
 	}
+	r.logger.Infof("Block %d read time: %s", rnd, time.Since(start))
+	return blockData, nil
 }
