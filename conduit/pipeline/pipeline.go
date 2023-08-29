@@ -648,8 +648,7 @@ func (p *pipelineImpl) exporterHandler(exporter exporters.Exporter, blkChan plug
 
 func logstatsE2Elog(nextRound, lastRound uint64, topLevelTxnCount int, exportTime time.Duration) string {
 	return fmt.Sprintf(
-		"UPDATED Pipeline NextRound=%d. FINISHED Pipeline round r=%d (%d txn) exported in %s",
-		nextRound,
+		"FINISHED Pipeline round r=%d (%d txn) exported in %s",
 		lastRound,
 		topLevelTxnCount,
 		exportTime,
