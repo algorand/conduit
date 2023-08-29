@@ -41,6 +41,19 @@ func TestRetries(t *testing.T) {
 		}
 	}
 
+	succeedAfterFactoryNoInput := func(succeedAfter uint64, never bool) func() (uint64, error) {
+		tries := uint64(0)
+
+		return func() (uint64, error) {
+			if tries >= succeedAfter && !never {
+				return tries + 1, nil
+			}
+			tries++
+			return 0, fmt.Errorf("%w: tries=%d", errSentinelCause, tries-1)
+		}
+	}
+
+
 	cases := []struct {
 		name         string
 		retryCount   uint64
@@ -106,8 +119,8 @@ func TestRetries(t *testing.T) {
 	for _, tc := range cases {
 		tc := tc
 
-		// run cases for Retries()
-		t.Run("Retries() "+tc.name, func(t *testing.T) {
+		// run cases for retries()
+		t.Run("retries() "+tc.name, func(t *testing.T) {
 			t.Parallel()
 			ctx, ccf := context.WithCancelCause(context.Background())
 			p := &pipelineImpl{
@@ -127,7 +140,7 @@ func TestRetries(t *testing.T) {
 				yChan := make(chan uint64)
 				errChan := make(chan error)
 				go func() {
-					y, _, err := Retries(succeedAfter, 0, p, "test")
+					y, _, err := retries(succeedAfter, 0, p, "test")
 					yChan <- y
 					errChan <- err
 				}()
@@ -144,7 +157,7 @@ func TestRetries(t *testing.T) {
 				return
 			}
 
-			y, _, err := Retries(succeedAfter, 0, p, "test")
+			y, _, err := retries(succeedAfter, 0, p, "test")
 			if tc.retryCount == 0 { // WLOG tc.neverSucceed == false
 				require.NoError(t, err, tc.name)
 
@@ -163,8 +176,8 @@ func TestRetries(t *testing.T) {
 			}
 		})
 
-		// run cases for RetriesNoOutput()
-		t.Run("RetriesNoOutput() "+tc.name, func(t *testing.T) {
+		// run cases for retriesNoOutput()
+		t.Run("retriesNoOutput() "+tc.name, func(t *testing.T) {
 			t.Parallel()
 			ctx, ccf := context.WithCancelCause(context.Background())
 			p := &pipelineImpl{
@@ -183,7 +196,7 @@ func TestRetries(t *testing.T) {
 
 				errChan := make(chan error)
 				go func() {
-					_, err := RetriesNoOutput(succeedAfterNoOutput, 0, p, "test")
+					_, err := retriesNoOutput(succeedAfterNoOutput, 0, p, "test")
 					errChan <- err
 				}()
 				time.Sleep(5 * time.Millisecond)
@@ -197,7 +210,7 @@ func TestRetries(t *testing.T) {
 				return
 			}
 
-			_, err := RetriesNoOutput(succeedAfterNoOutput, 0, p, "test")
+			_, err := retriesNoOutput(succeedAfterNoOutput, 0, p, "test")
 			if tc.retryCount == 0 { // WLOG tc.neverSucceed == false
 				require.NoError(t, err, tc.name)
 			} else { // retryCount > 0 so doesn't retry forever
@@ -209,5 +222,62 @@ func TestRetries(t *testing.T) {
 				}
 			}
 		})
+
+		// run case for retriesNoInput()
+		t.Run("retriesNoInput() "+tc.name, func(t *testing.T) {
+			t.Parallel()
+			ctx, ccf := context.WithCancelCause(context.Background())
+			p := &pipelineImpl{
+				ctx:    ctx,
+				ccf:    ccf,
+				logger: log.New(),
+				cfg: &data.Config{
+					RetryCount: tc.retryCount,
+					RetryDelay: 1 * time.Millisecond,
+				},
+			}
+			succeedAfterNoInput := succeedAfterFactoryNoInput(tc.succeedAfter, tc.neverSucceed)
+
+			if tc.retryCount == 0 && tc.neverSucceed {
+				// avoid infinite loop by cancelling the context
+
+				errChan := make(chan error)
+				yChan := make(chan uint64)
+				go func() {
+					out, _, err := retriesNoInput(succeedAfterNoInput, p, "test")
+					yChan <- out
+					errChan <- err
+				}()
+				time.Sleep(5 * time.Millisecond)
+				errTestCancelled := errors.New("test cancelled")
+				go func() {
+					ccf(errTestCancelled)
+				}()
+				y := <-yChan
+				err := <-errChan
+				require.ErrorIs(t, err, errTestCancelled, tc.name)
+				require.ErrorIs(t, err, errSentinelCause, tc.name)
+				require.Zero(t, y, tc.name)
+				return
+			}
+
+			y, _, err := retriesNoInput(succeedAfterNoInput, p, "test")
+			if tc.retryCount == 0 { // WLOG tc.neverSucceed == false
+				require.NoError(t, err, tc.name)
+
+				// note we subtract 1 from y below because succeedAfter has added 1 to its output
+				require.Equal(t, tc.succeedAfter, y-1, tc.name)
+			} else { // retryCount > 0 so doesn't retry forever
+				if tc.neverSucceed || tc.succeedAfter > tc.retryCount {
+					require.ErrorContains(t, err, fmt.Sprintf("%d", tc.retryCount), tc.name)
+					require.ErrorIs(t, err, errSentinelCause, tc.name)
+					require.Zero(t, y, tc.name)
+				} else { // !tc.neverSucceed && succeedAfter <= retryCount
+					require.NoError(t, err, tc.name)
+					require.Equal(t, tc.succeedAfter, y-1, tc.name)
+				}
+			}
+		})
+
 	}
 }
