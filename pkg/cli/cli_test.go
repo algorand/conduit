@@ -146,11 +146,6 @@ func TestHealthEndpoint(t *testing.T) {
 	healthNet := fmt.Sprintf("http://localhost:%d/health", healthPort)
 
 	test := func(t *testing.T, address string) {
-		// Capture stdout.
-		stdout := os.Stdout
-		defer func() {
-			os.Stdout = stdout
-		}()
 		cfg := data.Config{
 			ConduitArgs: &data.Args{ConduitDataDir: t.TempDir()},
 			API:         data.API{Address: address},
