@@ -7,7 +7,7 @@ import re
 logger = logging.getLogger(__name__)
 
 # Matches conduit log output:
-# "UPDATED Pipeline NextRound=1337. FINISHED Pipeline round r=42 (13 txn) exported in 12.3456s"
+# "FINISHED Pipeline round r=42 (13 txn) exported in 12.3456s"
 FINISH_ROUND: re.Pattern = re.compile(b"FINISHED Pipeline round r=(\d+)")
 
 

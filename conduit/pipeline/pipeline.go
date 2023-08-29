@@ -337,7 +337,7 @@ func (p *pipelineImpl) Init() error {
 		if err != nil {
 			return fmt.Errorf("Pipeline.GetGenesis(): could not obtain Genesis from the importer (%s): %w", p.cfg.Importer.Name, err)
 		}
-				(*p.initProvider).SetGenesis(genesis)
+		(*p.initProvider).SetGenesis(genesis)
 
 		// write pipeline metadata
 		gh := genesis.Hash()
