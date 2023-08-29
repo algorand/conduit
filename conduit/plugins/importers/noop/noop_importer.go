@@ -4,6 +4,7 @@ import (
 	"context"
 	_ "embed" // used to embed config
 	"fmt"
+	"time"
 
 	"github.com/sirupsen/logrus"
 
@@ -17,10 +18,13 @@ import (
 // PluginName to use when configuring.
 var PluginName = "noop"
 
+const sleepForGetBlock = 100 * time.Millisecond
+
 // `noopImporter`s will function without ever erroring. This means they will also process out of order blocks
 // which may or may not be desirable for different use cases--it can hide errors in actual importers expecting in order
 // block processing.
 // The `noopImporter` will maintain `Round` state according to the round of the last block it processed.
+// It also sleeps 100 milliseconds between blocks to slow down the pipeline.
 type noopImporter struct {
 	round uint64
 	cfg   ImporterConfig
@@ -36,28 +40,29 @@ var metadata = plugins.Metadata{
 	SampleConfig: sampleConfig,
 }
 
-func (exp *noopImporter) Metadata() plugins.Metadata {
+func (imp *noopImporter) Metadata() plugins.Metadata {
 	return metadata
 }
 
-func (exp *noopImporter) Init(_ context.Context, _ data.InitProvider, cfg plugins.PluginConfig, _ *logrus.Logger) error {
-	if err := cfg.UnmarshalConfig(&exp.cfg); err != nil {
+func (imp *noopImporter) Init(_ context.Context, _ data.InitProvider, cfg plugins.PluginConfig, _ *logrus.Logger) error {
+	if err := cfg.UnmarshalConfig(&imp.cfg); err != nil {
 		return fmt.Errorf("init failure in unmarshalConfig: %v", err)
 	}
-	exp.round = exp.cfg.Round
+	imp.round = imp.cfg.Round
 	return nil
 }
 
-func (exp *noopImporter) Close() error {
+func (imp *noopImporter) Close() error {
 	return nil
 }
 
-func (i *noopImporter) GetGenesis() (*sdk.Genesis, error) {
+func (imp *noopImporter) GetGenesis() (*sdk.Genesis, error) {
 	return &sdk.Genesis{}, nil
 }
 
-func (exp *noopImporter) GetBlock(rnd uint64) (data.BlockData, error) {
-	exp.round = rnd
+func (imp *noopImporter) GetBlock(rnd uint64) (data.BlockData, error) {
+	time.Sleep(sleepForGetBlock)
+	imp.round = rnd
 	return data.BlockData{
 		BlockHeader: sdk.BlockHeader{
 			Round: sdk.Round(rnd),
@@ -65,8 +70,8 @@ func (exp *noopImporter) GetBlock(rnd uint64) (data.BlockData, error) {
 	}, nil
 }
 
-func (exp *noopImporter) Round() uint64 {
-	return exp.round
+func (imp *noopImporter) Round() uint64 {
+	return imp.round
 }
 
 func init() {

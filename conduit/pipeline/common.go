@@ -26,7 +26,7 @@ type pluginInput interface {
 }
 
 type pluginOutput interface {
-	pluginInput | * sdk.Genesis
+	pluginInput | *sdk.Genesis
 }
 
 // retries is a wrapper for retrying a function call f() with a cancellation context,
@@ -76,6 +76,16 @@ func retries[X pluginInput, Y pluginOutput](f func(x X) (Y, error), x X, p *pipe
 	return
 }
 
+// TODO: probly the following function and its unit test should be axed
+// retriesNoInput applies the same logic as Retries, but for functions that take no input.
+
+//nolint:unused
+func retriesNoInput[Y pluginOutput](f func() (Y, error), p *pipelineImpl, msg string) (Y, time.Duration, error) {
+	return retries(func(x empty) (Y, error) {
+		return f()
+	}, empty{}, p, msg)
+}
+
 // retriesNoOutput applies the same logic as Retries, but for functions that return no output.
 func retriesNoOutput[X pluginInput](f func(x X) error, a X, p *pipelineImpl, msg string) (time.Duration, error) {
 	_, d, err := retries(func(x X) (empty, error) {
@@ -83,11 +93,3 @@ func retriesNoOutput[X pluginInput](f func(x X) error, a X, p *pipelineImpl, msg
 	}, a, p, msg)
 	return d, err
 }
-
-// retriesNoInput applies the same logic as Retries, but for functions that take no input.
-func retriesNoInput[Y pluginOutput](f func() (Y, error), p *pipelineImpl, msg string) (Y, time.Duration, error) {
-	return retries(func(x empty) (Y, error) {
-		return f()
-	}, empty{}, p, msg)
-}
-
