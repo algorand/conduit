@@ -7,8 +7,6 @@ import (
 
 	log "github.com/sirupsen/logrus"
 
-	sdk "github.com/algorand/go-algorand-sdk/v2/types"
-
 	"github.com/algorand/conduit/conduit/data"
 )
 
@@ -22,11 +20,11 @@ func HandlePanic(logger *log.Logger) {
 type empty struct{}
 
 type pluginInput interface {
-	uint64 | data.BlockData | string | empty
+	uint64 | data.BlockData | string
 }
 
 type pluginOutput interface {
-	pluginInput | *sdk.Genesis
+	pluginInput | empty
 }
 
 // retries is a wrapper for retrying a function call f() with a cancellation context,
@@ -74,16 +72,6 @@ func retries[X pluginInput, Y pluginOutput](f func(x X) (Y, error), x X, p *pipe
 	dur = time.Since(start)
 	err = fmt.Errorf("%s: giving up after %d retries: %w", msg, p.cfg.RetryCount, err)
 	return
-}
-
-// TODO: probly the following function and its unit test should be axed
-// retriesNoInput applies the same logic as Retries, but for functions that take no input.
-
-//nolint:unused
-func retriesNoInput[Y pluginOutput](f func() (Y, error), p *pipelineImpl, msg string) (Y, time.Duration, error) {
-	return retries(func(x empty) (Y, error) {
-		return f()
-	}, empty{}, p, msg)
 }
 
 // retriesNoOutput applies the same logic as Retries, but for functions that return no output.
