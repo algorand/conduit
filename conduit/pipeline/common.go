@@ -27,7 +27,7 @@ type pluginOutput interface {
 	pluginInput | empty
 }
 
-// Retries is a wrapper for retrying a function call f() with a cancellation context,
+// retries is a wrapper for retrying a function call f() with a cancellation context,
 // a delay and a max retry count. It attempts to call the wrapped function at least once
 // and only after the first attempt will pay attention to a context cancellation.
 // This can allow the pipeline to receive a cancellation and guarantee attempting to finish
@@ -45,7 +45,7 @@ type pluginOutput interface {
 //   - when p.cfg.retryCount > 0, the error will be a join of all the errors encountered during the retries
 //   - when p.cfg.retryCount == 0, the error will be the last error encountered
 //   - the returned duration dur is the total time spent in the function, including retries
-func Retries[X pluginInput, Y pluginOutput](f func(x X) (Y, error), x X, p *pipelineImpl, msg string) (y Y, dur time.Duration, err error) {
+func retries[X pluginInput, Y pluginOutput](f func(x X) (Y, error), x X, p *pipelineImpl, msg string) (y Y, dur time.Duration, err error) {
 	start := time.Now()
 
 	for i := uint64(0); p.cfg.RetryCount == 0 || i <= p.cfg.RetryCount; i++ {
@@ -74,9 +74,9 @@ func Retries[X pluginInput, Y pluginOutput](f func(x X) (Y, error), x X, p *pipe
 	return
 }
 
-// RetriesNoOutput applies the same logic as Retries, but for functions that return no output.
-func RetriesNoOutput[X pluginInput](f func(x X) error, a X, p *pipelineImpl, msg string) (time.Duration, error) {
-	_, d, err := Retries(func(x X) (empty, error) {
+// retriesNoOutput applies the same logic as Retries, but for functions that return no output.
+func retriesNoOutput[X pluginInput](f func(x X) error, a X, p *pipelineImpl, msg string) (time.Duration, error) {
+	_, d, err := retries(func(x X) (empty, error) {
 		return empty{}, f(x)
 	}, a, p, msg)
 	return d, err

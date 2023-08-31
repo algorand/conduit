@@ -106,8 +106,8 @@ func TestRetries(t *testing.T) {
 	for _, tc := range cases {
 		tc := tc
 
-		// run cases for Retries()
-		t.Run("Retries() "+tc.name, func(t *testing.T) {
+		// run cases for retries()
+		t.Run("retries() "+tc.name, func(t *testing.T) {
 			t.Parallel()
 			ctx, ccf := context.WithCancelCause(context.Background())
 			p := &pipelineImpl{
@@ -127,7 +127,7 @@ func TestRetries(t *testing.T) {
 				yChan := make(chan uint64)
 				errChan := make(chan error)
 				go func() {
-					y, _, err := Retries(succeedAfter, 0, p, "test")
+					y, _, err := retries(succeedAfter, 0, p, "test")
 					yChan <- y
 					errChan <- err
 				}()
@@ -144,7 +144,7 @@ func TestRetries(t *testing.T) {
 				return
 			}
 
-			y, _, err := Retries(succeedAfter, 0, p, "test")
+			y, _, err := retries(succeedAfter, 0, p, "test")
 			if tc.retryCount == 0 { // WLOG tc.neverSucceed == false
 				require.NoError(t, err, tc.name)
 
@@ -163,8 +163,8 @@ func TestRetries(t *testing.T) {
 			}
 		})
 
-		// run cases for RetriesNoOutput()
-		t.Run("RetriesNoOutput() "+tc.name, func(t *testing.T) {
+		// run cases for retriesNoOutput()
+		t.Run("retriesNoOutput() "+tc.name, func(t *testing.T) {
 			t.Parallel()
 			ctx, ccf := context.WithCancelCause(context.Background())
 			p := &pipelineImpl{
@@ -183,7 +183,7 @@ func TestRetries(t *testing.T) {
 
 				errChan := make(chan error)
 				go func() {
-					_, err := RetriesNoOutput(succeedAfterNoOutput, 0, p, "test")
+					_, err := retriesNoOutput(succeedAfterNoOutput, 0, p, "test")
 					errChan <- err
 				}()
 				time.Sleep(5 * time.Millisecond)
@@ -197,7 +197,7 @@ func TestRetries(t *testing.T) {
 				return
 			}
 
-			_, err := RetriesNoOutput(succeedAfterNoOutput, 0, p, "test")
+			_, err := retriesNoOutput(succeedAfterNoOutput, 0, p, "test")
 			if tc.retryCount == 0 { // WLOG tc.neverSucceed == false
 				require.NoError(t, err, tc.name)
 			} else { // retryCount > 0 so doesn't retry forever

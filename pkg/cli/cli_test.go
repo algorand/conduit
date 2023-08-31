@@ -2,15 +2,20 @@ package cli
 
 import (
 	_ "embed"
+	"fmt"
+	"net/http"
 	"os"
 	"path"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v3"
 
 	"github.com/algorand/conduit/conduit/data"
+	_ "github.com/algorand/conduit/conduit/plugins/exporters/noop"
+	_ "github.com/algorand/conduit/conduit/plugins/importers/noop"
 )
 
 // Fills in a temp data dir and creates files
@@ -133,5 +138,43 @@ func TestLogFile(t *testing.T) {
 		require.Contains(t, logdataStr, "pipeline creation error")
 		// written to stdout and logfile
 		require.Contains(t, dataStr, "\nWriting logs to file:")
+	})
+}
+
+func TestHealthEndpoint(t *testing.T) {
+	healthPort := 7777
+	healthNet := fmt.Sprintf("http://localhost:%d/health", healthPort)
+
+	test := func(t *testing.T, address string) {
+		cfg := data.Config{
+			ConduitArgs: &data.Args{ConduitDataDir: t.TempDir()},
+			API:         data.API{Address: address},
+			Importer:    data.NameConfigPair{Name: "noop", Config: map[string]interface{}{}},
+			Processors:  nil,
+			Exporter:    data.NameConfigPair{Name: "noop", Config: map[string]interface{}{}},
+		}
+		args := setupDataDir(t, cfg)
+
+		go func() {
+			runConduitCmdWithConfig(args)
+		}()
+		time.Sleep(1 * time.Second)
+
+		resp, err := http.Get(healthNet)
+		if address != "" {
+			require.NoError(t, err)
+			require.Equal(t, http.StatusOK, resp.StatusCode)
+		} else {
+			require.ErrorContains(t, err, "connection refused")
+			require.Nil(t, resp)
+		}
+	}
+
+	t.Run("API_OFF", func(t *testing.T) {
+		test(t, "")
+	})
+
+	t.Run("API_ON", func(t *testing.T) {
+		test(t, fmt.Sprintf(":%d", healthPort))
 	})
 }

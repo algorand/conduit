@@ -990,13 +990,12 @@ func TestMetrics(t *testing.T) {
 }
 
 func TestLogStatsE2Elog(t *testing.T) {
-	nextRound := uint64(1337)
 	round := uint64(42)
 	numTxns := 13
 	duration := 12345600 * time.Microsecond
 
-	expectedLog := "UPDATED Pipeline NextRound=1337. FINISHED Pipeline round r=42 (13 txn) exported in 12.3456s"
-	log := logstatsE2Elog(nextRound, round, numTxns, duration)
+	expectedLog := "FINISHED Pipeline round r=42 (13 txn) exported in 12.3456s"
+	log := logstatsE2Elog(round, numTxns, duration)
 	require.Equal(t, expectedLog, log)
 
 	logstatsRex, err := regexp.Compile(`round r=(\d+) \((\d+) txn\) exported in (.*)`)

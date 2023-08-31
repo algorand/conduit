@@ -105,6 +105,7 @@ func runConduitCmdWithConfig(args *data.Args) error {
 
 	// Start server
 	if pCfg.API.Address != "" {
+		logger.Infof("starting API server on %s", pCfg.API.Address)
 		shutdown, err := api.StartServer(logger, pline, pCfg.API.Address)
 		if err != nil {
 			// Suppress log, it is about to be printed to stderr.
@@ -114,6 +115,8 @@ func runConduitCmdWithConfig(args *data.Args) error {
 			return fmt.Errorf("failed to start API server: %w", err)
 		}
 		defer shutdown(context.Background())
+	} else {
+		logger.Info("API server is disabled")
 	}
 
 	pline.Wait()

@@ -481,7 +481,7 @@ func (p *pipelineImpl) importerHandler(importer importers.Importer, roundChan <-
 				totalSelectWait += waitTime
 				p.logger.Tracef("importer handler waited %dms to receive round %d", waitTime.Milliseconds(), rnd)
 
-				blkData, importTime, lastError := Retries(importer.GetBlock, rnd, p, importer.Metadata().Name)
+				blkData, importTime, lastError := retries(importer.GetBlock, rnd, p, importer.Metadata().Name)
 				if lastError != nil {
 					p.cancelWithProblem(fmt.Errorf("importer %s handler (%w): failed to import round %d after %dms: %w", importer.Metadata().Name, errImporterCause, rnd, importTime.Milliseconds(), lastError))
 					return
@@ -533,7 +533,7 @@ func (p *pipelineImpl) processorHandler(idx int, proc processors.Processor, blkI
 
 				var procTime time.Duration
 				var lastError error
-				blk, procTime, lastError = Retries(proc.Process, blk, p, proc.Metadata().Name)
+				blk, procTime, lastError = retries(proc.Process, blk, p, proc.Metadata().Name)
 				if lastError != nil {
 					p.cancelWithProblem(fmt.Errorf("processor[%d] %s handler (%w): failed to process round %d after %dms: %w", idx, proc.Metadata().Name, errProcessorCause, lastRnd, procTime.Milliseconds(), lastError))
 					return
@@ -598,7 +598,7 @@ func (p *pipelineImpl) exporterHandler(exporter exporters.Exporter, blkChan plug
 				}
 
 				var exportTime time.Duration
-				exportTime, lastError = RetriesNoOutput(exporter.Receive, blk, p, eName)
+				exportTime, lastError = retriesNoOutput(exporter.Receive, blk, p, eName)
 				if lastError != nil {
 					lastError = fmt.Errorf("aborting after failing to export round %d: %w", lastRound, lastError)
 					return
@@ -640,16 +640,15 @@ func (p *pipelineImpl) exporterHandler(exporter exporters.Exporter, blkChan plug
 				// WARNING: removing/re-log-levelling the following will BREAK:
 				// - the E2E test (Search for "Pipeline round" in subslurp.py)
 				// - the internal tools logstats collector (See func ConduitCollector in logstats.go of internal-tools repo)
-				p.logger.Infof(logstatsE2Elog(nextRound, lastRound, len(blk.Payset), exportTime))
+				p.logger.Infof(logstatsE2Elog(lastRound, len(blk.Payset), exportTime))
 			}
 		}
 	}()
 }
 
-func logstatsE2Elog(nextRound, lastRound uint64, topLevelTxnCount int, exportTime time.Duration) string {
+func logstatsE2Elog(lastRound uint64, topLevelTxnCount int, exportTime time.Duration) string {
 	return fmt.Sprintf(
-		"UPDATED Pipeline NextRound=%d. FINISHED Pipeline round r=%d (%d txn) exported in %s",
-		nextRound,
+		"FINISHED Pipeline round r=%d (%d txn) exported in %s",
 		lastRound,
 		topLevelTxnCount,
 		exportTime,
@@ -696,8 +695,6 @@ func (p *pipelineImpl) Start() {
 			}
 		}
 	}(p.pipelineMetadata.NextRound)
-
-	<-p.ctx.Done()
 }
 
 func (p *pipelineImpl) Wait() {
