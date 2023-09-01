@@ -100,6 +100,7 @@ release:
   header: |
     ![GitHub Logo](https://raw.githubusercontent.com/algorand/go-algorand/master/release/release-banner.jpg)
   footer: |
-    **Full Changelog**: https://github.com/{{ .Env.DOCKER_GITHUB_NAME }}/compare{{ .PreviousTag }}...{{ .Tag }}
+    **Full Changelog**: https://github.com/{{ .Env.DOCKER_GITHUB_NAME }}/compare/{{ .PreviousTag }}...{{ .Tag }}
+
     ---
     [Docker images for this release are available on Docker Hub.](https://hub.docker.com/r/algorand/conduit)
