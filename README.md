@@ -28,8 +28,8 @@ For example, use conduit to:
 
 For a simple deployment the following configuration works well:
 * Network: Conduit colocated with Algod follower.
-* Conduit: 4 CPU and 8 GB of ram.
-* Algod: 4 CPU and 8 GB of ram.
+* Conduit + Algod colocated: 4 CPU and 8 GB of ram.
+  * You may want to set [GOMEMLIMIT](https://pkg.go.dev/runtime@master#hdr-Environment_Variables) for Algod (and even Conduit) based on your deployment configuration. 
 * Storage: 20 GiB, 3000 IOPS minimum.
 
 # Getting Started
