@@ -24,6 +24,14 @@ For example, use conduit to:
 * Send blockchain data to another streaming data platform for additional processing (e.g. RabbitMQ, Kafka, ZeroMQ).
 * Build an NFT catalog based on different standards.
 
+# System Requirements
+
+For a simple deployment the following configuration works well:
+* Network: Conduit colocated with Algod follower.
+* Conduit + Algod: 4 CPU and 8 GB of ram.
+  * Storage: algod follower node, 40 GiB, 3000 IOPS minimum.
+  * Deployments allocating less ram might work in conjunction with [GOMEMLIMIT](https://pkg.go.dev/runtime@master#hdr-Environment_Variables) for Algod (and even Conduit). This configuration is not tested, so use with caution and monitor closely.
+
 # Getting Started
 
 ## Installation
