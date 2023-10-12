@@ -31,7 +31,6 @@ For a simple deployment the following configuration works well:
 * Conduit + Algod: 4 CPU and 8 GB of ram.
   * Storage: algod follower node, 40 GiB, 3000 IOPS minimum.
   * Deployments allocating less ram might work in conjunction with [GOMEMLIMIT](https://pkg.go.dev/runtime@master#hdr-Environment_Variables) for Algod (and even Conduit). This configuration is not tested, so use with caution and monitor closely.
-* Storage: 20 GiB, 3000 IOPS minimum.
 
 # Getting Started
 
