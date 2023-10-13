@@ -12,7 +12,7 @@ fi
 
 # copy config.yml override to data directory
 if [[ -f /etc/algorand/conduit.yml ]]; then
-  cp /etc/algorand/conduit.yml /data/conduit.yml
+  cp /etc/algorand/conduit.yml $CONDUIT_DATA_DIR/conduit.yml
 fi
 
 # always run the conduit command
