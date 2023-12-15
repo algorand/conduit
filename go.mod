@@ -3,9 +3,9 @@ module github.com/algorand/conduit
 go 1.20
 
 require (
-	github.com/algorand/go-algorand-sdk/v2 v2.2.0
+	github.com/algorand/go-algorand-sdk/v2 v2.4.0
 	github.com/algorand/go-codec/codec v1.1.10
-	github.com/algorand/indexer/v3 v3.0.0
+	github.com/algorand/indexer/v3 v3.3.1-0.20231215213915-9ef21ad4c44f
 	github.com/google/uuid v1.3.0
 	github.com/jackc/pgx/v4 v4.13.0
 	github.com/opensearch-project/opensearch-go/v2 v2.3.0
