@@ -3,7 +3,7 @@ module github.com/algorand/conduit
 go 1.20
 
 require (
-	github.com/algorand/go-algorand-sdk/v2 v2.2.0
+	github.com/algorand/go-algorand-sdk/v2 v2.4.0
 	github.com/algorand/go-codec/codec v1.1.10
 	github.com/algorand/indexer/v3 v3.0.0
 	github.com/google/uuid v1.3.0
