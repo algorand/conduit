@@ -109,6 +109,18 @@ func Test_checkRounds(t *testing.T) {
 			wantLogMsg:   "Catchup required, node round ahead of target round. Node round 5000, target round 1002, catchpoint round 1000.",
 		},
 		{
+			name: "Catchup required. Success. Edgecase where catchpoint round is equal to target round.",
+			args: args{
+				catchpointRound: 1000,
+				nodeRound:       5000,
+				targetRound:     1000,
+			},
+			want:         true,
+			wantErr:      assert.NoError,
+			wantLogLevel: logrus.InfoLevel,
+			wantLogMsg:   "Catchup required, node round ahead of target round. Node round 5000, target round 1000, catchpoint round 1000.",
+		},
+		{
 			name: "Catchup required. Error.",
 			args: args{
 				catchpointRound: 6000,
@@ -130,8 +142,8 @@ func Test_checkRounds(t *testing.T) {
 
 			// Write 1 line to the log.
 			require.Len(t, hook.Entries, 1)
-			require.Equal(t, tt.wantLogLevel, hook.Entries[0].Level)
 			require.Equal(t, tt.wantLogMsg, hook.Entries[0].Message)
+			require.Equal(t, tt.wantLogLevel, hook.Entries[0].Level)
 
 			// Check the error
 			if !tt.wantErr(t, err, fmt.Sprintf("checkRounds(-, %v, %v, %v)", tt.args.catchpointRound, tt.args.nodeRound, tt.args.targetRound)) {
@@ -796,6 +808,11 @@ func TestGetMissingCatchpointLabel(t *testing.T) {
 	require.NoError(t, err)
 	// closest without going over
 	require.Equal(t, "1100#abcd", label)
+
+	label, err = getMissingCatchpointLabel(ts.URL, 1000)
+	require.NoError(t, err)
+	// returns the exact match
+	require.Equal(t, "1000#abcd", label)
 }
 
 func TestGetMissingCatchpointLabelError(t *testing.T) {
