@@ -144,11 +144,14 @@ func (algodImp *algodImporter) monitorCatchpointCatchup() error {
 		running = stat.Catchpoint != ""
 		switch {
 		case !running:
-			break
+			// break out of loop
 		case stat.CatchpointAcquiredBlocks > 0:
 			algodImp.logger.Infof("catchup phase Acquired Blocks: %d / %d", stat.CatchpointAcquiredBlocks, stat.CatchpointTotalBlocks)
+		// VerifiedKvs are not shown because kv verification appears to be interleaved with account verification
 		case stat.CatchpointVerifiedAccounts > 0:
 			algodImp.logger.Infof("catchup phase Verified Accounts: %d / %d", stat.CatchpointVerifiedAccounts, stat.CatchpointTotalAccounts)
+		case stat.CatchpointProcessedKvs > 0:
+			algodImp.logger.Infof("catchup phase Processed KVs: %d / %d", stat.CatchpointProcessedKvs, stat.CatchpointTotalKvs)
 		case stat.CatchpointProcessedAccounts > 0:
 			algodImp.logger.Infof("catchup phase Processed Accounts: %d / %d", stat.CatchpointProcessedAccounts, stat.CatchpointTotalAccounts)
 		default:
