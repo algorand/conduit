@@ -26,7 +26,7 @@ Example:
   conduit list importers algod
   conduit list processors filter_processor`,
 	Args: cobra.NoArgs,
-	RunE: func(cmd *cobra.Command, args []string) error {
+	RunE: func(_ *cobra.Command, _ []string) error {
 		printAll()
 		return nil
 	},
@@ -41,7 +41,7 @@ func makeDetailsCommand(pluginType string, data func() []plugins.Metadata) *cobr
 		Short:   fmt.Sprintf("Usage details for %s plugins.", pluginType),
 		Long:    fmt.Sprintf(`Usage details for %s plugins. Pass in a specific plugin as a positional argument for a sample configuration file.`, pluginType),
 		Args:    cobra.MaximumNArgs(1),
-		Run: func(cmd *cobra.Command, args []string) {
+		Run: func(_ *cobra.Command, args []string) {
 			if len(args) == 0 {
 				printMetadata(os.Stdout, data(), 0)
 			} else {

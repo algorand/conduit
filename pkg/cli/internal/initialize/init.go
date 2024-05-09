@@ -161,7 +161,7 @@ directory and additional help is written to stdout.
 Once configured, launch conduit with './conduit -d /path/to/data'.`,
 		Example: "conduit init  -d /path/to/data -i importer -p processor1,processor2 -e exporter",
 		Args:    cobra.NoArgs,
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(_ *cobra.Command, _ []string) error {
 			if data == "" {
 				return writeConfigFile(os.Stdout, importer, processors, exporter)
 			}

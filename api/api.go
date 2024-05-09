@@ -18,7 +18,7 @@ type StatusProvider interface {
 }
 
 func makeHealthHandler(p StatusProvider) func(w http.ResponseWriter, r *http.Request) {
-	return func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, _ *http.Request) {
 		status, err := p.Status()
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
