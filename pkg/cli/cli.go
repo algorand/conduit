@@ -149,14 +149,14 @@ See other subcommands for further built in utilities and information.
 
 Detailed documentation is online: https://github.com/algorand/conduit`,
 		Args: cobra.NoArgs,
-		Run: func(cmd *cobra.Command, args []string) {
+		Run: func(_ *cobra.Command, _ []string) {
 			err := runConduitCmdWithConfig(cfg)
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "\nExiting with error:\t%s.\n", err)
 				os.Exit(1)
 			}
 		},
-		PersistentPreRun: func(cmd *cobra.Command, args []string) {
+		PersistentPreRun: func(_ *cobra.Command, _ []string) {
 			if vFlag {
 				fmt.Printf("%s\n", version.LongVersion())
 				os.Exit(0)
