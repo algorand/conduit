@@ -102,6 +102,11 @@ release:
   draft: true
   header: |
     ![GitHub Logo](https://raw.githubusercontent.com/algorand/go-algorand/master/release/release-banner.jpg)
+    ## What's Changed
+        ### Enhancements
+        * TODO 1
+        * TODO 2
+        * TODO 3
   footer: |
     **Full Changelog**: https://github.com/{{ .Env.DOCKER_GITHUB_NAME }}/compare/{{ .PreviousTag }}...{{ .Tag }}
 
