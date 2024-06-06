@@ -5,9 +5,9 @@ go 1.21
 toolchain go1.21.10
 
 require (
-	github.com/algorand/go-algorand-sdk/v2 v2.5.0
+	github.com/algorand/go-algorand-sdk/v2 v2.6.0
 	github.com/algorand/go-codec/codec v1.1.10
-	github.com/algorand/indexer/v3 v3.4.1-0.20240509125535-dcf3a3b0bfd2
+	github.com/algorand/indexer/v3 v3.4.1-0.20240606155432-8e7d2e5b31b8
 	github.com/google/uuid v1.3.0
 	github.com/jackc/pgx/v4 v4.18.2
 	github.com/opensearch-project/opensearch-go/v2 v2.3.0
@@ -77,7 +77,7 @@ require (
 	go.uber.org/multierr v1.11.0 // indirect
 	go.uber.org/zap v1.24.0 // indirect
 	golang.org/x/crypto v0.21.0 // indirect
-	golang.org/x/net v0.21.0 // indirect
+	golang.org/x/net v0.23.0 // indirect
 	golang.org/x/sync v0.3.0 // indirect
 	golang.org/x/sys v0.18.0 // indirect
 	golang.org/x/text v0.14.0 // indirect
