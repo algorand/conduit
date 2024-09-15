@@ -109,6 +109,18 @@ func Test_checkRounds(t *testing.T) {
 			wantLogMsg:   "Catchup required, node round ahead of target round. Node round 5000, target round 1002, catchpoint round 1000.",
 		},
 		{
+			name: "Catchup required. Success. Edgecase where catchpoint round is equal to target round.",
+			args: args{
+				catchpointRound: 1000,
+				nodeRound:       5000,
+				targetRound:     1000,
+			},
+			want:         true,
+			wantErr:      assert.NoError,
+			wantLogLevel: logrus.InfoLevel,
+			wantLogMsg:   "Catchup required, node round ahead of target round. Node round 5000, target round 1000, catchpoint round 1000.",
+		},
+		{
 			name: "Catchup required. Error.",
 			args: args{
 				catchpointRound: 6000,
@@ -130,8 +142,8 @@ func Test_checkRounds(t *testing.T) {
 
 			// Write 1 line to the log.
 			require.Len(t, hook.Entries, 1)
-			require.Equal(t, tt.wantLogLevel, hook.Entries[0].Level)
 			require.Equal(t, tt.wantLogMsg, hook.Entries[0].Message)
+			require.Equal(t, tt.wantLogLevel, hook.Entries[0].Level)
 
 			// Check the error
 			if !tt.wantErr(t, err, fmt.Sprintf("checkRounds(-, %v, %v, %v)", tt.args.catchpointRound, tt.args.nodeRound, tt.args.targetRound)) {
@@ -297,9 +309,14 @@ func TestInitCatchup(t *testing.T) {
 				MakePostSyncRoundResponder(http.StatusOK),
 				MakeJsonResponderSeries("/v2/status", []int{http.StatusOK}, []interface{}{
 					models.NodeStatus{LastRound: 1235},
-					models.NodeStatus{Catchpoint: "1236#abcd", CatchpointProcessedAccounts: 1, CatchpointTotalAccounts: 1},
-					models.NodeStatus{Catchpoint: "1236#abcd", CatchpointVerifiedAccounts: 1, CatchpointTotalAccounts: 1},
-					models.NodeStatus{Catchpoint: "1236#abcd", CatchpointAcquiredBlocks: 1, CatchpointTotalBlocks: 1},
+					models.NodeStatus{Catchpoint: "1236#abcd", CatchpointProcessedAccounts: 1, CatchpointTotalAccounts: 10},
+					models.NodeStatus{Catchpoint: "1236#abcd", CatchpointProcessedAccounts: 10, CatchpointTotalAccounts: 10},
+					models.NodeStatus{Catchpoint: "1236#abcd", CatchpointProcessedKvs: 2, CatchpointTotalKvs: 20, CatchpointProcessedAccounts: 10, CatchpointTotalAccounts: 10},
+					models.NodeStatus{Catchpoint: "1236#abcd", CatchpointProcessedKvs: 20, CatchpointTotalKvs: 20, CatchpointProcessedAccounts: 10, CatchpointTotalAccounts: 10},
+					models.NodeStatus{Catchpoint: "1236#abcd", CatchpointVerifiedAccounts: 4, CatchpointProcessedKvs: 20, CatchpointTotalKvs: 20, CatchpointProcessedAccounts: 10, CatchpointTotalAccounts: 10},
+					models.NodeStatus{Catchpoint: "1236#abcd", CatchpointVerifiedAccounts: 10, CatchpointProcessedKvs: 20, CatchpointTotalKvs: 20, CatchpointProcessedAccounts: 10, CatchpointTotalAccounts: 10},
+					models.NodeStatus{Catchpoint: "1236#abcd", CatchpointAcquiredBlocks: 3, CatchpointTotalBlocks: 30, CatchpointVerifiedAccounts: 10, CatchpointProcessedKvs: 20, CatchpointTotalKvs: 20, CatchpointProcessedAccounts: 10, CatchpointTotalAccounts: 10},
+					models.NodeStatus{Catchpoint: "1236#abcd", CatchpointAcquiredBlocks: 30, CatchpointTotalBlocks: 30, CatchpointVerifiedAccounts: 10, CatchpointProcessedKvs: 20, CatchpointTotalKvs: 20, CatchpointProcessedAccounts: 10, CatchpointTotalAccounts: 10},
 					models.NodeStatus{Catchpoint: "1236#abcd"},
 					models.NodeStatus{LastRound: 1236},
 				}),
@@ -308,9 +325,14 @@ func TestInitCatchup(t *testing.T) {
 			errInit:   "received unexpected error (StatusAfterBlock) waiting for node to catchup: did not reach expected round",
 			errGetGen: "",
 			logs: []string{
-				"catchup phase Processed Accounts: 1 / 1",
-				"catchup phase Verified Accounts: 1 / 1",
-				"catchup phase Acquired Blocks: 1 / 1",
+				"catchup phase Processed Accounts: 1 / 10",
+				"catchup phase Processed Accounts: 10 / 10",
+				"catchup phase Processed KVs: 2 / 20",
+				"catchup phase Processed KVs: 20 / 20",
+				"catchup phase Verified Accounts: 4 / 10",
+				"catchup phase Verified Accounts: 10 / 10",
+				"catchup phase Acquired Blocks: 3 / 30",
+				"catchup phase Acquired Blocks: 30 / 30",
 				"catchup phase Verified Blocks",
 			}},
 		{
@@ -324,9 +346,14 @@ func TestInitCatchup(t *testing.T) {
 				MakePostSyncRoundResponder(http.StatusOK),
 				MakeJsonResponderSeries("/v2/status", []int{http.StatusOK}, []interface{}{
 					models.NodeStatus{LastRound: 1235},
-					models.NodeStatus{Catchpoint: "1236#abcd", CatchpointProcessedAccounts: 1, CatchpointTotalAccounts: 1},
-					models.NodeStatus{Catchpoint: "1236#abcd", CatchpointVerifiedAccounts: 1, CatchpointTotalAccounts: 1},
-					models.NodeStatus{Catchpoint: "1236#abcd", CatchpointAcquiredBlocks: 1, CatchpointTotalBlocks: 1},
+					models.NodeStatus{Catchpoint: "1236#abcd", CatchpointProcessedAccounts: 1, CatchpointTotalAccounts: 10},
+					models.NodeStatus{Catchpoint: "1236#abcd", CatchpointProcessedAccounts: 10, CatchpointTotalAccounts: 10},
+					models.NodeStatus{Catchpoint: "1236#abcd", CatchpointProcessedKvs: 2, CatchpointTotalKvs: 20, CatchpointProcessedAccounts: 10, CatchpointTotalAccounts: 10},
+					models.NodeStatus{Catchpoint: "1236#abcd", CatchpointProcessedKvs: 20, CatchpointTotalKvs: 20, CatchpointProcessedAccounts: 10, CatchpointTotalAccounts: 10},
+					models.NodeStatus{Catchpoint: "1236#abcd", CatchpointVerifiedAccounts: 4, CatchpointProcessedKvs: 20, CatchpointTotalKvs: 20, CatchpointProcessedAccounts: 10, CatchpointTotalAccounts: 10},
+					models.NodeStatus{Catchpoint: "1236#abcd", CatchpointVerifiedAccounts: 10, CatchpointProcessedKvs: 20, CatchpointTotalKvs: 20, CatchpointProcessedAccounts: 10, CatchpointTotalAccounts: 10},
+					models.NodeStatus{Catchpoint: "1236#abcd", CatchpointAcquiredBlocks: 3, CatchpointTotalBlocks: 30, CatchpointVerifiedAccounts: 10, CatchpointProcessedKvs: 20, CatchpointTotalKvs: 20, CatchpointProcessedAccounts: 10, CatchpointTotalAccounts: 10},
+					models.NodeStatus{Catchpoint: "1236#abcd", CatchpointAcquiredBlocks: 30, CatchpointTotalBlocks: 30, CatchpointVerifiedAccounts: 10, CatchpointProcessedKvs: 20, CatchpointTotalKvs: 20, CatchpointProcessedAccounts: 10, CatchpointTotalAccounts: 10},
 					models.NodeStatus{Catchpoint: "1236#abcd"},
 					models.NodeStatus{LastRound: 1237}, // this is the only difference from the previous test
 				}),
@@ -335,9 +362,14 @@ func TestInitCatchup(t *testing.T) {
 			errInit:   "",
 			errGetGen: "",
 			logs: []string{
-				"catchup phase Processed Accounts: 1 / 1",
-				"catchup phase Verified Accounts: 1 / 1",
-				"catchup phase Acquired Blocks: 1 / 1",
+				"catchup phase Processed Accounts: 1 / 10",
+				"catchup phase Processed Accounts: 10 / 10",
+				"catchup phase Processed KVs: 2 / 20",
+				"catchup phase Processed KVs: 20 / 20",
+				"catchup phase Verified Accounts: 4 / 10",
+				"catchup phase Verified Accounts: 10 / 10",
+				"catchup phase Acquired Blocks: 3 / 30",
+				"catchup phase Acquired Blocks: 30 / 30",
 				"catchup phase Verified Blocks",
 			}},
 	}
@@ -796,6 +828,11 @@ func TestGetMissingCatchpointLabel(t *testing.T) {
 	require.NoError(t, err)
 	// closest without going over
 	require.Equal(t, "1100#abcd", label)
+
+	label, err = getMissingCatchpointLabel(ts.URL, 1000)
+	require.NoError(t, err)
+	// returns the exact match
+	require.Equal(t, "1000#abcd", label)
 }
 
 func TestGetMissingCatchpointLabelError(t *testing.T) {

@@ -144,11 +144,14 @@ func (algodImp *algodImporter) monitorCatchpointCatchup() error {
 		running = stat.Catchpoint != ""
 		switch {
 		case !running:
-			break
+			// break out of loop
 		case stat.CatchpointAcquiredBlocks > 0:
 			algodImp.logger.Infof("catchup phase Acquired Blocks: %d / %d", stat.CatchpointAcquiredBlocks, stat.CatchpointTotalBlocks)
+		// VerifiedKvs are not shown because kv verification appears to be interleaved with account verification
 		case stat.CatchpointVerifiedAccounts > 0:
 			algodImp.logger.Infof("catchup phase Verified Accounts: %d / %d", stat.CatchpointVerifiedAccounts, stat.CatchpointTotalAccounts)
+		case stat.CatchpointProcessedKvs > 0:
+			algodImp.logger.Infof("catchup phase Processed KVs: %d / %d", stat.CatchpointProcessedKvs, stat.CatchpointTotalKvs)
 		case stat.CatchpointProcessedAccounts > 0:
 			algodImp.logger.Infof("catchup phase Processed Accounts: %d / %d", stat.CatchpointProcessedAccounts, stat.CatchpointTotalAccounts)
 		default:
@@ -186,8 +189,7 @@ func getMissingCatchpointLabel(URL string, nextRound uint64) (string, error) {
 		if err != nil {
 			return "", err
 		}
-		// TODO: Change >= to > after go-algorand#5352 is fixed.
-		if uint64(round) >= nextRound {
+		if uint64(round) > nextRound {
 			break
 		}
 		label = line
@@ -204,8 +206,7 @@ func getMissingCatchpointLabel(URL string, nextRound uint64) (string, error) {
 // is detected.
 func checkRounds(logger *logrus.Logger, catchpointRound, nodeRound, targetRound uint64) (bool, error) {
 	// Make sure catchpoint round is not in the future
-	// TODO: Change < to <= after go-algorand#5352 is fixed.
-	canCatchup := catchpointRound < targetRound
+	canCatchup := catchpointRound <= targetRound
 	mustCatchup := targetRound < nodeRound
 	shouldCatchup := nodeRound < catchpointRound
 

@@ -145,7 +145,7 @@ func TestRoundTrip(t *testing.T) {
 	defer cleanArtifacts(t)
 
 	round := sdk.Round(0)
-	lastRound := numGzippedFiles(t) - 2 // subtract round-0 and the separate genesis file
+	lastRound := numGzippedFiles(t) - 1 // subtract round 0
 	require.GreaterOrEqual(t, lastRound, uint64(1))
 	require.LessOrEqual(t, lastRound, uint64(1000)) // overflow sanity check
 

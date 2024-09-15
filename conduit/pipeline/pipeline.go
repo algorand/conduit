@@ -640,7 +640,7 @@ func (p *pipelineImpl) exporterHandler(exporter exporters.Exporter, blkChan plug
 					if callbackErr != nil {
 						p.logger.Errorf(
 							"exporter %s # round %d failed callback #%d but CONTINUING to NextRound=%d: %v",
-							eName, lastRound, i, nextRound, lastError,
+							eName, lastRound, i, nextRound, callbackErr,
 						)
 					}
 				}
