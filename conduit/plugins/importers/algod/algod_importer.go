@@ -486,7 +486,7 @@ func (algodImp *algodImporter) getBlockInner(rnd uint64) (data.BlockData, error)
 	nodeRound, err := waitForRoundWithTimeout(algodImp.ctx, algodImp.logger, algodImp.aclient, rnd, waitForRoundTimeout)
 	if err != nil {
 		err = fmt.Errorf("called waitForRoundWithTimeout: %w", err)
-		algodImp.logger.Errorf(err.Error())
+		algodImp.logger.Error(err.Error())
 		return data.BlockData{}, err
 	}
 	start := time.Now()
@@ -496,7 +496,7 @@ func (algodImp *algodImporter) getBlockInner(rnd uint64) (data.BlockData, error)
 	getAlgodRawBlockTimeSeconds.Observe(dt.Seconds())
 	if err != nil {
 		err = fmt.Errorf("error getting block for round %d: %w", rnd, err)
-		algodImp.logger.Errorf(err.Error())
+		algodImp.logger.Error(err.Error())
 		return data.BlockData{}, err
 	}
 	tmpBlk := new(models.BlockResponse)
@@ -540,7 +540,7 @@ func (algodImp *algodImporter) GetBlock(rnd uint64) (data.BlockData, error) {
 			_, _ = algodImp.aclient.SetSyncRound(rnd).Do(algodImp.ctx)
 		} else {
 			err = fmt.Errorf("importer algod.GetBlock() error getting block for round %d, check node configuration: %s", rnd, err)
-			algodImp.logger.Errorf(err.Error())
+			algodImp.logger.Error(err.Error())
 		}
 		return data.BlockData{}, err
 	}
