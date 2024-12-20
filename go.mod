@@ -5,9 +5,9 @@ go 1.23
 toolchain go1.23.3
 
 require (
-	github.com/algorand/go-algorand-sdk/v2 v2.2.1-0.20241114170414-874d2110dae4
+	github.com/algorand/go-algorand-sdk/v2 v2.2.1-0.20241220043854-72370807aa70
 	github.com/algorand/go-codec/codec v1.1.10
-	github.com/algorand/indexer/v3 v3.6.1-0.20241115001248-bff11e95ca04
+	github.com/algorand/indexer/v3 v3.6.1-0.20241220213055-c5c7b4ea0f4e
 	github.com/google/uuid v1.6.0
 	github.com/jackc/pgx/v4 v4.18.2
 	github.com/opensearch-project/opensearch-go/v2 v2.3.0
