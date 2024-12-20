@@ -124,6 +124,21 @@ filters:
 				},
 			},
 		},
+		// Heartbeat transaction that should not be allowed through
+		sdk.SignedTxnInBlock{
+			SignedTxnWithAD: sdk.SignedTxnWithAD{
+				SignedTxn: sdk.SignedTxn{
+					Txn: sdk.Transaction{
+						Header: sdk.Header{
+							Sender: sampleAddr1,
+						},
+						HeartbeatTxnFields: &sdk.HeartbeatTxnFields{
+							HbAddress: sampleAddr2,
+						},
+					},
+				},
+			},
+		},
 		// The one transaction that will be allowed through
 		sdk.SignedTxnInBlock{
 			SignedTxnWithAD: sdk.SignedTxnWithAD{
@@ -974,6 +989,9 @@ filters:
     - tag: txn.rcv
       expression-type: equal
       expression: "` + sampleAddr2.String() + `"
+    - tag: txn.snd
+      expression-type: equal
+      expression: "` + sampleAddr3.String() + `"
 `
 
 	fpBuilder, err := processors.ProcessorConstructorByName(PluginName)
@@ -1019,11 +1037,25 @@ filters:
 				},
 			},
 		},
+		sdk.SignedTxnInBlock{
+			SignedTxnWithAD: sdk.SignedTxnWithAD{
+				SignedTxn: sdk.SignedTxn{
+					Txn: sdk.Transaction{
+						Header: sdk.Header{
+							Sender: sampleAddr3,
+						},
+						HeartbeatTxnFields: &sdk.HeartbeatTxnFields{
+							HbAddress: sampleAddr1,
+						},
+					},
+				},
+			},
+		},
 	)
 
 	output, err := fp.Process(bd)
 	require.NoError(t, err)
-	assert.Equal(t, output.Payset, []sdk.SignedTxnInBlock{bd.Payset[0], bd.Payset[1]})
+	assert.Equal(t, []sdk.SignedTxnInBlock{bd.Payset[0], bd.Payset[1], bd.Payset[3]}, output.Payset)
 }
 
 func TestFilterProcessor_SearchInner(t *testing.T) {
