@@ -60,6 +60,8 @@ var ignoreTags = map[string]bool{
 	"txn.apsu": true,
 	"dt.lg":    true,
 	"dt.sa":    true,
+	// Filter out heartbeat fields that are not obvious how to filter upon
+	"txn.hb": true,
 }
 
 func noCast(t reflect.StructField) bool {

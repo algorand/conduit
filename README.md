@@ -117,11 +117,3 @@ See the [Plugin Development](./docs/PluginDevelopment.md) page for building a pl
 # Contributing
 
 Contributions are welcome! Please refer to our [CONTRIBUTING](https://github.com/algorand/go-algorand/blob/master/CONTRIBUTING.md) document for general contribution guidelines.
-
-# Migrating from Indexer 2.x
-
-Conduit can be used to populate data from an existing [Indexer 2.x](https://github.com/algorand/indexer/) deployment as part of upgrading to Indexer 3.x. The v3 API is 100% backwards compatible with the v2 API.
-
-We will continue to maintain Indexer 2.x up through November 1. From that point onward, subsequent consensus upgrades will only be compatible with Indexer 3.x when paired with Conduit.
-
-To migrate, follow the [Using Conduit to Populate an Indexer Database](./docs/tutorials/IndexerWriter.md) tutorial. When you get to the step about setting up postgres, substitute your existing database connection string. Conduit will read the database to initialize the next round.
