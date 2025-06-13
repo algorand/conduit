@@ -8,12 +8,12 @@ description = "End to end tests for Algorand Conduit"
 version = "0.0.1"
 requires-python = ">=3.8"
 dependencies = [
-    "boto3==1.24.71",
+    "boto3==1.38.36",
     "msgpack==1.0.4",
-    "psycopg2==2.9.6",
+    "psycopg2==2.9.10",
     "py-algorand-sdk==1.17.0",
     "pytest==6.2.5",
-    "PyYAML==6.0",
+    "PyYAML==6.0.1",
     "setuptools ==65.3.0",
 ]
 

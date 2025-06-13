@@ -17,13 +17,13 @@ func LookupFieldByTag(tag string, input *sdk.SignedTxnWithAD) (interface{}, erro
 		value := input.ApplyData.AssetClosingAmount
 		return value, nil
 	case "apid":
-		value := input.ApplyData.ApplicationID
+		value := uint64(input.ApplyData.ApplicationID)
 		return value, nil
 	case "ca":
 		value := uint64(input.ApplyData.ClosingAmount)
 		return value, nil
 	case "caid":
-		value := input.ApplyData.ConfigAsset
+		value := uint64(input.ApplyData.ConfigAsset)
 		return value, nil
 	case "lsig.msig.thr":
 		value := uint64(input.SignedTxn.Lsig.Msig.Threshold)
@@ -114,6 +114,9 @@ func LookupFieldByTag(tag string, input *sdk.SignedTxnWithAD) (interface{}, erro
 		return value, nil
 	case "txn.apls.nui":
 		value := input.SignedTxn.Txn.ApplicationFields.ApplicationCallTxnFields.LocalStateSchema.NumUint
+		return value, nil
+	case "txn.aprv":
+		value := input.SignedTxn.Txn.ApplicationFields.ApplicationCallTxnFields.RejectVersion
 		return value, nil
 	case "txn.arcv":
 		value := input.SignedTxn.Txn.AssetTransferTxnFields.AssetReceiver.String()

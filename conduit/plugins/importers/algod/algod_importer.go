@@ -374,16 +374,40 @@ func (algodImp *algodImporter) Init(ctx context.Context, initProvider data.InitP
 		return err
 	}
 
-	genesis := sdk.Genesis{}
-
-	// Don't fail on unknown properties here since the go-algorand and SDK genesis types differ slightly
-	err = json.LenientDecode([]byte(genesisResponse), &genesis)
-	if err != nil {
-		return err
-	}
-	if reflect.DeepEqual(genesis, sdk.Genesis{}) {
+	if reflect.DeepEqual(genesisResponse, models.Genesis{}) {
 		return fmt.Errorf("unable to fetch genesis file from API at %s", algodImp.cfg.NetAddr)
 	}
+
+	genesis := sdk.Genesis{
+		SchemaID:    genesisResponse.Id,
+		Network:     genesisResponse.Network,
+		Proto:       genesisResponse.Proto,
+		Allocation:  make([]sdk.GenesisAllocation, len(genesisResponse.Alloc)),
+		RewardsPool: genesisResponse.Rwd,
+		FeeSink:     genesisResponse.Fees,
+		Timestamp:   int64(genesisResponse.Timestamp),
+		Comment:     genesisResponse.Comment,
+		DevMode:     genesisResponse.Devmode,
+	}
+
+	// Convert allocations
+	for i, alloc := range genesisResponse.Alloc {
+		var state sdk.Account
+		stateBytes := json.Encode(alloc.State)
+		if stateBytes == nil {
+			return fmt.Errorf("error converting allocation state for address %s: %w", alloc.Addr, err)
+		}
+		err = json.LenientDecode(stateBytes, &state)
+		if err != nil {
+			return fmt.Errorf("error unmarshaling allocation state: %w", err)
+		}
+		genesis.Allocation[i] = sdk.GenesisAllocation{
+			Address: alloc.Addr,
+			Comment: alloc.Comment,
+			State:   state,
+		}
+	}
+
 	algodImp.genesis = &genesis
 
 	return algodImp.catchupNode(genesis.Network, uint64(initProvider.NextDBRound()))
