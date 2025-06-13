@@ -255,7 +255,7 @@ filters:
 `, func(t *testing.T, output *data.BlockData) {
 
 			assert.Equal(t, 1, len(output.Payset))
-			assert.Equal(t, uint64(2), output.Payset[0].SignedTxnWithAD.ApplicationID)
+			assert.Equal(t, sdk.AppIndex(2), output.Payset[0].SignedTxnWithAD.ApplicationID)
 		},
 		},
 		{"alias 2", `---
@@ -267,8 +267,8 @@ filters:
 `, func(t *testing.T, output *data.BlockData) {
 
 			assert.Equal(t, 2, len(output.Payset))
-			assert.Equal(t, uint64(4), output.Payset[0].SignedTxnWithAD.ApplicationID)
-			assert.Equal(t, uint64(2), output.Payset[1].SignedTxnWithAD.ApplicationID)
+			assert.Equal(t, sdk.AppIndex(4), output.Payset[0].SignedTxnWithAD.ApplicationID)
+			assert.Equal(t, sdk.AppIndex(2), output.Payset[1].SignedTxnWithAD.ApplicationID)
 		},
 		},
 
@@ -281,8 +281,8 @@ filters:
 `, func(t *testing.T, output *data.BlockData) {
 
 			assert.Equal(t, 2, len(output.Payset))
-			assert.Equal(t, uint64(4), output.Payset[0].SignedTxnWithAD.ApplicationID)
-			assert.Equal(t, uint64(2), output.Payset[1].SignedTxnWithAD.ApplicationID)
+			assert.Equal(t, sdk.AppIndex(4), output.Payset[0].SignedTxnWithAD.ApplicationID)
+			assert.Equal(t, sdk.AppIndex(2), output.Payset[1].SignedTxnWithAD.ApplicationID)
 		},
 		},
 		{"alias 4", `---
@@ -294,7 +294,7 @@ filters:
 `, func(t *testing.T, output *data.BlockData) {
 
 			assert.Equal(t, 1, len(output.Payset))
-			assert.Equal(t, uint64(11), output.Payset[0].SignedTxnWithAD.ApplicationID)
+			assert.Equal(t, sdk.AppIndex(11), output.Payset[0].SignedTxnWithAD.ApplicationID)
 		},
 		},
 
@@ -307,8 +307,8 @@ filters:
 `, func(t *testing.T, output *data.BlockData) {
 
 			assert.Equal(t, 2, len(output.Payset))
-			assert.Equal(t, uint64(4), output.Payset[0].SignedTxnWithAD.ApplicationID)
-			assert.Equal(t, uint64(2), output.Payset[1].SignedTxnWithAD.ApplicationID)
+			assert.Equal(t, sdk.AppIndex(4), output.Payset[0].SignedTxnWithAD.ApplicationID)
+			assert.Equal(t, sdk.AppIndex(2), output.Payset[1].SignedTxnWithAD.ApplicationID)
 		},
 		},
 
@@ -321,7 +321,7 @@ filters:
 `, func(t *testing.T, output *data.BlockData) {
 
 			assert.Equal(t, 1, len(output.Payset))
-			assert.Equal(t, uint64(11), output.Payset[0].SignedTxnWithAD.ApplicationID)
+			assert.Equal(t, sdk.AppIndex(11), output.Payset[0].SignedTxnWithAD.ApplicationID)
 		},
 		},
 		{"alias 7", `---
@@ -333,8 +333,8 @@ filters:
 `, func(t *testing.T, output *data.BlockData) {
 
 			assert.Equal(t, 2, len(output.Payset))
-			assert.Equal(t, uint64(4), output.Payset[0].SignedTxnWithAD.ApplicationID)
-			assert.Equal(t, uint64(11), output.Payset[1].SignedTxnWithAD.ApplicationID)
+			assert.Equal(t, sdk.AppIndex(4), output.Payset[0].SignedTxnWithAD.ApplicationID)
+			assert.Equal(t, sdk.AppIndex(11), output.Payset[1].SignedTxnWithAD.ApplicationID)
 		},
 		},
 
@@ -347,8 +347,8 @@ filters:
 `, func(t *testing.T, output *data.BlockData) {
 
 			assert.Equal(t, 2, len(output.Payset))
-			assert.Equal(t, uint64(4), output.Payset[0].SignedTxnWithAD.ApplicationID)
-			assert.Equal(t, uint64(11), output.Payset[1].SignedTxnWithAD.ApplicationID)
+			assert.Equal(t, sdk.AppIndex(4), output.Payset[0].SignedTxnWithAD.ApplicationID)
+			assert.Equal(t, sdk.AppIndex(11), output.Payset[1].SignedTxnWithAD.ApplicationID)
 		},
 		},
 	}

@@ -34,6 +34,7 @@
 |txn.apid|SignedTxn.Txn.ApplicationFields.ApplicationCallTxnFields.ApplicationID|
 |txn.apls.nbs|SignedTxn.Txn.ApplicationFields.ApplicationCallTxnFields.LocalStateSchema.NumByteSlice|
 |txn.apls.nui|SignedTxn.Txn.ApplicationFields.ApplicationCallTxnFields.LocalStateSchema.NumUint|
+|txn.aprv|SignedTxn.Txn.ApplicationFields.ApplicationCallTxnFields.RejectVersion|
 |txn.arcv|SignedTxn.Txn.AssetTransferTxnFields.AssetReceiver|
 |txn.asnd|SignedTxn.Txn.AssetTransferTxnFields.AssetSender|
 |txn.caid|SignedTxn.Txn.AssetConfigTxnFields.ConfigAsset|
