@@ -48,7 +48,7 @@ func TestPipelineConfigValidity(t *testing.T) {
 	}
 }
 
-// TestMakePipelineConfigError tests that making the pipeline configuration with unknown fields causes an error
+// TestMakePipelineConfigErrors tests that making the pipeline configuration with unknown fields causes an error
 func TestMakePipelineConfigErrors(t *testing.T) {
 	tests := []struct {
 		name             string

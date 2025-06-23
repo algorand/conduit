@@ -973,7 +973,7 @@ filters:
 	assert.Equal(t, sampleAddr2, output.Payset[0].SignedTxnWithAD.SignedTxn.Txn.Header.Sender)
 }
 
-// TestFilterProcessor_Init_Some tests initialization of the filter processor with the "any" filter type
+// TestFilterProcessor_Init tests initialization of the filter processor with the "any" filter type
 func TestFilterProcessor_Init(t *testing.T) {
 
 	sampleAddr1 := sdk.Address{1}
