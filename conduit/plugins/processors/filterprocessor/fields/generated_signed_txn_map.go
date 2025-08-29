@@ -25,6 +25,12 @@ func LookupFieldByTag(tag string, input *sdk.SignedTxnWithAD) (interface{}, erro
 	case "caid":
 		value := uint64(input.ApplyData.ConfigAsset)
 		return value, nil
+	case "lsig.lmsig.thr":
+		value := uint64(input.SignedTxn.Lsig.LMsig.Threshold)
+		return value, nil
+	case "lsig.lmsig.v":
+		value := uint64(input.SignedTxn.Lsig.LMsig.Version)
+		return value, nil
 	case "lsig.msig.thr":
 		value := uint64(input.SignedTxn.Lsig.Msig.Threshold)
 		return value, nil

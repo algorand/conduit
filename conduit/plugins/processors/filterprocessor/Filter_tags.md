@@ -4,6 +4,8 @@
 |apid|ApplyData.ApplicationID|
 |ca|ApplyData.ClosingAmount|
 |caid|ApplyData.ConfigAsset|
+|lsig.lmsig.thr|SignedTxn.Lsig.LMsig.Threshold|
+|lsig.lmsig.v|SignedTxn.Lsig.LMsig.Version|
 |lsig.msig.thr|SignedTxn.Lsig.Msig.Threshold|
 |lsig.msig.v|SignedTxn.Lsig.Msig.Version|
 |msig.thr|SignedTxn.Msig.Threshold|
