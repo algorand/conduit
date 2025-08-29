@@ -2,6 +2,12 @@ name: Tests
 on:
   pull_request:
 
+env:
+    # A stable environment for PRs.
+    # Set CHANNEL to nightly and update CI_E2E_FILENAME when adding a new feature.
+    # Change back to stable once the new feature is released.
+    CI_E2E_FILENAME: "f55ae1c8/rel-nightly"
+    CHANNEL: nightly
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -23,7 +29,6 @@ jobs:
 
       - name: Install algod
         run: |
-            CHANNEL="stable"
             wget https://raw.githubusercontent.com/algorand/go-algorand/rel/stable/cmd/updater/update.sh && chmod 744 update.sh 
             ./update.sh -i -c "$CHANNEL" -n -d ./ -p "$RUNNER_WORKSPACE/algod_bin"
             ls "$RUNNER_WORKSPACE/algod_bin"
