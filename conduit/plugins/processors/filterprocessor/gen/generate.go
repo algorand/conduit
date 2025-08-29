@@ -21,12 +21,14 @@ var ignoreTags = map[string]bool{
 	// no point to filtering on a lease
 	"txn.lx": true,
 	// no point to filter on signatures
-	"sig":              true,
-	"msig.subsig":      true,
-	"lsig.sig":         true,
-	"lsig.arg":         true,
-	"lsig.l":           true,
-	"lsig.msig.subsig": true,
+	"sig":               true,
+	"lmsig.subsig":      true,
+	"msig.subsig":       true,
+	"lsig.sig":          true,
+	"lsig.arg":          true,
+	"lsig.l":            true,
+	"lsig.lmsig.subsig": true,
+	"lsig.msig.subsig":  true,
 	// no point in filtering on keys
 	"txn.votekey": true,
 	"txn.selkey":  true,
@@ -54,6 +56,7 @@ var ignoreTags = map[string]bool{
 	"txn.apaa": true,
 	"txn.apat": true,
 	"txn.apfa": true,
+	"txn.al":   true,
 	"txn.apbx": true,
 	"txn.apas": true,
 	"txn.apap": true,
