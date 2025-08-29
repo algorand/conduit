@@ -3,7 +3,7 @@ export GOPATH := $(shell go env GOPATH)
 GOPATH1 := $(firstword $(subst :, ,$(GOPATH)))
 
 # pinned filename can be overridden in CI with an env variable.
-CI_E2E_FILENAME ?= f99e7b0c/rel-nightly
+CI_E2E_FILENAME ?= f55ae1c8/rel-nightly
 
 GOLDFLAGS += -X github.com/algorand/conduit/version.Hash=$(shell git log -n 1 --pretty="%H")
 GOLDFLAGS += -X github.com/algorand/conduit/version.ShortHash=$(shell git log -n 1 --pretty="%h")
