@@ -14,7 +14,7 @@ dependencies = [
     "py-algorand-sdk==1.17.0",
     "pytest==6.2.5",
     "PyYAML==6.0.1",
-    "setuptools ==65.3.0",
+    "setuptools ==78.1.1",
 ]
 
 
