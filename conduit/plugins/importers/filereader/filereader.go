@@ -74,7 +74,7 @@ func (r *fileReader) Init(ctx context.Context, _ data.InitProvider, cfg plugins.
 	return nil
 }
 
-// GetGenesis returns the genesis. Is is assumed that the genesis file is available as `genesis.json`
+// GetGenesis returns the genesis. It is assumed that the genesis file is available as `genesis.json`
 // regardless of chosen encoding format and gzip flag.
 // It is also assumed that there is a separate round 0 block file adhering to the expected filename pattern with encoding.
 // This is because genesis and round 0 block have different data and encodings,
