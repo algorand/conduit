@@ -32,7 +32,7 @@ func TestLogToFile(t *testing.T) {
 	require.NoError(t, err)
 
 	testString := "1234abcd"
-	logger.Infof(testString)
+	logger.Info(testString)
 	assert.FileExists(t, logfile)
 	data, err := os.ReadFile(logfile)
 	assert.Contains(t, string(data), testString)

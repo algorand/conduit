@@ -434,7 +434,7 @@ func (p *pipelineImpl) Stop() {
 
 func numInnerTxn(txn sdk.SignedTxnWithAD) int {
 	result := 0
-	for _, itxn := range txn.ApplyData.EvalDelta.InnerTxns {
+	for _, itxn := range txn.EvalDelta.InnerTxns {
 		result += 1 + numInnerTxn(itxn)
 	}
 	return result

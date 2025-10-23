@@ -1,8 +1,8 @@
 module github.com/algorand/conduit
 
-go 1.23.0
+go 1.25.0
 
-toolchain go1.23.3
+toolchain go1.25.3
 
 require (
 	github.com/algorand/go-algorand-sdk/v2 v2.11.0
@@ -17,7 +17,6 @@ require (
 	github.com/stretchr/testify v1.10.0
 	github.com/yuin/goldmark v1.5.4
 	gopkg.in/yaml.v3 v3.0.1
-
 )
 
 require (
