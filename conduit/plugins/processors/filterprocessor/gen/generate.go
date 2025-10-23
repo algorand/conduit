@@ -9,9 +9,9 @@ import (
 	"strings"
 	"text/template"
 
-	"github.com/algorand/conduit/conduit/plugins/processors/filterprocessor/gen/internal"
-
 	sdk "github.com/algorand/go-algorand-sdk/v2/types"
+
+	"github.com/algorand/conduit/conduit/plugins/processors/filterprocessor/gen/internal"
 )
 
 // ignoreTags are things that we specifically want to exclude from the output.
@@ -235,7 +235,7 @@ func writeFieldsToFile(filepath string, fields map[string]internal.StructField) 
 		tags = append(tags, k)
 	}
 	sort.Strings(tags)
-	_, err = fout.WriteString(fmt.Sprintf("|%s|%s|\n", "filter tag", "transaction field"))
+	_, err = fmt.Fprintf(fout, "|%s|%s|\n", "filter tag", "transaction field")
 	if err != nil {
 		return err
 	}
@@ -244,7 +244,7 @@ func writeFieldsToFile(filepath string, fields map[string]internal.StructField) 
 		return err
 	}
 	for _, tag := range tags {
-		_, err = fout.WriteString(fmt.Sprintf("|%s|%s|\n", tag, fields[tag].FieldPath))
+		_, err = fmt.Fprintf(fout, "|%s|%s|\n", tag, fields[tag].FieldPath)
 		if err != nil {
 			return err
 		}
