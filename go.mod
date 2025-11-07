@@ -5,7 +5,7 @@ go 1.25.0
 toolchain go1.25.3
 
 require (
-	github.com/algorand/go-algorand-sdk/v2 v2.11.0
+	github.com/algorand/go-algorand-sdk/v2 v2.11.2-0.20251107185500-fe87fd072973
 	github.com/algorand/go-codec/codec v1.1.10
 	github.com/algorand/indexer/v3 v3.9.0
 	github.com/google/uuid v1.6.0
