@@ -180,13 +180,19 @@ func recursiveTagFields(theStruct interface{}, ignoreTags map[string]bool, outpu
 		name := field.Name
 		numOutputsBefore := len(output)
 
-		// Lookup codec tag
+		// Lookup codec tag. Only the part before the first comma names the
+		// field, the rest are encoding options like "required" or "omitempty",
+		// which must not become part of the tag path.
 		tagValue, foundTag := field.Tag.Lookup("codec")
+		tagName := strings.Split(tagValue, ",")[0]
+		// A tag that only carries options (`codec:",omitempty"`) names nothing,
+		// so treat it as untagged.
+		foundTag = foundTag && tagName != ""
 
 		if field.Type.Kind() == reflect.Struct {
 			var passedTagLevel []string
 			if foundTag {
-				passedTagLevel = append(tagLevel, tagValue)
+				passedTagLevel = append(tagLevel, tagName)
 			} else {
 				passedTagLevel = tagLevel
 			}
@@ -196,15 +202,7 @@ func recursiveTagFields(theStruct interface{}, ignoreTags map[string]bool, outpu
 		// Add to output if there is a tag, and there were no subtags (i.e. this is a leaf)
 		foundSubtag := numOutputsBefore < len(output)
 		if foundTag && !foundSubtag {
-			vals := strings.Split(tagValue, ",")
-			// Get the first value (the one we care about)
-			tagValue = vals[0]
-			// If it is empty ignore it
-			if tagValue == "" {
-				continue
-			}
-
-			fullTag := strings.Join(append(tagLevel, tagValue), ".")
+			fullTag := strings.Join(append(tagLevel, tagName), ".")
 			if ignoreTags[fullTag] {
 				continue
 			}

@@ -54,6 +54,37 @@ func TestIgnoreMiddleTags(t *testing.T) {
 	}, f["parent.child"])
 }
 
+// Codec tags may carry options after the name ("txn,required"). Those options
+// belong to the encoder, not to the tag path, so nested paths and ignore
+// lookups must be built from the name alone.
+func TestTagOptionsStrippedWhenRecursing(t *testing.T) {
+	t.Parallel()
+	testStruct := struct {
+		Parent struct {
+			Child   string `codec:"child,omitempty"`
+			Ignored string `codec:"ignoreme"`
+		} `codec:"parent,required"`
+		Unnamed struct {
+			Deep string `codec:"deep"`
+		} `codec:",omitempty"`
+	}{}
+
+	ignore := map[string]bool{"parent.ignoreme": true}
+	f, errs := getFields(testStruct, ignore)
+	require.Len(t, errs, 0)
+	// parent.ignoreme was ignored, so only child and deep remain.
+	require.Len(t, f, 2)
+	assert.Equal(t, internal.StructField{
+		TagPath:   "parent.child",
+		FieldPath: "Parent.Child",
+	}, f["parent.child"])
+	// A tag with no name contributes nothing to the path.
+	assert.Equal(t, internal.StructField{
+		TagPath:   "deep",
+		FieldPath: "Unnamed.Deep",
+	}, f["deep"])
+}
+
 func TestNoCast(t *testing.T) {
 	t.Parallel()
 	testStruct := struct {
