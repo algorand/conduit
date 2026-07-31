@@ -1,0 +1,79 @@
+name: Nightly Tests
+
+on:
+  schedule:
+    - cron: "17 5 * * *"  # Run at 5:17 AM UTC daily
+  workflow_dispatch:
+
+env:
+  # Unlike the PR workflow, the test data is deliberately NOT pinned to a
+  # commit hash. Tracking the latest nightly is what surfaces encoding changes
+  # in go-algorand (new block or transaction fields) against a strict msgpack
+  # decode, which a frozen dataset can never do.
+  CI_E2E_FILENAME: "rel-nightly"
+  CHANNEL: nightly
+  SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
+
+jobs:
+  test_nightly:
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/master' || github.event_name == 'workflow_dispatch'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - run: git fetch --force --tags
+
+      - name: Install go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: 'go.mod'
+
+      - name: Install python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Install algod
+        run: |
+            wget https://raw.githubusercontent.com/algorand/go-algorand/rel/stable/cmd/updater/update.sh && chmod 744 update.sh
+            ./update.sh -i -c "$CHANNEL" -n -d ./ -p "$RUNNER_WORKSPACE/algod_bin"
+            ls "$RUNNER_WORKSPACE/algod_bin"
+            # Make it accessible from runner
+            echo "$RUNNER_WORKSPACE/algod_bin" >> $GITHUB_PATH
+
+      - name: Test for algod on path
+        run: which algod
+
+      - name: Build Conduit
+        run: make
+
+      - name: Run tests
+        run: make test
+
+      - name: Build e2e tests
+        run: pip3 install e2e_tests/
+
+      - name: Run e2e tests (nightly)
+        run: |
+          make e2e-conduit
+
+      - name: Notify Slack on failure
+        if: failure() && env.SLACK_WEBHOOK != ''
+        uses: slackapi/slack-github-action@v2.1.0
+        with:
+          webhook: ${{ secrets.SLACK_WEBHOOK }}
+          webhook-type: webhook-trigger
+          payload: |
+            {
+              "text": "Conduit Nightly Failure Alert",
+              "blocks": [
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "test_nightly Job Failure:\n* Branch: `${{ github.ref_name }}`\n* Run URL:  ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+                  }
+                }
+              ]
+            }
