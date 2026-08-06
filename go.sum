@@ -11,8 +11,8 @@ github.com/algorand/go-algorand-sdk/v2 v2.11.2-0.20260730212803-2b779fd6c4c3 h1:
 github.com/algorand/go-algorand-sdk/v2 v2.11.2-0.20260730212803-2b779fd6c4c3/go.mod h1:+AY/uVX/X60O9Ok9HtPWA6DqFRuPl9QWm4scQDmOcFc=
 github.com/algorand/go-codec/codec v1.1.10 h1:zmWYU1cp64jQVTOG8Tw8wa+k0VfwgXIPbnDfiVa+5QA=
 github.com/algorand/go-codec/codec v1.1.10/go.mod h1:YkEx5nmr/zuCeaDYOIhlDg92Lxju8tj2d2NrYqP7g7k=
-github.com/algorand/indexer/v3 v3.9.1-0.20260112183408-2970dcb8ffa7 h1:ZgPY2gncJCFLd3i6+aA5iN/GOdQMFWBx+6abh9x2tgI=
-github.com/algorand/indexer/v3 v3.9.1-0.20260112183408-2970dcb8ffa7/go.mod h1:GrCKOrKnstriaJDi784qxQJILz5q3fARkVa3zDPPrCE=
+github.com/algorand/indexer/v3 v3.9.1-0.20260731152534-4938ea23a3c0 h1:G9TuSzEctFOWkXHQVeBll7QxOcPotyIwViA/1OzXyeY=
+github.com/algorand/indexer/v3 v3.9.1-0.20260731152534-4938ea23a3c0/go.mod h1:UFpuScctU9xYm3oaPd90Eac1rLZzmV7y217cpB9cI2Q=
 github.com/algorand/oapi-codegen v1.12.0-algorand.0 h1:W9PvED+wAJc+9EeXPONnA+0zE9UhynEqoDs4OgAxKhk=
 github.com/algorand/oapi-codegen v1.12.0-algorand.0/go.mod h1:tIWJ9K/qrLDVDt5A1p82UmxZIEGxv2X+uoujdhEAL48=
 github.com/apapsch/go-jsonmerge/v2 v2.0.0 h1:axGnT1gRIfimI7gJifB699GoE/oq+F2MU7Dml6nw9rQ=
