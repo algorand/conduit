@@ -34,7 +34,7 @@ const (
 	conduitEnvVar = "CONDUIT_DATA_DIR"
 )
 
-// runConduitCmdWithConfig run the main logic with a supplied conduit config.
+// runConduitCmdWithConfig runs the main logic with a supplied conduit config.
 // Cancelling ctx shuts the pipeline down and makes this return.
 func runConduitCmdWithConfig(ctx context.Context, args *data.Args) error {
 	defer pipeline.HandlePanic(logger)
