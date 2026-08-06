@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"context"
 	_ "embed"
 	"fmt"
 	"net/http"
@@ -52,7 +53,7 @@ func TestBanner(t *testing.T) {
 		}
 		args := setupDataDir(t, cfg)
 
-		err = runConduitCmdWithConfig(args)
+		err = runConduitCmdWithConfig(context.Background(), args)
 		data, err := os.ReadFile(stdoutFilePath)
 		require.NoError(t, err)
 
@@ -74,7 +75,7 @@ func TestBanner(t *testing.T) {
 
 func TestEmptyDataDir(t *testing.T) {
 	args := data.Args{}
-	err := runConduitCmdWithConfig(&args)
+	err := runConduitCmdWithConfig(context.Background(), &args)
 	require.ErrorContains(t, err, conduitEnvVar)
 }
 
@@ -83,7 +84,7 @@ func TestInvalidLogLevel(t *testing.T) {
 		LogLevel: "invalid",
 	}
 	args := setupDataDir(t, cfg)
-	err := runConduitCmdWithConfig(args)
+	err := runConduitCmdWithConfig(context.Background(), args)
 	require.ErrorContains(t, err, "not a valid log level")
 }
 
@@ -109,7 +110,7 @@ func TestLogFile(t *testing.T) {
 		}
 		args := setupDataDir(t, cfg)
 
-		err = runConduitCmdWithConfig(args)
+		err = runConduitCmdWithConfig(context.Background(), args)
 		require.ErrorContains(t, err, "pipeline creation error")
 		return os.ReadFile(stdoutFilePath)
 	}
@@ -155,8 +156,18 @@ func TestHealthEndpoint(t *testing.T) {
 		}
 		args := setupDataDir(t, cfg)
 
+		// The pipeline must be shut down and fully drained before the subtest
+		// returns. Otherwise it keeps writing metadata into the data dir while
+		// t.TempDir() cleanup is removing it, which fails the test.
+		ctx, cancel := context.WithCancel(context.Background())
+		done := make(chan struct{})
 		go func() {
-			runConduitCmdWithConfig(args)
+			defer close(done)
+			runConduitCmdWithConfig(ctx, args)
+		}()
+		defer func() {
+			cancel()
+			<-done
 		}()
 		time.Sleep(1 * time.Second)
 

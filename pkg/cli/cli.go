@@ -34,8 +34,9 @@ const (
 	conduitEnvVar = "CONDUIT_DATA_DIR"
 )
 
-// runConduitCmdWithConfig run the main logic with a supplied conduit config
-func runConduitCmdWithConfig(args *data.Args) error {
+// runConduitCmdWithConfig run the main logic with a supplied conduit config.
+// Cancelling ctx shuts the pipeline down and makes this return.
+func runConduitCmdWithConfig(ctx context.Context, args *data.Args) error {
 	defer pipeline.HandlePanic(logger)
 
 	if args.ConduitDataDir == "" {
@@ -80,7 +81,6 @@ func runConduitCmdWithConfig(args *data.Args) error {
 		fmt.Println("Writing logs to console.")
 	}
 
-	ctx := context.Background()
 	pline, err := pipeline.MakePipeline(ctx, pCfg, logger)
 	if err != nil {
 		err = fmt.Errorf("pipeline creation error: %w", err)
@@ -149,8 +149,8 @@ See other subcommands for further built in utilities and information.
 
 Detailed documentation is online: https://github.com/algorand/conduit`,
 		Args: cobra.NoArgs,
-		Run: func(_ *cobra.Command, _ []string) {
-			err := runConduitCmdWithConfig(cfg)
+		Run: func(cmd *cobra.Command, _ []string) {
+			err := runConduitCmdWithConfig(cmd.Context(), cfg)
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "\nExiting with error:\t%s.\n", err)
 				os.Exit(1)
