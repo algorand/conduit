@@ -17,6 +17,7 @@ import (
 
 	"github.com/algorand/go-algorand-sdk/v2/client/v2/algod"
 	"github.com/algorand/go-algorand-sdk/v2/client/v2/common/models"
+	"github.com/algorand/go-algorand-sdk/v2/protocol"
 	sdk "github.com/algorand/go-algorand-sdk/v2/types"
 
 	"github.com/algorand/conduit/conduit"
@@ -588,6 +589,46 @@ func TestGetBlockSuccess(t *testing.T) {
 				assert.NotNil(t, downloadedBlk.Delta)
 			} else {
 				assert.Nil(t, downloadedBlk.Delta)
+			}
+		})
+	}
+}
+
+func TestGetBlockConsensusV43(t *testing.T) {
+	for _, mode := range []int{archivalMode, followerMode} {
+		t.Run(fmt.Sprintf("mode=%d", mode), func(t *testing.T) {
+			t.Parallel()
+			block := sdk.Block{
+				BlockHeader: sdk.BlockHeader{
+					Round: 10,
+					UpgradeState: sdk.UpgradeState{
+						CurrentProtocol: string(protocol.ConsensusV43),
+					},
+				},
+			}
+			ts := NewAlgodServer(
+				MakeMsgpResponder("/v2/blocks/", models.BlockResponse{Block: block}),
+				BlockAfterResponder,
+				LedgerStateDeltaResponder,
+			)
+			defer ts.Close()
+			client, err := algod.MakeClient(ts.URL, "")
+			require.NoError(t, err)
+			logger, _ := test.NewNullLogger()
+			importer := &algodImporter{
+				aclient: client,
+				logger:  logger,
+				ctx:     context.Background(),
+				mode:    mode,
+			}
+
+			downloaded, err := importer.GetBlock(uint64(block.Round))
+			require.NoError(t, err)
+			assert.Equal(t, block.BlockHeader, downloaded.BlockHeader)
+			if mode == followerMode {
+				assert.NotNil(t, downloaded.Delta)
+			} else {
+				assert.Nil(t, downloaded.Delta)
 			}
 		})
 	}
