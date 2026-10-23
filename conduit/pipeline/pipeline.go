@@ -18,6 +18,7 @@ import (
 	yaml "gopkg.in/yaml.v3"
 
 	sdk "github.com/algorand/go-algorand-sdk/v2/types"
+	"github.com/algorand/go-algorand-sdk/v2/protocol/config"
 
 	"github.com/algorand/conduit/conduit"
 	"github.com/algorand/conduit/conduit/data"
@@ -270,6 +271,14 @@ func (p *pipelineImpl) Init() error {
 			return err
 		}
 	}
+
+	// Read custom consensus file for custom protocols
+	var consensus config.ConsensusProtocols
+	consensus , consensusErr := config.PreloadConfigurableConsensusProtocols(p.cfg.ConduitArgs.ConduitDataDir)
+	if consensusErr != nil {
+			return consensusErr
+	}
+	config.Consensus = consensus
 
 	// Read metadata file if it exists. We have to do this here in order to get
 	// the round from a previous run if it exists.
